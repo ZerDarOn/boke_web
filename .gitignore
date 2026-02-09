@@ -1,0 +1,37 @@
+# Windows 系统文件
+nul
+NUL
+null
+NULL
+
+# IDE 配置文件
+.idea/
+
+# Node.js 依赖
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 构建输出
+.next/
+dist/
+build/
+
+# 环境变量
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
+
+# 操作系统生成的文件
+Thumbs.db
+.DS_Store

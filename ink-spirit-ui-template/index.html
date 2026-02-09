@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>INK.SPIRIT | Cyber-Ink Evolution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;400;700&family=Noto+Serif+SC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --color-neon: #10b981; /* Default Emerald */
+        --color-secondary: #8b5cf6; /* Default Violet */
+      }
+      
+      /* --- Custom Cursor Logic --- */
+      body, a, button, input, textarea, select, .cursor-pointer {
+        cursor: none !important; /* Force hide default cursor everywhere */
+      }
+
+      #cursor-dot,
+      #cursor-outline {
+        position: fixed;
+        top: 0;
+        left: 0;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        z-index: 9999;
+        pointer-events: none;
+      }
+      #cursor-dot {
+        width: 8px;
+        height: 8px;
+        background-color: var(--color-neon);
+      }
+      #cursor-outline {
+        width: 40px;
+        height: 40px;
+        border: 1px solid var(--color-secondary);
+        opacity: 0.5;
+        transition: width 0.2s, height 0.2s, background-color 0.2s;
+      }
+      
+      /* Hover state detection using :hover on body to find interactive children */
+      body:has(a:hover) #cursor-outline,
+      body:has(button:hover) #cursor-outline,
+      body:has(.cursor-pointer:hover) #cursor-outline,
+      body:has(input:hover) #cursor-outline {
+        width: 60px;
+        height: 60px;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-color: var(--color-neon);
+        mix-blend-mode: difference;
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              ink: '#0a0a0a',
+              paper: '#ffffff',
+              neon: 'var(--color-neon)', // Dynamic Primary
+              secondary: 'var(--color-secondary)', // Dynamic Secondary
+              'neon-dark': '#059669',
+            },
+            fontFamily: {
+              sans: ['"Orbitron"', 'sans-serif'],
+              serif: ['"Noto Serif SC"', 'serif'],
+              mono: ['"JetBrains Mono"', 'monospace'],
+            },
+            backgroundImage: {
+              'dragon-scales': "url(\"data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20 L40 0 L20 -20 L0 0 Z' fill='%2310b981' fill-opacity='0.1' stroke='%23059669' stroke-width='0.5' stroke-opacity='0.2'/%3E%3C/svg%3E\")",
+            },
+            animation: {
+                'spin-slow': 'spin 10s linear infinite',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Custom scrollbar for that cyber feel */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #fff;
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #0a0a0a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #0a0a0a;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #fff;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--color-neon); /* Dynamic hover color */
+      }
+      .vertical-text {
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+      }
+      
+      /* Range Input Styling for Color Picker */
+      input[type=range] {
+        -webkit-appearance: none;
+        width: 100%;
+        background: transparent;
+      }
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 2px solid #000000;
+        cursor: pointer;
+        margin-top: -6px;
+      }
+      input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 4px;
+        cursor: pointer;
+        border-radius: 2px;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-paper text-ink antialiased overflow-x-hidden selection:bg-neon selection:text-white dark:bg-ink dark:text-paper transition-colors duration-300">
+    <!-- Custom Cursor Elements -->
+    <div id="cursor-dot"></div>
+    <div id="cursor-outline"></div>
+    <script>
+        const dot = document.getElementById("cursor-dot");
+        const outline = document.getElementById("cursor-outline");
+
+        window.addEventListener("mousemove", (e) => {
+            const posX = e.clientX;
+            const posY = e.clientY;
+
+            // Dot follows instantly
+            dot.style.left = `${posX}px`;
+            dot.style.top = `${posY}px`;
+
+            // Outline follows with slight delay/animation via CSS transition or JS lag
+            outline.animate({
+                left: `${posX}px`,
+                top: `${posY}px`
+            }, { duration: 500, fill: "forwards" });
+        });
+    </script>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
