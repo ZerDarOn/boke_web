@@ -17,12 +17,30 @@ import Anime from './pages/Anime';
 import Diary from './pages/Diary';
 import Gallery from './pages/Gallery';
 
-// 路由切换滚动到顶部
+// 路由切换滚动逻辑
 const ScrollToTop: React.FC = () => {
   const location = useLocation();
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   
   React.useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    if (location.pathname !== '/') {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        const scrollPosition = window.innerHeight * 0.7;
+        window.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+      }, 800);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [location.pathname]);
 
   return null;

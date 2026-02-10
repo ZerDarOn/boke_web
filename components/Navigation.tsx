@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Search, Palette, SidebarClose, SidebarOpen, Globe, Settings, ChevronDown, 
-  Github, Video, Book, Camera, Heart, Network, Code, Clock, UserCheck, RotateCcw, Moon, Sun
+  Github, Video, Book, Camera, Heart, Network, Code, Clock, UserCheck, RotateCcw, Moon, Sun, BookOpen
 } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
@@ -55,7 +55,7 @@ const Navigation: React.FC<NavigationProps> = ({
     if (path === '/archives') return t.ARCHIVES;
     if (path === '/dashboard') return t.DASHBOARD;
     if (path === '/about' || path === '/network') return t.ABOUT;
-    if (path === '/anime' || path === '/diary' || path === '/gallery') return t.MINE;
+    if (path === '/posts' || path === '/anime' || path === '/diary' || path === '/gallery') return t.MINE;
     if (path === '/projects' || path === '/timeline' || path === '/skills') return t.OTHERS;
     return t.HOME;
   };
@@ -87,6 +87,7 @@ const Navigation: React.FC<NavigationProps> = ({
         id: 'mine', 
         hasDropdown: true,
         dropdownItems: [
+            { label: t.POSTS, icon: BookOpen, path: '/posts' },
             { label: lang === 'EN' ? 'Anime' : '追番', icon: Heart, path: '/anime' },
             { label: lang === 'EN' ? 'Diary' : '日记', icon: Book, path: '/diary' },
             { label: lang === 'EN' ? 'Gallery' : '相册', icon: Camera, path: '/gallery' }

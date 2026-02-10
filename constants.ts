@@ -142,10 +142,12 @@ export const SKILL_NODES: SkillNode[] = [
 ];
 
 export const CATEGORIES = [
-  { name: 'PHILOSOPHY', count: 4, icon: '☯️' },
-  { name: 'ENGINEERING', count: 12, icon: '⚙️' },
-  { name: 'LIFESTYLE', count: 3, icon: '🍵' },
-  { name: 'TECH', count: 8, icon: '⚡' },
+  { name: 'ALL', count: 6, icon: '🌐' },
+  { name: 'PHILOSOPHY', count: 1, icon: '☯️' },
+  { name: 'ENGINEERING', count: 1, icon: '⚙️' },
+  { name: 'LIFESTYLE', count: 1, icon: '🍵' },
+  { name: 'LIFE', count: 1, icon: '🏠' },
+  { name: 'TECH', count: 2, icon: '⚡' },
 ];
 
 export const TAGS = [
@@ -314,6 +316,7 @@ export const ANNOUNCEMENTS: import('./types').Announcement[] = [
 export const TRANSLATIONS = {
     EN: {
         HOME: 'HOME',
+        POSTS: 'POSTS',
         ARCHIVES: 'ARCHIVES',
         LINKS: 'LINKS',
         MINE: 'MINE',
@@ -333,6 +336,7 @@ export const TRANSLATIONS = {
     },
     ZH: {
         HOME: '主页',
+        POSTS: '文章',
         ARCHIVES: '归档',
         LINKS: '链接',
         MINE: '我的',
