@@ -798,19 +798,43 @@ export const TAGS = [
 export const LATEST_ACTIVITIES: Activity[] = [
   {
     id: 'a1',
-    project: 'pixel-cabin-project',
-    title: 'Pixel Cabin Theme',
-    tags: ['TypeScript', 'HTML'],
-    status: 'PLANNING',
-    date: '2024.06'
+    project: 'ink-spirit-blog',
+    title: '博客系统重构完成',
+    tags: ['React', 'TypeScript', 'Vite'],
+    status: 'DONE',
+    date: '2025-02-10'
   },
   {
     id: 'a2',
-    project: 'Fullstack Dev',
-    title: '全栈架构升级',
-    tags: [],
+    project: 'pixel-cabin-theme',
+    title: 'Pixel Cabin 主题上线',
+    tags: ['Design', 'CSS'],
     status: 'DONE',
-    date: '2024.01'
+    date: '2025-01-28'
+  },
+  {
+    id: 'a3',
+    project: 'performance-optimization',
+    title: '性能优化与代码分割',
+    tags: ['Vite', 'Webpack'],
+    status: 'IN_PROGRESS',
+    date: '2025-01-20'
+  },
+  {
+    id: 'a4',
+    project: 'rss-integration',
+    title: 'RSS 订阅功能集成',
+    tags: ['XML', 'Vite'],
+    status: 'DONE',
+    date: '2025-01-15'
+  },
+  {
+    id: 'a5',
+    project: 'giscus-comments',
+    title: 'Giscus 评论系统部署',
+    tags: ['GitHub', 'Comments'],
+    status: 'DONE',
+    date: '2025-01-10'
   }
 ];
 
