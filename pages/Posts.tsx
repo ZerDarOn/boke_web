@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { BLOG_POSTS, TRANSLATIONS } from '../constants';
 import { ArrowRight, LayoutList, LayoutGrid } from 'lucide-react';
 
@@ -74,8 +74,9 @@ const Posts: React.FC = () => {
 
       <div className={viewMode === 'list' ? "grid grid-cols-1 gap-12" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
         {filteredPosts.map((post) => (
-          <article 
-            key={post.id} 
+          <Link 
+            key={post.id}
+            to={`/posts/${post.id}`}
             className={`
               group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
               ${viewMode === 'list' ? 'flex flex-col md:flex-row gap-6 items-start p-6' : 'flex flex-col p-6 h-full'}
@@ -91,7 +92,7 @@ const Posts: React.FC = () => {
 
             {/* Content Card */}
             <div className="flex-1 flex flex-col h-full">
-              <h3 className="text-2xl font-bold font-sans text-ink dark:text-white group-hover:text-neon-dark dark:group-hover:text-neon transition-colors mb-3 cursor-pointer">
+              <h3 className="text-2xl font-bold font-sans text-ink dark:text-white group-hover:text-neon-dark dark:group-hover:text-neon transition-colors mb-3">
                 {post.title}
               </h3>
               <p className="font-serif text-gray-600 dark:text-gray-300 text-base leading-relaxed mb-4 flex-1">
@@ -104,7 +105,7 @@ const Posts: React.FC = () => {
             
             {/* Decorative Ink Splat / Glow in Dark Mode */}
             <div className="absolute top-0 right-0 w-12 h-12 bg-gray-50 dark:bg-white/5 opacity-0 group-hover:opacity-100 rounded-bl-3xl transition-opacity -z-10"></div>
-          </article>
+          </Link>
         ))}
       </div>
       

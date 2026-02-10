@@ -4,6 +4,9 @@ export interface BlogPost {
   date: string;
   category: string;
   excerpt: string;
+  content: string;
+  tags: string[];
+  readingTime: string;
 }
 
 export interface DiaryEntry {

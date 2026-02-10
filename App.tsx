@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 // Pages
 import Home from './pages/Home';
 import Posts from './pages/Posts';
+import PostDetail from './pages/PostDetail';
 import Archives from './pages/Archives';
 import Announcement from './pages/Announcement';
 import AnnouncementDetail from './pages/AnnouncementDetail';
@@ -69,6 +70,7 @@ const App: React.FC = () => {
           
           {/* 文章相关 */}
           <Route path="/posts" element={<Posts />} />
+          <Route path="/posts/:id" element={<PostDetail />} />
           <Route path="/archives" element={<Archives />} />
           <Route path="/announcement" element={<Announcement />} />
           <Route path="/announcement/:id" element={<AnnouncementDetail />} />
