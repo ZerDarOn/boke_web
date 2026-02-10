@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { BLOG_POSTS, TRANSLATIONS } from '../constants';
-import { ArrowRight, LayoutList, LayoutGrid } from 'lucide-react';
+import { BLOG_POSTS, CATEGORIES, TRANSLATIONS } from '../constants';
+import { ArrowRight, LayoutList, LayoutGrid, Filter, X } from 'lucide-react';
 
 const Posts: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -19,8 +19,11 @@ const Posts: React.FC = () => {
 
   const filteredPosts = BLOG_POSTS.filter(post => {
     if (selectedCategory && post.category !== selectedCategory) return false;
+    if (selectedTag && !post.tags.includes(selectedTag)) return false;
     return true;
   });
+
+  const allTags = Array.from(new Set(BLOG_POSTS.flatMap(post => post.tags))).sort();
 
   const lang: 'EN' | 'ZH' = 'ZH';
   const t = TRANSLATIONS[lang];
@@ -30,7 +33,10 @@ const Posts: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 border-b-2 border-ink dark:border-white pb-4 gap-4 md:gap-0">
         <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
           <h2 className="text-4xl md:text-6xl font-serif font-black text-ink dark:text-white tracking-tight leading-none">
-            {t.ARCHIVES}
+            我
+          </h2>
+          <h2 className="text-4xl md:text-6xl font-serif font-black text-neon tracking-tight leading-none">
+            的文章
           </h2>
           <span className="font-mono text-neon font-bold text-lg">
             / POSTS
@@ -55,22 +61,97 @@ const Posts: React.FC = () => {
       </div>
 
       {/* Filters */}
-      {(selectedCategory || selectedTag) && (
-        <div className="mb-8 flex flex-wrap gap-2">
-          {selectedCategory && (
-            <span className="px-3 py-1 bg-neon/10 text-neon border border-neon rounded-full text-sm font-mono flex items-center gap-2">
-              Category: {selectedCategory}
-              <button onClick={() => window.location.href = '/posts'} className="hover:text-white">&times;</button>
-            </span>
-          )}
-          {selectedTag && (
-            <span className="px-3 py-1 bg-secondary/10 text-secondary border border-secondary rounded-full text-sm font-mono flex items-center gap-2">
-              Tag: {selectedTag}
-              <button onClick={() => window.location.href = '/posts'} className="hover:text-white">&times;</button>
-            </span>
-          )}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <Filter size={18} className="text-neon" />
+          <span className="text-sm font-bold text-ink dark:text-white">筛选</span>
         </div>
-      )}
+
+        {/* Category Filters */}
+        <div className="mb-4">
+          <span className="text-xs font-mono text-gray-500 mb-2 block">CATEGORY</span>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/posts"
+              className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
+                !selectedCategory
+                  ? 'bg-neon text-white'
+                  : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
+              }`}
+            >
+              全部
+            </Link>
+             {CATEGORIES.map(category => (
+               <Link
+                 key={category.name}
+                 to={`/posts?category=${category.name}`}
+                 className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
+                   selectedCategory === category.name
+                     ? 'bg-neon text-white'
+                     : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
+                 }`}
+               >
+                 {category.name}
+               </Link>
+             ))}
+          </div>
+        </div>
+
+        {/* Tag Filters */}
+        <div>
+          <span className="text-xs font-mono text-gray-500 mb-2 block">TAGS</span>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={selectedCategory ? `/posts?category=${selectedCategory}` : '/posts'}
+              className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
+                !selectedTag
+                  ? 'bg-secondary text-white'
+                  : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
+              }`}
+            >
+              全部
+            </Link>
+            {allTags.map(tag => (
+              <Link
+                key={tag}
+                to={`/posts?tag=${encodeURIComponent(tag)}${selectedCategory ? `&category=${selectedCategory}` : ''}`}
+                className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
+                  selectedTag === tag
+                    ? 'bg-secondary text-white'
+                    : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
+                }`}
+              >
+                {tag}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Active Filters */}
+        {(selectedCategory || selectedTag) && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            <span className="text-xs font-mono text-gray-500 mr-2">当前筛选：</span>
+            {selectedCategory && (
+              <Link
+                to={selectedTag ? `/posts?tag=${encodeURIComponent(selectedTag)}` : '/posts'}
+                className="px-3 py-1 bg-neon/10 text-neon border border-neon rounded-full text-sm font-mono flex items-center gap-2 hover:bg-neon hover:text-white transition-colors"
+              >
+                {CATEGORIES.find(c => c.name === selectedCategory)?.name || selectedCategory}
+                <X size={12} />
+              </Link>
+            )}
+            {selectedTag && (
+              <Link
+                to={selectedCategory ? `/posts?category=${selectedCategory}` : '/posts'}
+                className="px-3 py-1 bg-secondary/10 text-secondary border border-secondary rounded-full text-sm font-mono flex items-center gap-2 hover:bg-secondary hover:text-white transition-colors"
+              >
+                {selectedTag}
+                <X size={12} />
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className={viewMode === 'list' ? "grid grid-cols-1 gap-12" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
         {filteredPosts.map((post) => (

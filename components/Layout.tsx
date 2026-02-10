@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, Link } from 'react-router-dom';
 import Navigation from './Navigation';
 import Sidebar from './Sidebar';
 import RightSidebar from './RightSidebar';
 import Hero from './Hero';
 import { Search, X } from 'lucide-react';
-import { BLOG_POSTS, PROJECTS, TRANSLATIONS } from '../constants';
+import { BLOG_POSTS, PROJECTS, DIARY_ENTRIES, ANNOUNCEMENTS, ANIME_LIST, GALLERY_IMAGES, TRANSLATIONS } from '../constants';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -38,13 +38,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const t = TRANSLATIONS[lang];
 
   // 搜索逻辑
-  const filteredPosts = BLOG_POSTS.filter(p => 
-    p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.category.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredPosts = BLOG_POSTS.filter(p =>
+    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
-  const filteredProjects = PROJECTS.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProjects = PROJECTS.filter(p =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.tech.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+  const filteredDiaries = DIARY_ENTRIES.filter(d =>
+    d.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredAnnouncements = ANNOUNCEMENTS.filter(a =>
+    a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredAnime = ANIME_LIST.filter(a =>
+    a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.studio.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredGallery = GALLERY_IMAGES.filter(g =>
+    g.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    g.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // 滚动监听
@@ -144,10 +161,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <h3 className="text-[10px] font-bold text-neon uppercase tracking-widest mb-2 px-2 border-l-2 border-neon/50">ARCHIVES ({filteredPosts.length})</h3>
                         <div className="grid gap-2">
                           {filteredPosts.map(post => (
-                            <div key={post.id} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                            <Link key={post.id} to={`/posts/${post.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
                               <span className="text-gray-300 group-hover:text-white font-sans">{post.title}</span>
                               <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{post.category}</span>
-                            </div>
+                            </Link>
                           ))}
                         </div>
                       </div>
@@ -157,15 +174,67 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <h3 className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2 px-2 border-l-2 border-secondary/50">PROJECTS ({filteredProjects.length})</h3>
                         <div className="grid gap-2">
                           {filteredProjects.map(proj => (
-                            <div key={proj.id} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                            <Link key={proj.id} to="/projects" onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
                               <span className="text-gray-300 group-hover:text-white font-sans">{proj.name}</span>
                               <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{proj.status}</span>
-                            </div>
+                            </Link>
                           ))}
                         </div>
                       </div>
                     )}
-                    {filteredPosts.length === 0 && filteredProjects.length === 0 && (
+                    {filteredAnnouncements.length > 0 && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-purple-400/50">ANNOUNCEMENTS ({filteredAnnouncements.length})</h3>
+                        <div className="grid gap-2">
+                          {filteredAnnouncements.map(ann => (
+                            <Link key={ann.id} to={`/announcement/${ann.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                              <span className="text-gray-300 group-hover:text-white font-sans">{ann.title}</span>
+                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{ann.date}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {filteredDiaries.length > 0 && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-blue-400/50">DIARY ({filteredDiaries.length})</h3>
+                        <div className="grid gap-2">
+                          {filteredDiaries.map(diary => (
+                            <Link key={diary.id} to="/diary" onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                              <span className="text-gray-300 group-hover:text-white font-sans truncate">{diary.content.substring(0, 50)}...</span>
+                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{diary.date}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {filteredAnime.length > 0 && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-pink-400/50">ANIME ({filteredAnime.length})</h3>
+                        <div className="grid gap-2">
+                          {filteredAnime.map(anime => (
+                            <Link key={anime.id} to="/anime" onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                              <span className="text-gray-300 group-hover:text-white font-sans">{anime.title}</span>
+                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{anime.status}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {filteredGallery.length > 0 && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-orange-400/50">GALLERY ({filteredGallery.length})</h3>
+                        <div className="grid gap-2">
+                          {filteredGallery.map(img => (
+                            <Link key={img.id} to="/gallery" onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                              <span className="text-gray-300 group-hover:text-white font-sans">{img.title}</span>
+                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{img.category}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {filteredPosts.length === 0 && filteredProjects.length === 0 && filteredAnnouncements.length === 0 && filteredDiaries.length === 0 && filteredAnime.length === 0 && filteredGallery.length === 0 && (
                       <div className="text-center text-gray-500 py-8 font-mono text-xs">
                         // ERROR: NO_MATCH_FOUND
                       </div>

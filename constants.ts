@@ -781,12 +781,14 @@ export const SKILL_NODES: SkillNode[] = [
 ];
 
 export const CATEGORIES = [
-  { name: 'ALL', count: 6, icon: '🌐' },
   { name: 'PHILOSOPHY', count: 1, icon: '☯️' },
   { name: 'ENGINEERING', count: 1, icon: '⚙️' },
   { name: 'LIFESTYLE', count: 1, icon: '🍵' },
   { name: 'LIFE', count: 1, icon: '🏠' },
   { name: 'TECH', count: 2, icon: '⚡' },
+  { name: 'BACKEND.OPS', count: 1, icon: '🔧' },
+  { name: 'DESIGN.ARTS', count: 1, icon: '🎨' },
+  { name: 'FRONTEND.CORE', count: 1, icon: '💻' },
 ];
 
 export const TAGS = [
