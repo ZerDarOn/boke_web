@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BLOG_POSTS } from '../constants';
 import { ArrowRight, LayoutList, LayoutGrid } from 'lucide-react';
 
@@ -35,7 +36,7 @@ const Archives: React.FC = () => {
       </div>
 
       <div className={viewMode === 'list' ? "grid grid-cols-1 gap-12" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
-        {BLOG_POSTS.map((post) => (
+        {BLOG_POSTS.slice(0, 6).map((post) => (
           <article 
             key={post.id} 
             className={`
@@ -71,10 +72,10 @@ const Archives: React.FC = () => {
       </div>
       
       <div className="mt-16 text-center">
-         <button className="px-8 py-3 border border-ink dark:border-white/50 text-ink dark:text-white bg-transparent hover:bg-ink hover:text-white dark:hover:bg-white dark:hover:text-ink transition-all duration-300 font-mono tracking-widest text-sm">
-            VIEW ALL ARCHIVES
-         </button>
-      </div>
+          <Link to="/posts" className="px-8 py-3 border border-ink dark:border-white/50 text-ink dark:text-white bg-transparent hover:bg-ink hover:text-white dark:hover:bg-white dark:hover:text-ink transition-all duration-300 font-mono tracking-widest text-sm inline-block">
+             VIEW ALL ARCHIVES
+          </Link>
+       </div>
     </section>
   );
 };

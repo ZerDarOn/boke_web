@@ -22,7 +22,7 @@ const ShadowFragments: React.FC = () => {
 
         {/* Horizontal Scroll Container for Vertical Cards */}
         <div className="flex overflow-x-auto pb-12 gap-10 scrollbar-hide snap-x snap-mandatory px-4 py-4">
-          {DIARY_ENTRIES.map((entry, index) => (
+          {DIARY_ENTRIES.slice(0, 5).map((entry, index) => (
             <div 
               key={entry.id} 
               className={`
