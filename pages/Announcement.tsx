@@ -1,6 +1,8 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ANNOUNCEMENTS, TRANSLATIONS } from '../constants';
 import { Info, AlertTriangle, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
+import type { Announcement } from '../types';
 
 const Announcement: React.FC = () => {
   const lang: 'EN' | 'ZH' = 'ZH';
@@ -47,13 +49,17 @@ const Announcement: React.FC = () => {
 
       <div className="space-y-6">
         {ANNOUNCEMENTS.map((announcement) => (
-          <article
+          <Link
             key={announcement.id}
-            className={`
-              relative transition-all duration-300 hover:shadow-lg border border-gray-200 dark:border-white/10 rounded-lg p-6
-              ${getTypeColor(announcement.type)}
-            `}
+            to={`/announcement/${announcement.id}`}
+            className="block"
           >
+            <article
+              className={`
+                relative transition-all duration-300 hover:shadow-lg border border-gray-200 dark:border-white/10 rounded-lg p-6 cursor-pointer
+                ${getTypeColor(announcement.type)}
+              `}
+            >
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 mt-1">
                 {getTypeIcon(announcement.type)}
@@ -77,11 +83,12 @@ const Announcement: React.FC = () => {
 
             <div className="absolute top-0 left-0 w-1 h-full rounded-l-lg opacity-50" style={{
               backgroundColor: announcement.type === 'INFO' ? '#3b82f6' :
-                             announcement.type === 'WARNING' ? '#eab308' :
-                             announcement.type === 'SUCCESS' ? '#22c55e' :
-                             '#ef4444'
+                              announcement.type === 'WARNING' ? '#eab308' :
+                              announcement.type === 'SUCCESS' ? '#22c55e' :
+                              '#ef4444'
             }}></div>
-          </article>
+            </article>
+          </Link>
         ))}
       </div>
 

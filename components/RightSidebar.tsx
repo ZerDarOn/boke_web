@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Bell, Activity, Rss, ArrowRight, Copy, CheckCircle2, Circle } from 'lucide-react';
 import { LATEST_ACTIVITIES } from '../constants';
 
@@ -16,9 +17,9 @@ const RightSidebar: React.FC = () => {
         <p className="font-serif text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
             本站采用 React & Cyber-Ink 驱动。最新主题 "VOID" 现已上线，包含全新的夜间模式和水墨渲染引擎。
         </p>
-        <button className="w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-mono text-xs py-2 rounded transition-colors flex items-center justify-center gap-1">
+        <Link to="/announcement" className="w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-mono text-xs py-2 rounded transition-colors flex items-center justify-center gap-1">
             了解更多 <ArrowRight size={12} />
-        </button>
+        </Link>
       </div>
 
       {/* 2. Latest Activities */}

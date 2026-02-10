@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Posts from './pages/Posts';
 import Archives from './pages/Archives';
 import Announcement from './pages/Announcement';
+import AnnouncementDetail from './pages/AnnouncementDetail';
 import Projects from './pages/Projects';
 import Skills from './pages/Skills';
 import Timeline from './pages/Timeline';
@@ -70,6 +71,7 @@ const App: React.FC = () => {
           <Route path="/posts" element={<Posts />} />
           <Route path="/archives" element={<Archives />} />
           <Route path="/announcement" element={<Announcement />} />
+          <Route path="/announcement/:id" element={<AnnouncementDetail />} />
           
           {/* 个人展示 */}
           <Route path="/projects" element={<Projects />} />

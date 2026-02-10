@@ -107,4 +107,9 @@ export interface Announcement {
   content: string;
   date: string;
   type: 'INFO' | 'WARNING' | 'SUCCESS' | 'IMPORTANT';
+  attachments?: {
+    name: string;
+    size: string;
+    url: string;
+  }[];
 }
