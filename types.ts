@@ -100,3 +100,11 @@ export interface SkillGroup {
     rank: string;
   }[];
 }
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  type: 'INFO' | 'WARNING' | 'SUCCESS' | 'IMPORTANT';
+}

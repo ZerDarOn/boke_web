@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   Search, Palette, SidebarClose, SidebarOpen, Globe, Settings, ChevronDown, 
   Github, Video, Book, Camera, Heart, Network, Code, Clock, UserCheck, RotateCcw, Moon, Sun
@@ -8,12 +9,10 @@ import { TRANSLATIONS } from '../constants';
 interface NavigationProps {
   toggleRightSidebar: () => void;
   isRightSidebarOpen: boolean;
-  onNavigate: (view: string) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   lang: 'EN' | 'ZH';
   toggleLang: () => void;
-  openSearch: () => void;
   primaryHue: number;
   setPrimaryHue: (hue: number) => void;
   secondaryHue: number;
@@ -21,20 +20,48 @@ interface NavigationProps {
   resetColor: () => void;
 }
 
+// 菜单项到路由路径的映射
+const viewToPath: Record<string, string> = {
+  'home': '/',
+  'archives': '/archives',
+  'dashboard': '/dashboard',
+  'about': '/about',
+  'relationships': '/network',
+  'anime': '/anime',
+  'diary': '/diary',
+  'gallery': '/gallery',
+  'projects': '/projects',
+  'timeline': '/timeline',
+  'skills': '/skills',
+};
+
 const Navigation: React.FC<NavigationProps> = ({ 
-    toggleRightSidebar, isRightSidebarOpen, onNavigate,
-    theme, toggleTheme, lang, toggleLang, openSearch,
+    toggleRightSidebar, isRightSidebarOpen,
+    theme, toggleTheme, lang, toggleLang,
     primaryHue, setPrimaryHue, secondaryHue, setSecondaryHue, resetColor
 }) => {
-  const [activeItem, setActiveItem] = useState('主页');
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
   const navRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
 
   const t = TRANSLATIONS[lang];
 
-  // Localization for UI elements
+  // 根据当前路径获取激活的菜单项
+  const getActiveItem = () => {
+    const path = location.pathname;
+    if (path === '/') return t.HOME;
+    if (path === '/archives') return t.ARCHIVES;
+    if (path === '/dashboard') return t.DASHBOARD;
+    if (path === '/about' || path === '/network') return t.ABOUT;
+    if (path === '/anime' || path === '/diary' || path === '/gallery') return t.MINE;
+    if (path === '/projects' || path === '/timeline' || path === '/skills') return t.OTHERS;
+    return t.HOME;
+  };
+
+  const activeItem = getActiveItem();
+
   const uiText = {
       themeColor: lang === 'EN' ? 'Theme Colors' : '主题色调',
       primary: lang === 'EN' ? 'Primary (Neon)' : '主色 (霓虹)',
@@ -44,8 +71,8 @@ const Navigation: React.FC<NavigationProps> = ({
   };
 
   const menuItems = [
-    { label: t.HOME, id: 'home', view: 'home' },
-    { label: t.ARCHIVES, id: 'archives', view: 'archives' }, 
+    { label: t.HOME, id: 'home', path: '/' },
+    { label: t.ARCHIVES, id: 'archives', path: '/archives' }, 
     { 
         label: t.LINKS, 
         id: 'links', 
@@ -60,9 +87,9 @@ const Navigation: React.FC<NavigationProps> = ({
         id: 'mine', 
         hasDropdown: true,
         dropdownItems: [
-            { label: lang === 'EN' ? 'Anime' : '追番', icon: Heart, view: 'anime' },
-            { label: lang === 'EN' ? 'Diary' : '日记', icon: Book, view: 'diary' },
-            { label: lang === 'EN' ? 'Gallery' : '相册', icon: Camera, view: 'gallery' }
+            { label: lang === 'EN' ? 'Anime' : '追番', icon: Heart, path: '/anime' },
+            { label: lang === 'EN' ? 'Diary' : '日记', icon: Book, path: '/diary' },
+            { label: lang === 'EN' ? 'Gallery' : '相册', icon: Camera, path: '/gallery' }
         ]
     },
     { 
@@ -70,19 +97,19 @@ const Navigation: React.FC<NavigationProps> = ({
         id: 'about', 
         hasDropdown: true,
         dropdownItems: [
-            { label: lang === 'EN' ? 'System' : '系统', icon: UserCheck, view: 'about' },
-            { label: lang === 'EN' ? 'Network' : '关系', icon: Network, view: 'relationships' }
+            { label: lang === 'EN' ? 'System' : '系统', icon: UserCheck, path: '/about' },
+            { label: lang === 'EN' ? 'Network' : '关系', icon: Network, path: '/network' }
         ]
     },
-    { label: t.DASHBOARD, id: 'dashboard', view: 'dashboard' },
+    { label: t.DASHBOARD, id: 'dashboard', path: '/dashboard' },
     { 
         label: t.OTHERS, 
         id: 'other', 
         hasDropdown: true,
         dropdownItems: [
-            { label: lang === 'EN' ? 'Skills' : '技能', icon: Code, view: 'skills' },
-            { label: lang === 'EN' ? 'Projects' : '项目', icon: Code, view: 'projects' },
-            { label: lang === 'EN' ? 'Timeline' : '时间', icon: Clock, view: 'timeline' }
+            { label: lang === 'EN' ? 'Skills' : '技能', icon: Code, path: '/skills' },
+            { label: lang === 'EN' ? 'Projects' : '项目', icon: Code, path: '/projects' },
+            { label: lang === 'EN' ? 'Timeline' : '时间', icon: Clock, path: '/timeline' }
         ]
     },
   ];
@@ -104,41 +131,17 @@ const Navigation: React.FC<NavigationProps> = ({
     }
   }, [hoveredItem, activeItem, lang]);
 
-  const handleNavClick = (item: any, e: React.MouseEvent) => {
-      e.preventDefault();
-      setActiveItem(item.label);
-      if (item.view) {
-          onNavigate(item.view);
-      }
-      setHoveredItem(null);
-  };
-
-  const handleSubItemClick = (parentItem: any, subItem: any, e: React.MouseEvent) => {
-    if (subItem.link) {
-        setHoveredItem(null);
-        return; 
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    setActiveItem(parentItem.label);
-    if (subItem.view) {
-        onNavigate(subItem.view);
-    }
-    setHoveredItem(null);
-  };
-
   return (
-    // Changed to Acrylic style (backdrop-blur + semi-transparent bg)
     <nav className="fixed top-0 left-0 w-full z-50 bg-[#1a1b26]/80 backdrop-blur-md text-gray-300 h-16 shadow-lg transition-all duration-300 border-b border-white/5">
       <div className="max-w-[1600px] mx-auto px-4 h-full flex justify-between items-center">
         
         {/* Left: Branding */}
-        <div 
-            onClick={() => onNavigate('home')}
+        <Link 
+            to="/"
             className="flex-shrink-0 flex items-center font-bold text-white tracking-widest text-lg md:text-xl md:mr-12 cursor-pointer group"
         >
           <span className="text-neon group-hover:shadow-[0_0_15px_rgba(16,185,129,0.8)] transition-shadow duration-300">INK</span>.SPIRIT
-        </div>
+        </Link>
 
         {/* Center: Main Navigation */}
         <div className="hidden lg:flex items-center h-full relative" ref={navRef}>
@@ -164,31 +167,54 @@ const Navigation: React.FC<NavigationProps> = ({
                         onMouseEnter={() => setHoveredItem(item.label)} 
                         onMouseLeave={() => setHoveredItem(null)} 
                     >
-                        <a 
-                            href="#"
-                            onClick={(e) => handleNavClick(item, e)}
-                            className={`relative px-5 h-full flex items-center justify-center text-sm font-sans tracking-wide transition-colors duration-300 group hover:text-white ${activeItem === item.label ? 'text-white' : ''}`}
-                        >
-                            <span className="relative z-10 flex items-center gap-1">
-                                {item.label}
-                                {item.hasDropdown && <ChevronDown size={10} className="opacity-60" />}
-                            </span>
-                        </a>
+                        {item.path ? (
+                            <Link 
+                                to={item.path}
+                                className={`relative px-5 h-full flex items-center justify-center text-sm font-sans tracking-wide transition-colors duration-300 group hover:text-white ${activeItem === item.label ? 'text-white' : ''}`}
+                            >
+                                <span className="relative z-10 flex items-center gap-1">
+                                    {item.label}
+                                </span>
+                            </Link>
+                        ) : (
+                            <a 
+                                href="#"
+                                onClick={(e) => e.preventDefault()}
+                                className={`relative px-5 h-full flex items-center justify-center text-sm font-sans tracking-wide transition-colors duration-300 group hover:text-white ${activeItem === item.label ? 'text-white' : ''}`}
+                            >
+                                <span className="relative z-10 flex items-center gap-1">
+                                    {item.label}
+                                    {item.hasDropdown && <ChevronDown size={10} className="opacity-60" />}
+                                </span>
+                            </a>
+                        )}
 
                         {/* Dropdown Menu */}
                         {item.hasDropdown && hoveredItem === item.label && (
                             <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-48 bg-[#1a1b26]/90 backdrop-blur-md border border-white/10 shadow-xl rounded-b-md overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200 z-50">
                                 {item.dropdownItems?.map((subItem, idx) => (
-                                    <a
-                                        key={idx}
-                                        href={subItem.link || '#'}
-                                        target={subItem.link ? "_blank" : "_self"}
-                                        onClick={(e) => handleSubItemClick(item, subItem, e)} 
-                                        className="flex items-center gap-2 px-4 py-3 text-xs text-gray-400 hover:text-white hover:bg-white/10 transition-colors border-l-2 border-transparent hover:border-neon"
-                                    >
-                                        {subItem.icon && <subItem.icon size={12} />}
-                                        {subItem.label}
-                                    </a>
+                                    subItem.link ? (
+                                        <a
+                                            key={idx}
+                                            href={subItem.link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 px-4 py-3 text-xs text-gray-400 hover:text-white hover:bg-white/10 transition-colors border-l-2 border-transparent hover:border-neon"
+                                        >
+                                            {subItem.icon && <subItem.icon size={12} />}
+                                            {subItem.label}
+                                        </a>
+                                    ) : (
+                                        <Link
+                                            key={idx}
+                                            to={subItem.path || '/'}
+                                            className="flex items-center gap-2 px-4 py-3 text-xs text-gray-400 hover:text-white hover:bg-white/10 transition-colors border-l-2 border-transparent hover:border-neon"
+                                            onClick={() => setHoveredItem(null)}
+                                        >
+                                            {subItem.icon && <subItem.icon size={12} />}
+                                            {subItem.label}
+                                        </Link>
+                                    )
                                 ))}
                             </div>
                         )}
@@ -199,7 +225,13 @@ const Navigation: React.FC<NavigationProps> = ({
 
         {/* Right: Utility Icons */}
         <div className="flex items-center gap-1 md:gap-2 pl-4 relative">
-            <button onClick={openSearch} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors" title="Search"><Search size={18} /></button>
+            <Link 
+                to="/archives"
+                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors" 
+                title="Search"
+            >
+                <Search size={18} />
+            </Link>
             
             <button onClick={toggleLang} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors flex items-center gap-1 font-mono text-[10px]" title="Language">
                 <Globe size={18} /> {lang}

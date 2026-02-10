@@ -287,6 +287,30 @@ export const SKILLS_DATA: SkillGroup[] = [
   }
 ];
 
+export const ANNOUNCEMENTS: import('./types').Announcement[] = [
+  {
+    id: '1',
+    title: '网站全新改版上线',
+    content: '经过数月的开发与打磨，全新的 INK.SPIRIT 博客正式上线！本次改版采用了赛博武侠风格设计，包含暗黑模式、技能矩阵、项目展示等全新功能。',
+    date: '2024-05-20',
+    type: 'SUCCESS'
+  },
+  {
+    id: '2',
+    title: '系统维护通知',
+    content: '计划于本周日凌晨 3:00-5:00 进行服务器维护，期间网站可能无法访问，敬请谅解。',
+    date: '2024-05-15',
+    type: 'WARNING'
+  },
+  {
+    id: '3',
+    title: '新文章发布',
+    content: '《重构现实：赛博空间的虚无与存在》已发布，欢迎阅读讨论。',
+    date: '2024-05-10',
+    type: 'INFO'
+  }
+];
+
 export const TRANSLATIONS = {
     EN: {
         HOME: 'HOME',

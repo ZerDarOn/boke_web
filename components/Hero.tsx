@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useContext } from 'react';
 import { ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { HeroContext } from './Layout';
 
 interface HeroProps {
   scrollY: number;
@@ -7,7 +8,8 @@ interface HeroProps {
 }
 
 const Hero: React.FC<HeroProps> = ({ scrollY, lang }) => {
-  const [bgIndex, setBgIndex] = useState(0);
+  // 使用 Context 获取/设置背景索引，实现跨页面同步
+  const { bgIndex, setBgIndex } = useContext(HeroContext);
 
   const heroContent = [
     {
@@ -74,17 +76,17 @@ const Hero: React.FC<HeroProps> = ({ scrollY, lang }) => {
 
   const currentContent = heroContent[bgIndex].content[lang];
 
-  const nextBg = () => setBgIndex((prev) => (prev + 1) % heroContent.length);
-  const prevBg = () => setBgIndex((prev) => (prev - 1 + heroContent.length) % heroContent.length);
+  const nextBg = () => setBgIndex((bgIndex + 1) % heroContent.length);
+  const prevBg = () => setBgIndex((bgIndex - 1 + heroContent.length) % heroContent.length);
 
-  // Auto-play Background Switch
+  // Auto-play Background Switch - 使用 ref 避免依赖问题
   useEffect(() => {
     const timer = setInterval(() => {
-        nextBg();
+        setBgIndex((prev) => (prev + 1) % heroContent.length);
     }, 6000); // Switch every 6 seconds
 
     return () => clearInterval(timer);
-  }, []);
+  }, [setBgIndex, heroContent.length]);
 
   const progress = Math.min(scrollY / window.innerHeight, 1);
   const scale = Math.max(0.8, 1 - progress * 0.2); 
