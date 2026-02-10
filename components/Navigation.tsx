@@ -13,6 +13,7 @@ interface NavigationProps {
   toggleTheme: () => void;
   lang: 'EN' | 'ZH';
   toggleLang: () => void;
+  openSearch: () => void;
   primaryHue: number;
   setPrimaryHue: (hue: number) => void;
   secondaryHue: number;
@@ -37,7 +38,7 @@ const viewToPath: Record<string, string> = {
 
 const Navigation: React.FC<NavigationProps> = ({ 
     toggleRightSidebar, isRightSidebarOpen,
-    theme, toggleTheme, lang, toggleLang,
+    theme, toggleTheme, lang, toggleLang, openSearch,
     primaryHue, setPrimaryHue, secondaryHue, setSecondaryHue, resetColor
 }) => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -226,13 +227,13 @@ const Navigation: React.FC<NavigationProps> = ({
 
         {/* Right: Utility Icons */}
         <div className="flex items-center gap-1 md:gap-2 pl-4 relative">
-            <Link 
-                to="/archives"
-                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors" 
+            <button
+                onClick={openSearch}
+                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
                 title="Search"
             >
                 <Search size={18} />
-            </Link>
+            </button>
             
             <button onClick={toggleLang} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors flex items-center gap-1 font-mono text-[10px]" title="Language">
                 <Globe size={18} /> {lang}

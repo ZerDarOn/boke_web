@@ -4,7 +4,8 @@ import Navigation from './Navigation';
 import Sidebar from './Sidebar';
 import RightSidebar from './RightSidebar';
 import Hero from './Hero';
-import { TRANSLATIONS } from '../constants';
+import { Search, X } from 'lucide-react';
+import { BLOG_POSTS, PROJECTS, TRANSLATIONS } from '../constants';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -25,6 +26,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [lang, setLang] = useState<'EN' | 'ZH'>('ZH');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [primaryHue, setPrimaryHue] = useState(150);
   const [secondaryHue, setSecondaryHue] = useState(260);
   
@@ -32,6 +35,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [bgIndex, setBgIndex] = useState(0);
 
   const location = useLocation();
+  const t = TRANSLATIONS[lang];
+
+  // 搜索逻辑
+  const filteredPosts = BLOG_POSTS.filter(p => 
+    p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredProjects = PROJECTS.filter(p => 
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // 滚动监听
   useEffect(() => {
@@ -72,6 +86,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const openSearch = () => setIsSearchOpen(true);
+
   return (
     <HeroContext.Provider value={{ bgIndex, setBgIndex }}>
       <div className="min-h-screen bg-gray-50/50 dark:bg-[#050505] text-ink dark:text-paper font-sans selection:bg-neon selection:text-white transition-colors duration-300">
@@ -82,12 +98,93 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           toggleTheme={toggleTheme}
           lang={lang}
           toggleLang={toggleLang}
+          openSearch={openSearch}
           primaryHue={primaryHue}
           setPrimaryHue={setPrimaryHue}
           secondaryHue={secondaryHue}
           setSecondaryHue={setSecondaryHue}
           resetColor={resetColor}
         />
+
+        {/* 搜索弹窗 */}
+        {isSearchOpen && (
+          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex justify-center items-start pt-32 animate-in fade-in duration-200">
+            <div className="w-full max-w-2xl bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/10 dark:border-neon/30 rounded-lg shadow-[0_0_50px_rgba(16,185,129,0.1)] overflow-hidden">
+              {/* 头部输入区域 */}
+              <div className="flex items-center px-4 py-4 border-b border-white/10 relative">
+                <Search size={20} className="text-neon mr-3 animate-pulse" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t.SEARCH_PLACEHOLDER}
+                  className="bg-transparent text-lg text-white outline-none flex-1 placeholder-gray-600 font-sans tracking-wide"
+                />
+                <button
+                  onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }}
+                  className="text-gray-500 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+                <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-neon to-transparent opacity-50"></div>
+              </div>
+
+              {/* 搜索结果 */}
+              <div className="min-h-[200px] max-h-[60vh] overflow-y-auto p-4 custom-scrollbar">
+                {!searchQuery ? (
+                  <div className="h-40 flex flex-col items-center justify-center text-gray-600 space-y-2">
+                    <p className="font-mono text-sm tracking-widest text-neon/50">SYSTEM.READY</p>
+                    <p className="text-xs">Type to query neural network...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {filteredPosts.length > 0 && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-neon uppercase tracking-widest mb-2 px-2 border-l-2 border-neon/50">ARCHIVES ({filteredPosts.length})</h3>
+                        <div className="grid gap-2">
+                          {filteredPosts.map(post => (
+                            <div key={post.id} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                              <span className="text-gray-300 group-hover:text-white font-sans">{post.title}</span>
+                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{post.category}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {filteredProjects.length > 0 && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2 px-2 border-l-2 border-secondary/50">PROJECTS ({filteredProjects.length})</h3>
+                        <div className="grid gap-2">
+                          {filteredProjects.map(proj => (
+                            <div key={proj.id} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                              <span className="text-gray-300 group-hover:text-white font-sans">{proj.name}</span>
+                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{proj.status}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {filteredPosts.length === 0 && filteredProjects.length === 0 && (
+                      <div className="text-center text-gray-500 py-8 font-mono text-xs">
+                        // ERROR: NO_MATCH_FOUND
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 底部提示 */}
+              <div className="px-4 py-2 bg-black/40 border-t border-white/5 text-[10px] text-gray-600 flex justify-between items-center font-mono">
+                <span>VER 2.5.0-RC</span>
+                <div className="flex gap-4">
+                  <span>[ESC] CLOSE</span>
+                  <span>[ENTER] SELECT</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Hero 区域 - 所有页面都有 */}
         <Hero scrollY={scrollY} lang={lang} />
