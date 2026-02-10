@@ -83,6 +83,29 @@ export interface GalleryItem {
   date: string;
   location: string;
   aspect: 'portrait' | 'landscape' | 'square';
+  camera?: string;
+  settings?: string;
+  tags?: string[];
+  comments?: PhotoComment[];
+}
+
+export interface PhotoComment {
+  id: string;
+  author: string;
+  content: string;
+  date: string;
+}
+
+export interface GalleryAlbum {
+  id: string;
+  title: string;
+  cover: string;
+  createdAt: string;
+  lastUpdated: string;
+  location: string;
+  thoughts: string;
+  photoCount: number;
+  photos: GalleryItem[];
 }
 
 export interface TimelineEvent {

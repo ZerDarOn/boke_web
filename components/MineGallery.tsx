@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { GALLERY_IMAGES } from '../constants';
 import { Camera, MapPin, Calendar } from 'lucide-react';
 
@@ -13,14 +14,15 @@ const MineGallery: React.FC = () => {
             </p>
        </div>
 
-       {/* Masonry Layout using Columns */}
-       <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-           {GALLERY_IMAGES.map((img) => (
-               <div 
-                  key={img.id} 
-                  className="break-inside-avoid relative group bg-white dark:bg-[#111] border border-gray-100 dark:border-white/5 p-3 shadow-sm hover:shadow-xl dark:hover:border-neon/50 transition-all duration-500 cursor-pointer overflow-hidden"
-               >
-                   {/* Image Container */}
+        {/* Masonry Layout using Columns */}
+        <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+            {GALLERY_IMAGES.map((img) => (
+                <Link
+                   key={img.id}
+                   to={`/gallery/${img.id}`}
+                   className="break-inside-avoid block relative group bg-white dark:bg-[#111] border border-gray-100 dark:border-white/5 p-3 shadow-sm hover:shadow-xl dark:hover:border-neon/50 transition-all duration-500 cursor-pointer overflow-hidden"
+                >
+                    {/* Image Container */}
                    <div 
                       className={`
                         w-full relative bg-gray-100 dark:bg-[#050505] overflow-hidden
@@ -62,13 +64,13 @@ const MineGallery: React.FC = () => {
                            </div>
                        </div>
                        
-                       <div className="font-mono text-xs text-gray-300 dark:text-gray-600 group-hover:text-ink dark:group-hover:text-white font-bold">
-                           #{img.id}
-                       </div>
-                   </div>
+                        <div className="font-mono text-xs text-gray-300 dark:text-gray-600 group-hover:text-ink dark:group-hover:text-white font-bold">
+                            #{img.id}
+                        </div>
+                    </div>
 
-               </div>
-           ))}
+                </Link>
+            ))}
        </div>
     </div>
   );

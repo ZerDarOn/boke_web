@@ -909,12 +909,180 @@ export const ANIME_LIST: AnimeItem[] = [
 ];
 
 export const GALLERY_IMAGES: GalleryItem[] = [
-  { id: 'g1', src: '#27272a', title: 'NEON RAIN', date: '2024.05.20', location: 'SHIBUYA', aspect: 'landscape' },
-  { id: 'g2', src: '#18181b', title: 'SERVER ROOM', date: '2024.04.15', location: 'DATA CENTER', aspect: 'portrait' },
-  { id: 'g3', src: '#52525b', title: 'QUIET ALLEY', date: '2024.03.10', location: 'KYOTO', aspect: 'portrait' },
-  { id: 'g4', src: '#09090b', title: 'TERMINAL', date: '2024.02.28', location: 'HOME', aspect: 'square' },
-  { id: 'g5', src: '#047857', title: 'NATURE CODE', date: '2024.01.12', location: 'FOREST', aspect: 'landscape' },
-  { id: 'g6', src: '#3f3f46', title: 'ABSTRACT', date: '2023.12.25', location: 'MIND', aspect: 'portrait' },
+  {
+    id: 'g1',
+    src: '#27272a',
+    title: 'NEON RAIN',
+    date: '2024.05.20',
+    location: 'SHIBUYA',
+    aspect: 'landscape',
+    description: '深夜的涩谷街头，霓虹灯光与雨水交织，仿佛现实与虚拟的边界被模糊。这是一个赛博朋克夜晚的缩影。',
+    camera: 'SONY A7M4',
+    settings: 'ISO 800, f/2.8, 1/60s'
+  },
+  {
+    id: 'g2',
+    src: '#18181b',
+    title: 'SERVER ROOM',
+    date: '2024.04.15',
+    location: 'DATA CENTER',
+    aspect: 'portrait',
+    description: '服务器机房如同数字时代的圣殿，成排的机柜像是沉默的巨人，承载着海量数据。',
+    camera: 'SONY A7M4',
+    settings: 'ISO 400, f/4.0, 1/30s'
+  },
+  {
+    id: 'g3',
+    src: '#52525b',
+    title: 'QUIET ALLEY',
+    date: '2024.03.10',
+    location: 'KYOTO',
+    aspect: 'portrait',
+    description: '京都的静巷，古老与现代交织。传统建筑在夜色中显得格外宁静。',
+    camera: 'SONY A7M4',
+    settings: 'ISO 200, f/2.8, 1/125s'
+  },
+  {
+    id: 'g4',
+    src: '#09090b',
+    title: 'TERMINAL',
+    date: '2024.02.28',
+    location: 'HOME',
+    aspect: 'square',
+    description: '深夜编码时的工作台，终端窗口的光芒是唯一的照明。代码如同诗行，在黑暗中流淌。',
+    camera: 'iPhone 15 Pro',
+    settings: 'ISO 64, f/1.78, 1/30s'
+  },
+  {
+    id: 'g5',
+    src: '#047857',
+    title: 'NATURE CODE',
+    date: '2024.01.12',
+    location: 'FOREST',
+    aspect: 'landscape',
+    description: '森林中的光线透过树叶洒下，如同大自然编写的代码。每一道光线都是一个字符。',
+    camera: 'SONY A7M4',
+    settings: 'ISO 100, f/8.0, 1/250s'
+  },
+  {
+    id: 'g6',
+    src: '#3f3f46',
+    title: 'ABSTRACT',
+    date: '2023.12.25',
+    location: 'MIND',
+    aspect: 'portrait',
+    description: '意识深处的抽象影像，如同梦境中的片段。无法用语言描述，只能在直觉中感受。',
+    camera: 'SONY A7M4',
+    settings: 'ISO 1600, f/1.4, 1/15s'
+  },
+];
+
+export const GALLERY_ALBUMS: GalleryAlbum[] = [
+  {
+    id: 'album-1',
+    title: '东京赛博之旅',
+    cover: '#27272a',
+    createdAt: '2024.05.15',
+    lastUpdated: '2024.05.20',
+    location: 'TOKYO',
+    thoughts: '这次东京之旅，让我对赛博与现实的界限有了新的理解。涩谷的霓虹仿佛是另一个世界的入口，那些闪烁的招牌、匆匆的人群，每个人都在自己的轨道上运行。我开始思考，在这个数字化高度发达的时代，我们是否正生活在某种"赛博空间"中？代码、数据、算法，这些无形的东西正在重塑我们的生活方式。',
+    photoCount: 4,
+    photos: [
+      {
+        id: 'g1',
+        src: '#27272a',
+        title: 'NEON RAIN',
+        date: '2024.05.20',
+        location: 'SHIBUYA',
+        aspect: 'landscape',
+        camera: 'SONY A7M4',
+        settings: 'ISO 800, f/2.8, 1/60s',
+        tags: ['东京', '霓虹', '夜景', '赛博'],
+        comments: [
+          { id: 'c1', author: 'CyberRonin', content: '这张照片太棒了！', date: '2024.05.21 14:30' },
+          { id: 'c2', author: 'NeonFox', content: '霓虹灯光效果很赞', date: '2024.05.20 23:15' }
+        ]
+      },
+      {
+        id: 'g2',
+        src: '#18181b',
+        title: 'SERVER ROOM',
+        date: '2024.04.15',
+        location: 'DATA CENTER',
+        aspect: 'portrait',
+        camera: 'SONY A7M4',
+        settings: 'ISO 400, f/4.0, 1/30s',
+        tags: ['数据', '服务器', '科技'],
+        comments: [
+          { id: 'c3', author: 'DataGhost', content: '机房拍得很有感觉', date: '2024.04.16 10:20' }
+        ]
+      },
+      {
+        id: 'g3',
+        src: '#52525b',
+        title: 'QUIET ALLEY',
+        date: '2024.03.10',
+        location: 'KYOTO',
+        aspect: 'portrait',
+        camera: 'SONY A7M4',
+        settings: 'ISO 200, f/2.8, 1/125s',
+        tags: ['京都', '静巷', '传统'],
+        comments: []
+      },
+      {
+        id: 'g4',
+        src: '#09090b',
+        title: 'TERMINAL',
+        date: '2024.02.28',
+        location: 'HOME',
+        aspect: 'square',
+        camera: 'iPhone 15 Pro',
+        settings: 'ISO 64, f/1.78, 1/30s',
+        tags: ['代码', '终端', '工作台'],
+        comments: [
+          { id: 'c4', author: 'CodeMaster', content: '深夜码农的日常', date: '2024.03.01 02:15' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'album-2',
+    title: '自然代码',
+    cover: '#047857',
+    createdAt: '2024.01.01',
+    lastUpdated: '2024.01.12',
+    location: 'VARIOUS',
+    thoughts: '大自然是最好的程序员。森林中的每一片叶子、每一条河流，都是经过数亿年"算法"优化的产物。走在林间，我会不自觉地用编程的视角去理解这个世界——光合作用是太阳能的能量转换算法，生态系统是分布式系统的完美范例。也许我们可以从大自然中学习更多"设计模式"。',
+    photoCount: 2,
+    photos: [
+      {
+        id: 'g5',
+        src: '#047857',
+        title: 'NATURE CODE',
+        date: '2024.01.12',
+        location: 'FOREST',
+        aspect: 'landscape',
+        camera: 'SONY A7M4',
+        settings: 'ISO 100, f/8.0, 1/250s',
+        tags: ['森林', '自然', '光线'],
+        comments: [
+          { id: 'c5', author: 'EcoCoder', content: '自然与科技的结合', date: '2024.01.13 09:00' }
+        ]
+      },
+      {
+        id: 'g6',
+        src: '#3f3f46',
+        title: 'ABSTRACT',
+        date: '2023.12.25',
+        location: 'MIND',
+        aspect: 'portrait',
+        camera: 'SONY A7M4',
+        settings: 'ISO 1600, f/1.4, 1/15s',
+        tags: ['抽象', '梦境', '意识'],
+        comments: []
+      }
+    ]
+  }
 ];
 
 export const TIMELINE_EVENTS: TimelineEvent[] = [

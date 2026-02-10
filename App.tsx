@@ -18,6 +18,7 @@ import Dashboard from './pages/Dashboard';
 import Anime from './pages/Anime';
 import Diary from './pages/Diary';
 import Gallery from './pages/Gallery';
+import GalleryDetail from './pages/GalleryDetail';
 
 // 路由切换滚动逻辑
 const ScrollToTop: React.FC = () => {
@@ -89,6 +90,7 @@ const App: React.FC = () => {
           <Route path="/anime" element={<Anime />} />
           <Route path="/diary" element={<Diary />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/gallery/:id" element={<GalleryDetail />} />
           
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
