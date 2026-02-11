@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { success, error } from '../utils/response';
@@ -6,6 +6,12 @@ import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { uploadMixed, handleUploadError } from '../middleware/upload.middleware';
 import { validateBody } from '../middleware/validate.middleware';
 import { fileSchema } from '../schemas';
+
+declare module 'express' {
+  interface Request {
+    files?: { [fieldname: string]: Express.Multer.File[] };
+  }
+}
 
 const router = Router();
 

@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: ink-spirit-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: inkspirit123
+      POSTGRES_DB: ink_spirit_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache (optional, for caching/queues)
+  redis:
+    image: redis:7-alpine
+    container_name: ink-spirit-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Backend
+  backend:
+    build: ./backend
+    container_name: ink-spirit-backend
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://postgres:inkspirit123@db:5432/ink_spirit_db
+      PORT: 3001
+      NODE_ENV: development
+      FRONTEND_URL: http://localhost:3000
+      API_URL: http://localhost:3001
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      REDIS_URL: redis://redis:6379/0
+      AI_SERVICE_URL: http://ai-service:8000
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/content:/app/content
+    command: npm run dev
+
+  # Python AI Service
+  ai-service:
+    build: ./ai-service
+    container_name: ink-spirit-ai-service
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:inkspirit123@db:5432/ink_spirit_db
+      HOST: 0.0.0.0
+      PORT: 8000
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      REDIS_URL: redis://redis:6379/0
+      # AI Providers (configure one or more)
+      # OPENAI_API_KEY: sk-your-key
+      # ANTHROPIC_API_KEY: sk-ant-your-key
+      # LOCAL_LLM_URL: http://localhost:11434/v1
+    depends_on:
+      - db
+      - redis
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend (React + Vite)
+  frontend:
+    build: ./frontend
+    container_name: ink-spirit-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:3001
+      VITE_AI_SERVICE_URL: http://localhost:8000
+    depends_on:
+      - backend
+      - ai-service
+    command: npm run dev
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: ink-spirit-network
