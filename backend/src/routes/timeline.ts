@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { TimelineService } from '../services/timeline.service';
 import * as response from '../utils/response';
+import { validateBody } from '../middleware/validate.middleware';
+import { timelineEventSchema } from '../schemas';
 
 const router = Router();
 
@@ -51,7 +53,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/timeline - 创建事件
-router.post('/', async (req, res) => {
+router.post('/', validateBody(timelineEventSchema), async (req, res) => {
   try {
     const event = await TimelineService.create(req.body);
     response.created(res, event);
@@ -61,7 +63,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/timeline/:id - 更新事件
-router.put('/:id', async (req, res) => {
+router.put('/:id', validateBody(timelineEventSchema.partial()), async (req, res) => {
   try {
     const event = await TimelineService.update(req.params.id, req.body);
     response.success(res, event);

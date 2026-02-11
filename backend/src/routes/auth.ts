@@ -5,18 +5,20 @@ import { config } from '../config/env';
 import prisma from '../lib/prisma';
 import { success, error } from '../utils/response';
 import { authenticate } from '../middleware/auth.middleware';
+import { validateBody } from '../middleware/validate.middleware';
+import {
+  registerSchema,
+  loginSchema,
+  updatePasswordSchema,
+  updateUserSchema,
+} from '../schemas';
 
 const router = Router();
 
 // 用户注册
-router.post('/register', async (req, res) => {
+router.post('/register', validateBody(registerSchema), async (req, res) => {
   try {
     const { username, email, password, displayName } = req.body;
-
-    // 验证必填字段
-    if (!username || !email || !password) {
-      return error(res, '用户名、邮箱和密码为必填项', 400);
-    }
 
     // 检查用户名是否已存在
     const existingUser = await prisma.user.findFirst({
@@ -39,7 +41,7 @@ router.post('/register', async (req, res) => {
         email,
         password: hashedPassword,
         displayName: displayName || username,
-        role: 'USER', // 默认角色
+        role: 'USER',
       },
       select: {
         id: true,
@@ -66,13 +68,10 @@ router.post('/register', async (req, res) => {
     );
 
     return success(res, {
-      message: '注册成功',
-      data: {
-        user,
-        token,
-        refreshToken,
-      },
-    }, 201);
+      user,
+      token,
+      refreshToken,
+    }, '注册成功', undefined, 201);
   } catch (err: any) {
     console.error('注册错误:', err);
     return error(res, err.message, 500);
@@ -80,13 +79,9 @@ router.post('/register', async (req, res) => {
 });
 
 // 用户登录
-router.post('/login', async (req, res) => {
+router.post('/login', validateBody(loginSchema), async (req, res) => {
   try {
     const { username, password } = req.body;
-
-    if (!username || !password) {
-      return error(res, '用户名和密码为必填项', 400);
-    }
 
     // 查找用户（支持用户名或邮箱登录）
     const user = await prisma.user.findFirst({
@@ -125,20 +120,17 @@ router.post('/login', async (req, res) => {
     );
 
     return success(res, {
-      message: '登录成功',
-      data: {
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          displayName: user.displayName,
-          role: user.role,
-          avatar: user.avatar,
-        },
-        token,
-        refreshToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        avatar: user.avatar,
       },
-    });
+      token,
+      refreshToken,
+    }, '登录成功');
   } catch (err: any) {
     console.error('登录错误:', err);
     return error(res, err.message, 500);
@@ -186,10 +178,7 @@ router.post('/refresh', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    return success(res, {
-      message: '令牌刷新成功',
-      data: { token: newToken },
-    });
+    return success(res, { token: newToken }, '令牌刷新成功');
   } catch (err: any) {
     if (err.name === 'TokenExpiredError') {
       return error(res, '刷新令牌已过期，请重新登录', 401);
@@ -225,14 +214,14 @@ router.get('/me', authenticate, async (req, res) => {
       return error(res, '用户不存在', 404);
     }
 
-    return success(res, { data: user });
+    return success(res, user);
   } catch (err: any) {
     return error(res, err.message, 500);
   }
 });
 
 // 更新用户信息
-router.put('/me', authenticate, async (req, res) => {
+router.put('/me', authenticate, validateBody(updateUserSchema), async (req, res) => {
   try {
     const userId = (req as any).user.userId;
     const { displayName, bio, location, website, github, avatar } = req.body;
@@ -261,24 +250,17 @@ router.put('/me', authenticate, async (req, res) => {
       },
     });
 
-    return success(res, {
-      message: '用户信息更新成功',
-      data: user,
-    });
+    return success(res, user, '用户信息更新成功');
   } catch (err: any) {
     return error(res, err.message, 500);
   }
 });
 
 // 修改密码
-router.put('/password', authenticate, async (req, res) => {
+router.put('/password', authenticate, validateBody(updatePasswordSchema), async (req, res) => {
   try {
     const userId = (req as any).user.userId;
     const { oldPassword, newPassword } = req.body;
-
-    if (!oldPassword || !newPassword) {
-      return error(res, '原密码和新密码为必填项', 400);
-    }
 
     // 获取用户信息
     const user = await prisma.user.findUnique({
@@ -304,7 +286,7 @@ router.put('/password', authenticate, async (req, res) => {
       data: { password: hashedPassword },
     });
 
-    return success(res, { message: '密码修改成功' });
+    return success(res, undefined, '密码修改成功');
   } catch (err: any) {
     return error(res, err.message, 500);
   }
@@ -314,7 +296,7 @@ router.put('/password', authenticate, async (req, res) => {
 router.post('/logout', authenticate, async (req, res) => {
   // 在实际应用中，可以将令牌加入 Redis 黑名单
   // 这里简单地返回成功
-  return success(res, { message: '退出登录成功' });
+  return success(res, undefined, '退出登录成功');
 });
 
 export default router;

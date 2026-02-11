@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { NetworkService } from '../services/network.service';
 import * as response from '../utils/response';
+import { validateBody } from '../middleware/validate.middleware';
+import { networkNodeSchema } from '../schemas';
 
 const router = Router();
 
@@ -38,7 +40,7 @@ router.get('/nodes/:id', async (req, res) => {
 });
 
 // POST /api/network/nodes - 创建节点
-router.post('/nodes', async (req, res) => {
+router.post('/nodes', validateBody(networkNodeSchema), async (req, res) => {
   try {
     const node = await NetworkService.create(req.body);
     response.created(res, node);
@@ -48,7 +50,7 @@ router.post('/nodes', async (req, res) => {
 });
 
 // PUT /api/network/nodes/:id - 更新节点
-router.put('/nodes/:id', async (req, res) => {
+router.put('/nodes/:id', validateBody(networkNodeSchema.partial()), async (req, res) => {
   try {
     const node = await NetworkService.update(req.params.id, req.body);
     response.success(res, node);

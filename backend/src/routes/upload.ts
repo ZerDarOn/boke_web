@@ -28,10 +28,7 @@ router.post(
         generateThumbnail: true,
       });
 
-      return success(res, {
-        message: '上传成功',
-        data: result,
-      });
+      return success(res, result, '上传成功');
     } catch (err: any) {
       return error(res, err.message, 500);
     }
@@ -60,10 +57,7 @@ router.post(
         )
       );
 
-      return success(res, {
-        message: `成功上传 ${results.length} 张图片`,
-        data: results,
-      });
+      return success(res, results, `成功上传 ${results.length} 张图片`);
     } catch (err: any) {
       return error(res, err.message, 500);
     }
@@ -77,7 +71,7 @@ router.delete('/:type/:filename', authenticate, async (req, res) => {
     const deleted = await uploadService.deleteFile(filename, type);
 
     if (deleted) {
-      return success(res, { message: '文件已删除' });
+      return success(res, undefined, '文件已删除');
     } else {
       return error(res, '文件删除失败或文件不存在', 404);
     }
@@ -96,7 +90,7 @@ router.get('/:type/:filename/info', async (req, res) => {
       return error(res, '文件不存在', 404);
     }
 
-    return success(res, { data: info });
+    return success(res, info);
   } catch (err: any) {
     return error(res, err.message, 500);
   }

@@ -4,6 +4,8 @@ import path from 'path';
 import { success, error } from '../utils/response';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { uploadMixed, handleUploadError } from '../middleware/upload.middleware';
+import { validateBody } from '../middleware/validate.middleware';
+import { fileSchema } from '../schemas';
 
 const router = Router();
 
@@ -172,7 +174,7 @@ router.get('/download', async (req, res) => {
 });
 
 // 创建文件/目录（管理员）
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+router.post('/', authenticate, requireAdmin, validateBody(fileSchema), async (req, res) => {
   try {
     const { path: filePath, type = 'file', content = '' } = req.body;
 
@@ -197,10 +199,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
     // 创建目录
     if (type === 'directory') {
       fs.mkdirSync(fullPath, { recursive: true });
-      return success(res, {
-        message: '目录创建成功',
-        data: { path: safePath, type: 'directory' },
-      }, 201);
+      return success(res, { path: safePath, type: 'directory' }, '目录创建成功', undefined, 201);
     }
 
     // 创建文件
@@ -208,13 +207,10 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
     fs.writeFileSync(fullPath, content, 'utf-8');
 
     return success(res, {
-      message: '文件创建成功',
-      data: {
-        path: safePath,
-        type: 'file',
-        size: Buffer.byteLength(content, 'utf-8'),
-      },
-    }, 201);
+      path: safePath,
+      type: 'file',
+      size: Buffer.byteLength(content, 'utf-8'),
+    }, '文件创建成功', undefined, 201);
   } catch (err: any) {
     console.error('创建文件失败:', err);
     return error(res, err.message, 500);
@@ -222,13 +218,9 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 });
 
 // 更新文件内容（管理员）
-router.put('/content', authenticate, requireAdmin, async (req, res) => {
+router.put('/content', authenticate, requireAdmin, validateBody(fileSchema), async (req, res) => {
   try {
     const { path: filePath, content } = req.body;
-
-    if (!filePath || content === undefined) {
-      return error(res, '路径和内容不能为空', 400);
-    }
 
     // 安全：防止目录遍历攻击
     const safePath = path.normalize(filePath).replace(/^\.+(\/|\\)/g, '');
@@ -252,13 +244,10 @@ router.put('/content', authenticate, requireAdmin, async (req, res) => {
     fs.writeFileSync(fullPath, content, 'utf-8');
 
     return success(res, {
-      message: '文件更新成功',
-      data: {
-        path: safePath,
-        size: Buffer.byteLength(content, 'utf-8'),
-        modifiedAt: new Date().toISOString(),
-      },
-    });
+      path: safePath,
+      size: Buffer.byteLength(content, 'utf-8'),
+      modifiedAt: new Date().toISOString(),
+    }, '文件更新成功');
   } catch (err: any) {
     console.error('更新文件失败:', err);
     return error(res, err.message, 500);
@@ -296,7 +285,7 @@ router.delete('/', authenticate, requireAdmin, async (req, res) => {
       fs.unlinkSync(fullPath);
     }
 
-    return success(res, { message: '删除成功' });
+    return success(res, undefined, '删除成功');
   } catch (err: any) {
     console.error('删除失败:', err);
     return error(res, err.message, 500);
@@ -333,10 +322,7 @@ router.post(
         }
       }
 
-      return success(res, {
-        message: `成功上传 ${uploadedFiles.length} 个文件`,
-        data: uploadedFiles,
-      });
+      return success(res, uploadedFiles, `成功上传 ${uploadedFiles.length} 个文件`);
     } catch (err: any) {
       return error(res, err.message, 500);
     }

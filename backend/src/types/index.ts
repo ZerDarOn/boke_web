@@ -1,3 +1,5 @@
+import { Request } from 'express';
+
 // API 通用响应类型
 export interface ApiResponse<T> {
   data: T;
@@ -37,7 +39,7 @@ export interface FilterParams {
 // 认证相关
 export interface AuthPayload {
   userId: string;
-  role: 'admin' | 'user';
+  role: 'USER' | 'ADMIN' | 'EDITOR';
 }
 
 export interface LoginInput {
@@ -62,6 +64,7 @@ export interface UploadResult {
   filename: string;
   size: number;
   mimetype: string;
+  thumbnail?: string;
 }
 
 // 统计
@@ -93,6 +96,23 @@ export interface SearchResults {
   projects: any[];
   announcements: any[];
   diaries: any[];
+  anime: any[];
+  gallery: any[];
+}
+
+// 评论相关
+export interface Comment {
+  id: string;
+  author: string;
+  content: string;
+  email?: string;
+  createdAt: Date;
+  parentId?: string;
+}
+
+// 热门内容
+export interface PopularContent {
+  posts: any[];
   anime: any[];
   gallery: any[];
 }

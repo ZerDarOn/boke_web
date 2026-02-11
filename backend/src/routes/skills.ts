@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { SkillService } from '../services/skill.service';
 import * as response from '../utils/response';
+import { validateBody } from '../middleware/validate.middleware';
+import { skillSchema } from '../schemas';
 
 const router = Router();
 
@@ -48,7 +50,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/skills - 创建技能
-router.post('/', async (req, res) => {
+router.post('/', validateBody(skillSchema), async (req, res) => {
   try {
     const skill = await SkillService.create(req.body);
     response.created(res, skill);
@@ -58,7 +60,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/skills/:id - 更新技能
-router.put('/:id', async (req, res) => {
+router.put('/:id', validateBody(skillSchema.partial()), async (req, res) => {
   try {
     const skill = await SkillService.update(req.params.id, req.body);
     response.success(res, skill);

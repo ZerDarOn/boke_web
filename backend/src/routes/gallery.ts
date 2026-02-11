@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { GalleryService } from '../services/gallery.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
+import { validateBody } from '../middleware/validate.middleware';
+import { galleryImageSchema, albumSchema, photoCommentSchema } from '../schemas';
 
 const router = Router();
 
@@ -61,7 +63,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/gallery - 上传照片
-router.post('/', async (req, res) => {
+router.post('/', validateBody(galleryImageSchema), async (req, res) => {
   try {
     const image = await GalleryService.create(req.body);
     response.created(res, image);
@@ -71,7 +73,7 @@ router.post('/', async (req, res) => {
 });
 
 // POST /api/gallery/albums - 创建相册
-router.post('/albums', async (req, res) => {
+router.post('/albums', validateBody(albumSchema), async (req, res) => {
   try {
     const album = await GalleryService.createAlbum(req.body);
     response.created(res, album);
@@ -81,7 +83,7 @@ router.post('/albums', async (req, res) => {
 });
 
 // POST /api/gallery/:id/comments - 添加评论
-router.post('/:id/comments', async (req, res) => {
+router.post('/:id/comments', validateBody(photoCommentSchema), async (req, res) => {
   try {
     const comment = await GalleryService.addComment(req.params.id, req.body);
     response.created(res, comment);

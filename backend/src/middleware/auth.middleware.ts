@@ -30,11 +30,13 @@ export const adminMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  if (req.user?.role !== 'admin') {
+  if (req.user?.role !== 'ADMIN') {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
 };
+
+export { adminMiddleware as requireAdmin, authMiddleware as authenticate };
 
 export const optionalAuth = (
   req: AuthenticatedRequest,

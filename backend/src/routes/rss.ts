@@ -11,8 +11,8 @@ router.get('/', async (req, res) => {
 
     // 获取最新的 20 篇文章
     const posts = await prisma.post.findMany({
-      where: { published: true },
-      orderBy: { createdAt: 'desc' },
+      where: { isPublished: true },
+      orderBy: { date: 'desc' },
       take: 20,
       include: {
         author: {
@@ -25,7 +25,6 @@ router.get('/', async (req, res) => {
 
     // 获取最新的公告
     const announcements = await prisma.announcement.findMany({
-      where: { published: true },
       orderBy: { createdAt: 'desc' },
       take: 5,
     });
@@ -48,7 +47,7 @@ router.get('/', async (req, res) => {
       <guid isPermaLink="true">${postUrl}</guid>
       <pubDate>${pubDate}</pubDate>
       <author>${escapeXml(post.author?.displayName || 'CYBER.RONIN')}</author>
-      <description>${escapeXml(post.summary || post.content.substring(0, 200))}</description>
+      <description>${escapeXml(post.excerpt || post.content.substring(0, 200))}</description>
       ${categories}
     </item>`);
     }

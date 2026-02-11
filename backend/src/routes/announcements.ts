@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { AnnouncementService } from '../services/announcement.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
+import { validateBody } from '../middleware/validate.middleware';
+import { announcementSchema } from '../schemas';
 
 const router = Router();
 
@@ -49,7 +51,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/announcements - 创建公告
-router.post('/', async (req, res) => {
+router.post('/', validateBody(announcementSchema), async (req, res) => {
   try {
     const announcement = await AnnouncementService.create(req.body);
     response.created(res, announcement);
@@ -59,7 +61,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/announcements/:id - 更新公告
-router.put('/:id', async (req, res) => {
+router.put('/:id', validateBody(announcementSchema.partial()), async (req, res) => {
   try {
     const announcement = await AnnouncementService.update(req.params.id, req.body);
     response.success(res, announcement);

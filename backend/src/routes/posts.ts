@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { PostController } from '../controllers/post.controller';
+import { validateBody } from '../middleware/validate.middleware';
+import { postSchema } from '../schemas';
 
 const router = Router();
 
@@ -28,10 +30,10 @@ router.post('/:id/view', PostController.incrementView);
 router.post('/:id/like', PostController.incrementLike);
 
 // POST /api/posts - 创建文章 (Admin)
-router.post('/', PostController.create);
+router.post('/', validateBody(postSchema), PostController.create);
 
 // PUT /api/posts/:id - 更新文章 (Admin)
-router.put('/:id', PostController.update);
+router.put('/:id', validateBody(postSchema.partial()), PostController.update);
 
 // DELETE /api/posts/:id - 删除文章 (Admin)
 router.delete('/:id', PostController.delete);

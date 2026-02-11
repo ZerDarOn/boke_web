@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { ProjectService } from '../services/project.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
+import { validateBody } from '../middleware/validate.middleware';
+import { projectSchema } from '../schemas';
 
 const router = Router();
 
@@ -49,7 +51,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/projects - 创建项目
-router.post('/', async (req, res) => {
+router.post('/', validateBody(projectSchema), async (req, res) => {
   try {
     const project = await ProjectService.create(req.body);
     response.created(res, project);
@@ -59,7 +61,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/projects/:id - 更新项目
-router.put('/:id', async (req, res) => {
+router.put('/:id', validateBody(projectSchema.partial()), async (req, res) => {
   try {
     const project = await ProjectService.update(req.params.id, req.body);
     response.success(res, project);

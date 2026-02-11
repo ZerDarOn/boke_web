@@ -2,6 +2,12 @@ import { Router } from 'express';
 import { AnimeService } from '../services/anime.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
+import { validateBody } from '../middleware/validate.middleware';
+import {
+  animeSchema,
+  animeProgressSchema,
+  animeScoreSchema,
+} from '../schemas';
 
 const router = Router();
 
@@ -39,7 +45,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/anime - 创建动漫
-router.post('/', async (req, res) => {
+router.post('/', validateBody(animeSchema), async (req, res) => {
   try {
     const anime = await AnimeService.create(req.body);
     response.created(res, anime);
@@ -49,7 +55,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/anime/:id - 更新动漫
-router.put('/:id', async (req, res) => {
+router.put('/:id', validateBody(animeSchema.partial()), async (req, res) => {
   try {
     const anime = await AnimeService.update(req.params.id, req.body);
     response.success(res, anime);
@@ -59,7 +65,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // PUT /api/anime/:id/progress - 更新观看进度
-router.put('/:id/progress', async (req, res) => {
+router.put('/:id/progress', validateBody(animeProgressSchema), async (req, res) => {
   try {
     const { episodes } = req.body;
     const anime = await AnimeService.updateProgress(req.params.id, episodes);
@@ -73,7 +79,7 @@ router.put('/:id/progress', async (req, res) => {
 });
 
 // POST /api/anime/:id/score - 评分
-router.post('/:id/score', async (req, res) => {
+router.post('/:id/score', validateBody(animeScoreSchema), async (req, res) => {
   try {
     const { score } = req.body;
     const anime = await AnimeService.updateScore(req.params.id, score);
