@@ -23,22 +23,19 @@ const ShadowFragments: React.FC = () => {
         {/* Horizontal Scroll Container for Vertical Cards */}
         <div className="flex overflow-x-auto pb-12 gap-10 scrollbar-hide snap-x snap-mandatory px-4 py-4">
           {DIARY_ENTRIES.slice(0, 5).map((entry, index) => (
-            <div 
-              key={entry.id} 
+<div
+              key={entry.id}
               className={`
-                flex-shrink-0 snap-center bg-white dark:bg-[#111] 
-                shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-none 
-                w-48 h-[450px] p-6 relative group 
+                flex-shrink-0 snap-center bg-white dark:bg-[#111]
+                shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-none
+                w-48 h-[450px] p-6 relative group
                 transition-all duration-500 ease-out
                 border border-transparent dark:border-white/5
                 hover:shadow-[0_20px_40px_rgba(16,185,129,0.15)] dark:hover:border-neon/30
                 /* Tilt Effect: Default tilted, Hover straightens */
-                transform -rotate-2 hover:rotate-0 hover:-translate-y-4 hover:z-10 hover:scale-105
+                hover:rotate-0 hover:-translate-y-4 hover:z-10 hover:scale-105
+                ${index % 2 === 0 ? '-rotate-2' : 'rotate-1'}
               `}
-              style={{
-                  // Add slight randomness to the tilt for organic feel
-                  transform: `rotate(${index % 2 === 0 ? '-2deg' : '1deg'})`,
-              }}
             >
               {/* Top Neon Accent Line */}
               <div className="absolute top-0 left-0 w-full h-1 bg-neon opacity-50 group-hover:opacity-100 transition-opacity"></div>
@@ -48,9 +45,11 @@ const ShadowFragments: React.FC = () => {
                 {entry.date}
               </div>
 
-              {/* Vertical Text Content */}
+{/* Vertical Text Content */}
               <div className="h-full w-full flex flex-row-reverse justify-center pt-16 pb-24">
-                <p className="vertical-text font-serif text-base text-ink dark:text-gray-300 leading-loose tracking-widest border-l border-gray-100 dark:border-white/10 pl-4 h-full overflow-hidden text-ellipsis group-hover:text-black dark:group-hover:text-white transition-colors group-hover:border-neon/30">
+                <p
+                  className={`vertical-text font-serif text-base text-ink dark:text-gray-300 leading-loose tracking-widest border-l border-gray-100 dark:border-white/10 pl-4 h-full overflow-hidden text-ellipsis transition-all duration-500 ease-out group-hover:text-black dark:group-hover:text-white group-hover:border-neon/30 group-hover:scale-110 group-hover:rotate-0 ${index % 2 === 0 ? '-rotate-6' : 'rotate-6'}`}
+                >
                   {entry.content}
                 </p>
               </div>
