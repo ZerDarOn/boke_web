@@ -53,10 +53,53 @@ const ScrollToTop: React.FC = () => {
 
 // 404 页面
 const NotFound: React.FC = () => (
-  <div className="min-h-[600px] flex items-center justify-center">
-    <div className="text-center">
-      <h1 className="text-6xl font-black text-ink dark:text-white mb-4">404</h1>
-      <p className="font-mono text-gray-500">PAGE NOT FOUND</p>
+  <div className="min-h-[600px] flex items-center justify-center relative overflow-hidden">
+    <div className="absolute inset-0 opacity-5 dark:opacity-3 pointer-events-none">
+      <svg viewBox="0 0 100 100" className="w-full h-full animate-pulse-slow">
+        <defs>
+          <radialGradient id="inkGradient404" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.6"/>
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle cx="50" cy="50" r="45" fill="url(#inkGradient404)" className="text-ink dark:text-white"/>
+        <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-ink dark:text-white"/>
+      </svg>
+    </div>
+
+    <div className="text-center relative z-10">
+      <div className="mb-8 relative">
+        <h1 className="text-8xl md:text-9xl font-black text-ink dark:text-white mb-2 relative inline-block">
+          404
+          <span className="absolute -top-4 -right-4 text-neon text-sm font-mono animate-pulse">
+            ERROR
+          </span>
+        </h1>
+        <div className="h-1 w-32 mx-auto bg-gradient-to-r from-transparent via-neon to-transparent"></div>
+      </div>
+
+      <p className="font-mono text-gray-500 dark:text-gray-400 text-lg mb-2">
+        PAGE NOT FOUND
+      </p>
+
+      <p className="text-sm text-gray-400 dark:text-gray-500 mb-8 max-w-md mx-auto">
+        您访问的页面似乎迷失在数字空间的虚无中
+      </p>
+
+      <div className="flex items-center justify-center gap-4 flex-wrap">
+        <Link
+          to="/"
+          className="px-6 py-3 bg-neon text-white font-mono text-sm rounded hover:bg-neon/80 transition-colors"
+        >
+          返回首页
+        </Link>
+        <Link
+          to="/posts"
+          className="px-6 py-3 bg-ink/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-ink dark:text-white font-mono text-sm rounded hover:border-neon transition-colors"
+        >
+          浏览文章
+        </Link>
+      </div>
     </div>
   </div>
 );

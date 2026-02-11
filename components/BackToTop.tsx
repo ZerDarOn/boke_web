@@ -1,0 +1,33 @@
+import React from 'react';
+
+interface BackToTopProps {
+  color?: 'neon' | 'pink' | 'ink';
+}
+
+const BackToTop: React.FC<BackToTopProps> = ({ color = 'neon' }) => {
+  const getButtonClass = () => {
+    switch (color) {
+      case 'neon':
+        return 'bg-neon dark:bg-neon dark:text-white hover:bg-neon/80 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] dark:hover:shadow-[0_0_20px_rgba(0,255,136,0.5)]';
+      case 'pink':
+        return 'bg-pink-400 dark:bg-pink-400 dark:text-white hover:bg-pink-400/80 hover:shadow-[0_0_20px_rgba(244,114,182,0.3)] dark:hover:shadow-[0_0_20px_rgba(244,114,182,0.5)]';
+      case 'ink':
+        return 'bg-ink dark:bg-white text-white dark:text-ink hover:bg-ink/90 hover:shadow-[0_0_20px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]';
+      default:
+        return 'bg-neon dark:bg-neon dark:text-white hover:bg-neon/80 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] dark:hover:shadow-[0_0_20px_rgba(0,255,136,0.5)]';
+    }
+  };
+
+  return (
+    <div className="text-center">
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className={`group px-8 py-3 font-mono text-sm rounded transition-all duration-300 hover:-translate-y-1 ${getButtonClass()}`}
+      >
+        ↑ 返回顶部
+      </button>
+    </div>
+  );
+};
+
+export default BackToTop;

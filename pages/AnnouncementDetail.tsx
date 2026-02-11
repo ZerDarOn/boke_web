@@ -2,19 +2,21 @@ import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ANNOUNCEMENTS } from '../constants';
 import type { Announcement } from '../types';
-import { 
-  Info, 
-  AlertTriangle, 
-  CheckCircle, 
-  AlertCircle, 
-  Calendar, 
-  ArrowLeft, 
-  ArrowRight,
+import {
+  Info,
+  AlertTriangle,
+  CheckCircle,
+  AlertCircle,
+  Calendar,
+  ArrowLeft,
   Clock,
   FileText,
   Wrench,
   Zap
 } from 'lucide-react';
+import BreadcrumbNav from '../components/BreadcrumbNav';
+import BackToTop from '../components/BackToTop';
+import PrevNextNavigation from '../components/PrevNextNavigation';
 
 const AnnouncementDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -93,14 +95,11 @@ const AnnouncementDetail: React.FC = () => {
     <div className="animate-in fade-in duration-500">
       {/* 头部：返回按钮和标题 */}
       <div className="mb-8">
-        <Link 
-          to="/announcement"
-          className="inline-flex items-center gap-2 text-gray-500 hover:text-ink dark:hover:text-white transition-colors font-mono text-sm mb-6"
-        >
-          <ArrowLeft size={16} />
-          返回公告列表
-        </Link>
-        
+        <BreadcrumbNav items={[
+          { label: '公告', href: '/announcement' },
+          { label: announcement.title }
+        ]} />
+
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b-2 border-ink dark:border-white">
           <div>
             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-bold mb-4 ${typeConfig.bgClass} ${typeConfig.textClass} border ${typeConfig.borderClass}`}>
@@ -178,51 +177,13 @@ const AnnouncementDetail: React.FC = () => {
       </div>
 
 {/* 上一篇/下一篇导航 */}
-      <div className="mt-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* 上一篇 - 左列 */}
-          {prevAnnouncement && (
-            <Link
-              to={`/announcement/${prevAnnouncement.id}`}
-              className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-6 hover:border-neon hover:shadow-lg transition-all group"
-            >
-              <div className="flex items-center gap-3">
-                <ArrowLeft size={20} className="text-gray-400 group-hover:text-neon transition-colors" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500 font-mono mb-1">上一篇</p>
-                  <p className="font-sans font-bold text-ink dark:text-white truncate">{prevAnnouncement.title}</p>
-                </div>
-              </div>
-            </Link>
-          )}
-          
-          {/* 下一篇 - 右列 */}
-          {nextAnnouncement && (
-            <Link
-              to={`/announcement/${nextAnnouncement.id}`}
-              className={`bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-6 hover:border-neon hover:shadow-lg transition-all group ${!prevAnnouncement ? 'md:col-start-2' : ''}`}
-            >
-              <div className="flex items-center gap-3 justify-end">
-                <div className="flex-1 min-w-0 text-right">
-                  <p className="text-xs text-gray-500 font-mono mb-1">下一篇</p>
-                  <p className="font-sans font-bold text-ink dark:text-white truncate">{nextAnnouncement.title}</p>
-                </div>
-                <ArrowRight size={20} className="text-gray-400 group-hover:text-neon transition-colors" />
-              </div>
-            </Link>
-          )}
-        </div>
-      </div>
+      <PrevNextNavigation
+        prev={prevAnnouncement ? { id: prevAnnouncement.id, title: prevAnnouncement.title, href: `/announcement/${prevAnnouncement.id}` } : null}
+        next={nextAnnouncement ? { id: nextAnnouncement.id, title: nextAnnouncement.title, href: `/announcement/${nextAnnouncement.id}` } : null}
+      />
 
       {/* 返回顶部按钮 */}
-      <div className="mt-12 text-center">
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="px-6 py-3 bg-ink dark:bg-white text-white dark:text-ink font-mono text-sm rounded hover:bg-neon dark:hover:bg-neon dark:hover:text-white transition-colors"
-        >
-          返回顶部
-        </button>
-      </div>
+      <BackToTop color="neon" />
     </div>
   );
 };

@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ANIME_DETAILS } from '../constants';
 import SimpleComments from '../components/GiscusComments';
+import BreadcrumbNav from '../components/BreadcrumbNav';
+import BackToTop from '../components/BackToTop';
+import PrevNextNavigation from '../components/PrevNextNavigation';
 import {
   ArrowLeft,
   ArrowRight,
@@ -109,20 +112,10 @@ const AnimeDetail: React.FC = () => {
       </div>
 
       <div className="mb-6 relative z-10">
-        <nav className="flex items-center gap-2 text-sm font-mono text-gray-500 dark:text-gray-400 px-4 py-2 bg-gray-50/50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 inline-block backdrop-blur-sm">
-          <Link to="/" className="hover:text-neon dark:hover:text-neon transition-colors flex items-center gap-1">
-            <Home size={14} />
-            首页
-          </Link>
-          <span className="text-gray-300 dark:text-gray-600">/</span>
-          <Link to="/anime" className="hover:text-neon dark:hover:text-neon transition-colors">
-            追番
-          </Link>
-          <span className="text-gray-300 dark:text-gray-600">/</span>
-          <span className="text-ink dark:text-gray-200 truncate max-w-xs">
-            {anime.title}
-          </span>
-        </nav>
+        <BreadcrumbNav items={[
+          { label: '追番', href: '/anime' },
+          { label: anime.title }
+        ]} />
       </div>
 
       <div className="mb-8">
@@ -351,54 +344,14 @@ const AnimeDetail: React.FC = () => {
       </div>
 
       <div className="mb-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {prevAnime && (
-            <Link
-              to={`/anime/${prevAnime.id}`}
-              className="group relative bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-6 hover:border-neon hover:shadow-lg transition-all duration-300 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-neon/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-ink/5 dark:bg-white/5 rounded-full flex items-center justify-center group-hover:bg-neon/10 transition-colors">
-                  <ArrowLeft size={20} className="text-gray-400 group-hover:text-neon transition-colors" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500 font-mono mb-1 group-hover:text-neon transition-colors">上一部</p>
-                  <p className="font-sans font-bold text-ink dark:text-white truncate group-hover:translate-x-1 transition-transform">{prevAnime.title}</p>
-                  <p className="text-xs text-gray-400 font-mono mt-1">{prevAnime.myStatus}</p>
-                </div>
-              </div>
-            </Link>
-          )}
-
-          {nextAnime && (
-            <Link
-              to={`/anime/${nextAnime.id}`}
-              className={`group relative bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-6 hover:border-neon hover:shadow-lg transition-all duration-300 overflow-hidden ${!prevAnime ? 'md:col-start-2' : ''}`}
-            >
-              <div className="absolute inset-0 bg-gradient-to-l from-neon/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center gap-3 justify-end">
-                <div className="flex-1 min-w-0 text-right">
-                  <p className="text-xs text-gray-500 font-mono mb-1 group-hover:text-neon transition-colors">下一部</p>
-                  <p className="font-sans font-bold text-ink dark:text-white truncate group-hover:-translate-x-1 transition-transform">{nextAnime.title}</p>
-                  <p className="text-xs text-gray-400 font-mono mt-1">{nextAnime.myStatus}</p>
-                </div>
-                <div className="flex-shrink-0 w-10 h-10 bg-ink/5 dark:bg-white/5 rounded-full flex items-center justify-center group-hover:bg-neon/10 transition-colors">
-                  <ArrowRight size={20} className="text-gray-400 group-hover:text-neon transition-colors" />
-                </div>
-              </div>
-            </Link>
-          )}
-        </div>
+        <PrevNextNavigation
+          prev={prevAnime ? { id: prevAnime.id, title: prevAnime.title, href: `/anime/${prevAnime.id}`, subtitle: prevAnime.myStatus } : null}
+          next={nextAnime ? { id: nextAnime.id, title: nextAnime.title, href: `/anime/${nextAnime.id}`, subtitle: nextAnime.myStatus } : null}
+        />
       </div>
 
       <div className="text-center mb-8">
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="group px-8 py-3 bg-ink dark:bg-white text-white dark:text-ink font-mono text-sm rounded hover:bg-neon dark:hover:bg-neon dark:hover:text-white transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] dark:hover:shadow-[0_0_20px_rgba(0,255,136,0.5)] hover:-translate-y-1"
-        >
-          ↑ 返回顶部
-        </button>
+        <BackToTop color="neon" />
       </div>
     </div>
   );

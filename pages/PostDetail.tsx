@@ -20,6 +20,9 @@ import {
 } from 'lucide-react';
 import SimpleComments from '../components/GiscusComments';
 import TableOfContents from '../components/TableOfContents';
+import BreadcrumbNav from '../components/BreadcrumbNav';
+import BackToTop from '../components/BackToTop';
+import PrevNextNavigation from '../components/PrevNextNavigation';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -133,20 +136,10 @@ const PostDetail: React.FC = () => {
 
       {/* 面包屑导航 */}
       <div className="mb-6 relative z-10">
-        <nav className="flex items-center gap-2 text-sm font-mono text-gray-500 dark:text-gray-400 px-4 py-2 bg-gray-50/50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 inline-block backdrop-blur-sm">
-          <Link to="/" className="hover:text-neon dark:hover:text-neon transition-colors flex items-center gap-1">
-            <Home size={14} />
-            首页
-          </Link>
-          <span className="text-gray-300 dark:text-gray-600">/</span>
-          <Link to="/posts" className="hover:text-neon dark:hover:text-neon transition-colors">
-            文章
-          </Link>
-          <span className="text-gray-300 dark:text-gray-600">/</span>
-          <span className="text-ink dark:text-gray-200 truncate max-w-xs">
-            {post.title}
-          </span>
-        </nav>
+        <BreadcrumbNav items={[
+          { label: '文章', href: '/posts' },
+          { label: post.title }
+        ]} />
       </div>
 
       {/* 文章头部 */}
@@ -463,47 +456,10 @@ const PostDetail: React.FC = () => {
       )}
 
       {/* 上一篇/下一篇导航 */}
-      <div className="mb-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {prevPost && (
-            <Link
-              to={`/posts/${prevPost.id}`}
-              className="group relative bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-6 hover:border-neon hover:shadow-lg transition-all duration-300 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-neon/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-ink/5 dark:bg-white/5 rounded-full flex items-center justify-center group-hover:bg-neon/10 transition-colors">
-                  <ArrowLeft size={20} className="text-gray-400 group-hover:text-neon transition-colors" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500 font-mono mb-1 group-hover:text-neon transition-colors">上一篇</p>
-                  <p className="font-sans font-bold text-ink dark:text-white truncate group-hover:translate-x-1 transition-transform">{prevPost.title}</p>
-                  <p className="text-xs text-gray-400 font-mono mt-1">{prevPost.date}</p>
-                </div>
-              </div>
-            </Link>
-          )}
-          
-          {nextPost && (
-            <Link
-              to={`/posts/${nextPost.id}`}
-              className={`group relative bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-6 hover:border-neon hover:shadow-lg transition-all duration-300 overflow-hidden ${!prevPost ? 'md:col-start-2' : ''}`}
-            >
-              <div className="absolute inset-0 bg-gradient-to-l from-neon/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center gap-3 justify-end">
-                <div className="flex-1 min-w-0 text-right">
-                  <p className="text-xs text-gray-500 font-mono mb-1 group-hover:text-neon transition-colors">下一篇</p>
-                  <p className="font-sans font-bold text-ink dark:text-white truncate group-hover:-translate-x-1 transition-transform">{nextPost.title}</p>
-                  <p className="text-xs text-gray-400 font-mono mt-1">{nextPost.date}</p>
-                </div>
-                <div className="flex-shrink-0 w-10 h-10 bg-ink/5 dark:bg-white/5 rounded-full flex items-center justify-center group-hover:bg-neon/10 transition-colors">
-                  <ArrowRight size={20} className="text-gray-400 group-hover:text-neon transition-colors" />
-                </div>
-              </div>
-            </Link>
-          )}
-        </div>
-      </div>
+      <PrevNextNavigation
+        prev={prevPost ? { id: prevPost.id, title: prevPost.title, href: `/posts/${prevPost.id}`, date: prevPost.date } : null}
+        next={nextPost ? { id: nextPost.id, title: nextPost.title, href: `/posts/${nextPost.id}`, date: nextPost.date } : null}
+      />
 
       {/* 评论区域 */}
       <div className="mb-12">
@@ -514,14 +470,7 @@ const PostDetail: React.FC = () => {
       </div>
 
       {/* 返回顶部 */}
-      <div className="text-center">
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="group px-8 py-3 bg-ink dark:bg-white text-white dark:text-ink font-mono text-sm rounded hover:bg-neon dark:hover:bg-neon dark:hover:text-white transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] dark:hover:shadow-[0_0_20px_rgba(0,255,136,0.5)] hover:-translate-y-1"
-        >
-          ↑ 返回顶部
-        </button>
-      </div>
+      <BackToTop color="neon" />
     </div>
   );
 };

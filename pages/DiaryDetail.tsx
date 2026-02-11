@@ -4,14 +4,14 @@ import { LONG_FORM_DIARIES } from '../constants';
 import ReactMarkdown from 'react-markdown';
 import {
   ArrowLeft,
-  ArrowRight,
   MapPin,
   Heart,
-  CloudSun,
   Share2,
-  Link2,
-  Home
+  Link2
 } from 'lucide-react';
+import BreadcrumbNav from '../components/BreadcrumbNav';
+import BackToTop from '../components/BackToTop';
+import PrevNextNavigation from '../components/PrevNextNavigation';
 
 const DiaryDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -84,20 +84,10 @@ const DiaryDetail: React.FC = () => {
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-ink via-pink-400 to-ink dark:from-white dark:via-pink-400 dark:to-white opacity-50"></div>
 
       <div className="mb-6 relative z-10">
-        <nav className="flex items-center gap-2 text-sm font-mono text-gray-500 dark:text-gray-400 px-4 py-2 bg-gray-50/50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 inline-block backdrop-blur-sm">
-          <Link to="/" className="hover:text-neon dark:hover:text-neon transition-colors flex items-center gap-1">
-            <Home size={14} />
-            首页
-          </Link>
-          <span className="text-gray-300 dark:text-gray-600">/</span>
-          <Link to="/diary" className="hover:text-neon dark:hover:text-neon transition-colors">
-            日记
-          </Link>
-          <span className="text-gray-300 dark:text-gray-600">/</span>
-          <span className="text-ink dark:text-gray-200 truncate max-w-xs">
-            {diary.title}
-          </span>
-        </nav>
+        <BreadcrumbNav items={[
+          { label: '日记', href: '/diary' },
+          { label: diary.title }
+        ]} />
       </div>
 
       <div className="mb-8 relative">
@@ -287,54 +277,14 @@ const DiaryDetail: React.FC = () => {
       </div>
 
       <div className="mb-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {prevDiary && (
-            <Link
-              to={`/diary/${prevDiary.id}`}
-              className="group relative bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-6 hover:border-pink-400 hover:shadow-lg transition-all duration-300 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-pink-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-ink/5 dark:bg-white/5 rounded-full flex items-center justify-center group-hover:bg-pink-400/10 transition-colors">
-                  <ArrowLeft size={20} className="text-gray-400 group-hover:text-pink-400 transition-colors" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500 font-mono mb-1 group-hover:text-pink-400 transition-colors">上一篇</p>
-                  <p className="font-sans font-bold text-ink dark:text-white truncate group-hover:translate-x-1 transition-transform">{prevDiary.title}</p>
-                  <p className="text-xs text-gray-400 font-mono mt-1">{prevDiary.date}</p>
-                </div>
-              </div>
-            </Link>
-          )}
-
-          {nextDiary && (
-            <Link
-              to={`/diary/${nextDiary.id}`}
-              className={`group relative bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-6 hover:border-pink-400 hover:shadow-lg transition-all duration-300 overflow-hidden ${!prevDiary ? 'md:col-start-2' : ''}`}
-            >
-              <div className="absolute inset-0 bg-gradient-to-l from-pink-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center gap-3 justify-end">
-                <div className="flex-1 min-w-0 text-right">
-                  <p className="text-xs text-gray-500 font-mono mb-1 group-hover:text-pink-400 transition-colors">下一篇</p>
-                  <p className="font-sans font-bold text-ink dark:text-white truncate group-hover:-translate-x-1 transition-transform">{nextDiary.title}</p>
-                  <p className="text-xs text-gray-400 font-mono mt-1">{nextDiary.date}</p>
-                </div>
-                <div className="flex-shrink-0 w-10 h-10 bg-ink/5 dark:bg-white/5 rounded-full flex items-center justify-center group-hover:bg-pink-400/10 transition-colors">
-                  <ArrowRight size={20} className="text-gray-400 group-hover:text-pink-400 transition-colors" />
-                </div>
-              </div>
-            </Link>
-          )}
-        </div>
+        <PrevNextNavigation
+          prev={prevDiary ? { id: prevDiary.id, title: prevDiary.title, href: `/diary/${prevDiary.id}`, date: prevDiary.date } : null}
+          next={nextDiary ? { id: nextDiary.id, title: nextDiary.title, href: `/diary/${nextDiary.id}`, date: nextDiary.date } : null}
+        />
       </div>
 
       <div className="text-center mb-8">
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="group px-8 py-3 bg-ink dark:bg-white text-white dark:text-ink font-mono text-sm rounded hover:bg-pink-400 dark:hover:bg-pink-400 dark:hover:text-white transition-all duration-300 hover:shadow-[0_0_20px_rgba(244,114,182,0.3)] dark:hover:shadow-[0_0_20px_rgba(244,114,182,0.5)] hover:-translate-y-1"
-        >
-          ↑ 返回顶部
-        </button>
+        <BackToTop color="pink" />
       </div>
     </div>
   );

@@ -3,14 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import { GALLERY_ALBUMS } from '../constants';
 import type { GalleryItem } from '../types';
 import {
-  ArrowLeft,
   Calendar,
-  MapPin,
   Camera,
   X,
   MessageSquare,
   Send
 } from 'lucide-react';
+import BreadcrumbNav from '../components/BreadcrumbNav';
+import BackToTop from '../components/BackToTop';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -183,19 +183,10 @@ const GalleryDetail: React.FC = () => {
       )}
 
       <div className="mb-6 relative z-10">
-        <nav className="flex items-center gap-2 text-sm font-mono text-gray-500 dark:text-gray-400 px-4 py-2 bg-gray-50/50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 inline-block backdrop-blur-sm">
-          <Link to="/" className="hover:text-neon dark:hover:text-neon transition-colors">
-            首页
-          </Link>
-          <span className="text-gray-300 dark:text-gray-600">/</span>
-          <Link to="/gallery" className="hover:text-neon dark:hover:text-neon transition-colors">
-            相册
-          </Link>
-          <span className="text-gray-300 dark:text-gray-600">/</span>
-          <span className="text-ink dark:text-gray-200 truncate max-w-xs">
-            {album.title}
-          </span>
-        </nav>
+        <BreadcrumbNav items={[
+          { label: '相册', href: '/gallery' },
+          { label: album.title }
+        ]} />
       </div>
 
       <div className="mb-8">
@@ -293,6 +284,8 @@ const GalleryDetail: React.FC = () => {
           </button>
         </div>
       )}
+
+      <BackToTop color="neon" />
     </div>
   );
 };
