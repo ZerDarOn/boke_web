@@ -39,6 +39,12 @@ export interface Project {
   description: string;
   featured?: boolean;
   link?: string;
+  imageUrl?: string;
+  githubUrl?: string;
+  demoUrl?: string;
+  startDate?: string;
+  endDate?: string;
+  readme?: string;
 }
 
 export interface SkillNode {

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { PROJECTS, TRANSLATIONS, TAGS } from '../constants';
 import { ArrowUpRight, Github, ExternalLink, Box, Activity, Layers, Tag } from 'lucide-react';
 
@@ -117,50 +118,113 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
       {/* 2. Primary Projects Section */}
       <section>
           <div className="flex items-end justify-between mb-8 border-b-2 border-ink dark:border-paper pb-2">
-            <h2 className="text-2xl font-black font-sans text-ink dark:text-paper tracking-tight flex items-center gap-3">
-               <Box className="text-neon" /> PRIMARY_BLUEPRINTS
-            </h2>
+             <h2 className="text-2xl font-black font-sans text-ink dark:text-paper tracking-tight flex items-center gap-3">
+                <Box className="text-neon" /> PRIMARY_BLUEPRINTS
+             </h2>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {primaryProjects.map((project) => (
-                  <div key={project.id} className="group border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-neon transition-all duration-300 relative flex flex-col shadow-sm hover:shadow-xl">
-                      
-                      {/* Status Indicator */}
-                      <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-black/80 px-2 py-1 rounded">
-                          <div className={`w-2 h-2 rounded-full ${project.status === 'ACTIVE' ? 'bg-neon animate-pulse' : 'bg-gray-400'}`}></div>
-                          <span className="text-[10px] font-mono text-white">{project.status}</span>
-                      </div>
+          {primaryProjects.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {primaryProjects.map((project) => (
+                      <Link
+                          key={project.id}
+                          to={`/projects/${project.id}`}
+                          className="group border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-neon transition-all duration-300 relative flex flex-col shadow-sm hover:shadow-xl"
+                      >
+                       
+                          {/* Status Indicator */}
+                          <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-black/80 px-2 py-1 rounded">
+                              <div className={`w-2 h-2 rounded-full ${project.status === 'ACTIVE' ? 'bg-neon animate-pulse' : 'bg-gray-400'}`}></div>
+                              <span className="text-[10px] font-mono text-white">{project.status}</span>
+                          </div>
 
-                      {/* Content */}
-                      <div className="p-6 flex-1 flex flex-col">
-                          <div className="flex justify-between items-start mb-4 mt-2">
-                              <div>
-                                  <h3 className="text-2xl font-bold font-sans text-ink dark:text-white group-hover:text-neon transition-colors">
-                                      {project.name}
-                                  </h3>
-                                  <span className="font-mono text-xs text-gray-400 uppercase tracking-wider">
-                                      {project.type}
-                                  </span>
+                          {/* Content */}
+                          <div className="p-6 flex-1 flex flex-col">
+                              <div className="flex justify-between items-start mb-4 mt-2">
+                                  <div>
+                                      <h3 className="text-2xl font-bold font-sans text-ink dark:text-white group-hover:text-neon transition-colors">
+                                          {project.name}
+                                      </h3>
+                                      <span className="font-mono text-xs text-gray-400 uppercase tracking-wider">
+                                          {project.type}
+                                      </span>
+                                  </div>
+                                  <ArrowUpRight className="text-gray-300 group-hover:text-neon transition-colors" />
                               </div>
-                              <ArrowUpRight className="text-gray-300 group-hover:text-neon transition-colors" />
-                          </div>
 
-                          <p className="font-serif text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 flex-1">
-                              {project.description}
-                          </p>
+                              <p className="font-serif text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 flex-1">
+                                  {project.description}
+                              </p>
 
-                          <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100 dark:border-white/10">
-                              {project.tech.map(t => (
-                                  <span key={t} className="px-2 py-1 bg-gray-50 dark:bg-white/10 text-[10px] font-mono text-gray-500 dark:text-gray-400 uppercase rounded hover:bg-neon hover:text-white transition-colors">
-                                      {t}
-                                  </span>
-                              ))}
+                              <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100 dark:border-white/10">
+                                  {project.tech.map(t => (
+                                      <span key={t} className="px-2 py-1 bg-gray-50 dark:bg-white/10 text-[10px] font-mono text-gray-500 dark:text-gray-400 uppercase rounded hover:bg-neon hover:text-white transition-colors">
+                                          {t}
+                                      </span>
+                                  ))}
+                              </div>
                           </div>
-                      </div>
-                  </div>
-              ))}
+                      </Link>
+                  ))}
+              </div>
+          ) : (
+              <div className="flex items-center justify-center p-12 bg-gray-50 dark:bg-white/5 border-2 border-dashed border-gray-300 dark:border-white/10 rounded-xl">
+                  <span className="text-gray-500 dark:text-gray-400 font-mono text-sm">
+                      📁 暂无重点项目
+                  </span>
+              </div>
+          )}
+      </section>
+
+      {/* 3. Other Projects List */}
+      <section>
+          <div className="mb-6">
+              <h3 className="font-mono text-sm font-bold text-gray-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <div className="h-[1px] w-8 bg-gray-300 dark:bg-gray-700"></div>
+                  Archive
+              </h3>
           </div>
+
+          {otherProjects.length > 0 ? (
+              <div className="flex flex-col border-t border-gray-200 dark:border-white/10">
+                  {otherProjects.map((project) => (
+                      <Link
+                          key={project.id}
+                          to={`/projects/${project.id}`}
+                          className="group flex flex-col md:flex-row md:items-center gap-4 p-4 border-b border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer relative"
+                      >
+                          <div className="w-1 h-0 bg-neon absolute left-0 top-0 bottom-0 group-hover:h-full transition-all duration-300"></div>
+                           
+                          <div className="w-32 font-mono text-xs text-gray-400 group-hover:text-neon font-bold">
+                              {project.id}
+                          </div>
+
+                          <div className="flex-1">
+                              <h4 className="font-sans font-bold text-base text-ink dark:text-white group-hover:text-neon transition-colors">
+                                  {project.name}
+                              </h4>
+                              <span className="text-xs font-mono text-gray-400 uppercase hidden md:inline-block">
+                                  [{project.type}]
+                              </span>
+                          </div>
+
+                          <div className="flex-1 text-sm font-serif text-gray-500 dark:text-gray-400 line-clamp-1">
+                              {project.description}
+                          </div>
+
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <ExternalLink size={16} className="text-neon" />
+                          </div>
+                      </Link>
+                  ))}
+              </div>
+          ) : (
+              <div className="flex items-center justify-center p-12 border-t border-gray-200 dark:border-white/10">
+                  <span className="text-gray-500 dark:text-gray-400 font-mono text-sm">
+                      📁 暂无归档项目
+                  </span>
+              </div>
+          )}
       </section>
 
       {/* 3. Other Projects List */}

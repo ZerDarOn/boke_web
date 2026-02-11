@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { SKILLS_DATA, TRANSLATIONS } from '../constants';
+import { Link } from 'react-router-dom';
+import { SKILLS_DATA, PROJECTS, TRANSLATIONS } from '../constants';
 import { Zap, Database, Cpu, ExternalLink, X, Code, Server, PenTool } from 'lucide-react';
 
 interface PageSkillsProps {
@@ -12,6 +13,23 @@ const PageSkills: React.FC<PageSkillsProps> = () => {
   // Hardcoded to Chinese for content stability
   const lang = 'ZH';
   const t = TRANSLATIONS['ZH'];
+  
+  // 获取相关项目
+  const getRelatedProjects = (skillName: string) => {
+    if (!skillName) return [];
+    
+    const keywords = skillName.split('/').map(s => s.trim().toLowerCase());
+    return PROJECTS.filter(project =>
+      project.tech.some(tech =>
+        keywords.some(keyword => 
+          tech.toLowerCase().includes(keyword) ||
+          keyword.includes(tech.toLowerCase())
+        )
+      )
+    ).slice(0, 4); // 只显示前4个
+  };
+  
+  const relatedProjects = getRelatedProjects(activeSkill);
 
   // Aggregate Data for Donut Chart (By Rank)
   const rankCounts: Record<string, number> = {};
@@ -145,52 +163,60 @@ const PageSkills: React.FC<PageSkillsProps> = () => {
 
         {/* 3. Detailed Skill List */}
         <div className="space-y-12">
-            {SKILLS_DATA.map((group, idx) => (
-                <div key={idx}>
-                    <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-white/10 pb-2">
-                        <div className="p-1.5 bg-ink dark:bg-white text-white dark:text-black rounded-sm">
-                            {idx === 0 && <Code size={16} />}
-                            {idx === 1 && <Server size={16} />}
-                            {idx === 2 && <PenTool size={16} />}
-                        </div>
-                        <h3 className="font-sans font-bold text-lg text-ink dark:text-paper uppercase tracking-wider">
-                            {group.category}
-                        </h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {group.items.map((skill) => (
-                            <div 
-                                key={skill.name} 
-                                onClick={() => setActiveSkill(skill.name)}
-                                className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 p-4 hover:border-neon transition-all duration-300 cursor-pointer group/item flex flex-col gap-3"
-                            >
-                                <div className="flex justify-between items-start">
-                                    <span className="font-bold font-mono text-ink dark:text-paper">{skill.name}</span>
-                                    <span 
-                                        className="text-[10px] font-black px-1.5 py-0.5 rounded text-white"
-                                        style={{ backgroundColor: rankColors[skill.rank] }}
-                                    >
-                                        {skill.rank}
-                                    </span>
-                                </div>
-                                
-                                <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-neon relative"
-                                        style={{ width: `${skill.level}%` }}
-                                    ></div>
-                                </div>
-                                
-                                <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono">
-                                    <span>{skill.projectCount} Projects</span>
-                                    <span className="group-hover/item:text-neon transition-colors">Details &rarr;</span>
-                                </div>
+            {SKILLS_DATA.length > 0 ? (
+                SKILLS_DATA.map((group, idx) => (
+                    <div key={idx}>
+                        <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-white/10 pb-2">
+                            <div className="p-1.5 bg-ink dark:bg-white text-white dark:text-black rounded-sm">
+                                {idx === 0 && <Code size={16} />}
+                                {idx === 1 && <Server size={16} />}
+                                {idx === 2 && <PenTool size={16} />}
                             </div>
-                        ))}
+                            <h3 className="font-sans font-bold text-lg text-ink dark:text-paper uppercase tracking-wider">
+                                {group.category}
+                            </h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {group.items.map((skill) => (
+                                <div
+                                    key={skill.name}
+                                    onClick={() => setActiveSkill(skill.name)}
+                                    className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 p-4 hover:border-neon transition-all duration-300 cursor-pointer group/item flex flex-col gap-3"
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <span className="font-bold font-mono text-ink dark:text-paper">{skill.name}</span>
+                                        <span
+                                            className="text-[10px] font-black px-1.5 py-0.5 rounded text-white"
+                                            style={{ backgroundColor: rankColors[skill.rank] }}
+                                        >
+                                            {skill.rank}
+                                        </span>
+                                    </div>
+
+                                    <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-neon relative"
+                                            style={{ width: `${skill.level}%` }}
+                                        ></div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono">
+                                        <span>{skill.projectCount} Projects</span>
+                                        <span className="group-hover/item:text-neon transition-colors">Details &rarr;</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
+                ))
+            ) : (
+                <div className="flex items-center justify-center p-12 bg-gray-50 dark:bg-white/5 border-2 border-dashed border-gray-300 dark:border-white/10 rounded-xl">
+                    <span className="text-gray-500 dark:text-gray-400 font-mono text-sm">
+                        🚫 暂无技能数据
+                    </span>
                 </div>
-            ))}
+            )}
         </div>
 
         {/* Interaction Modal */}
@@ -213,19 +239,36 @@ const PageSkills: React.FC<PageSkillsProps> = () => {
                         This node is a critical part of the system architecture.
                     </p>
 
-                    <div className="space-y-3">
-                         <h4 className="text-xs font-mono font-bold text-gray-500 uppercase">Related Projects (Mock)</h4>
-                         {[1, 2, 3].map(i => (
-                             <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-neon">
-                                 <span className="text-sm font-bold text-ink dark:text-white">Project Protocol {i}</span>
-                                 <ExternalLink size={14} className="text-gray-400" />
-                             </div>
-                         ))}
-                    </div>
-                </div>
-            </div>
-        )}
-    </div>
+                     <div className="space-y-3">
+                          <h4 className="text-xs font-mono font-bold text-gray-500 uppercase">相关项目</h4>
+                          {relatedProjects.length > 0 ? (
+                              relatedProjects.map((project, index) => (
+                                  <Link
+                                      key={project.id}
+                                      to={`/projects/${project.id}`}
+                                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-neon hover:shadow-md transition-all group/item"
+                                  >
+                                      <div className="flex items-center gap-3">
+                                          <span className="text-sm font-bold text-ink dark:text-white group-hover/item:text-neon transition-colors line-clamp-1">
+                                              {project.name}
+                                          </span>
+                                          <span className="text-xs font-mono text-gray-400">({project.type})</span>
+                                      </div>
+                                      <ExternalLink size={14} className="text-gray-400 group-hover/item:text-neon" />
+                                  </Link>
+                              ))
+                          ) : (
+                              <div className="flex items-center justify-center p-8 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 border-dashed rounded-lg">
+                                  <span className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                                      📁 暂无相关项目
+                                  </span>
+                      </div>
+                          )}
+                     </div>
+                 </div>
+             </div>
+         )}
+     </div>
   );
 };
 

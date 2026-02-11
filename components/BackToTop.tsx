@@ -9,7 +9,7 @@ const BackToTop: React.FC<BackToTopProps> = ({ color = 'neon' }) => {
   const location = useLocation();
   
   // 详情页面（包含 :id 的路由）
-  const isDetailPage = /\/(posts|announcement|anime|diary|gallery)\/.+$/.test(location.pathname);
+  const isDetailPage = /\/(posts|announcement|anime|diary|gallery|projects)\/.+$/.test(location.pathname);
   
   const getButtonClass = () => {
     switch (color) {

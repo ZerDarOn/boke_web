@@ -11,6 +11,7 @@ import Archives from './pages/Archives';
 import Announcement from './pages/Announcement';
 import AnnouncementDetail from './pages/AnnouncementDetail';
 import Projects from './pages/Projects';
+import ProjectDetail from './pages/ProjectDetail';
 import Skills from './pages/Skills';
 import Timeline from './pages/Timeline';
 import About from './pages/About';
@@ -117,6 +118,7 @@ const App: React.FC = () => {
             <Route path="announcement" element={<Announcement />} />
             <Route path="announcement/:id" element={<AnnouncementDetail />} />
             <Route path="projects" element={<Projects />} />
+            <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="skills" element={<Skills />} />
             <Route path="timeline" element={<Timeline />} />
             <Route path="about" element={<About />} />

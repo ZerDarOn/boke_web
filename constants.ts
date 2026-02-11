@@ -726,6 +726,29 @@ export const PROJECTS: Project[] = [
     status: 'ACTIVE',
     description: '即便在数字时代，文字也应有水墨的重量。一套专为长文阅读设计的深色模式主题。集成 WebGL 水墨渲染引擎与 React Server Components。',
     featured: true,
+    imageUrl: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+    githubUrl: 'https://github.com',
+    demoUrl: 'https://demo.example.com',
+    startDate: '2024.01.01',
+    readme: `## INK.ENGINE
+
+### 项目简介
+
+即便在数字时代，文字也应有水墨的重量。
+
+### 技术栈
+
+- Next.js
+- Tailwind CSS
+- Framer Motion
+- WebGL
+
+### 功能特性
+
+- 深色模式主题
+- 水墨渲染引擎
+- React Server Components
+- 优雅的阅读体验`
   },
   {
     id: 'P-02',
@@ -735,6 +758,27 @@ export const PROJECTS: Project[] = [
     status: 'DEPLOYED',
     description: '结合番茄工作法与冥想白噪音的极简计时器，帮助开发者进入心流状态。获得 App Store 编辑推荐。',
     featured: true,
+    imageUrl: 'linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%)',
+    githubUrl: 'https://github.com',
+    demoUrl: 'https://demo.example.com',
+    startDate: '2023.12.01',
+    endDate: '2024.01.15',
+    readme: `## ZEN.TIMER
+
+结合番茄工作法与冥想白噪音的极简计时器。
+
+### 功能
+
+- 番茄工作法计时
+- 白噪音音效
+- 心流状态提示
+- 数据统计
+
+### 技术栈
+
+- React Native
+- Swift
+- TypeScript`
   },
   {
     id: 'P-03',
@@ -744,6 +788,27 @@ export const PROJECTS: Project[] = [
     status: 'ARCHIVED',
     description: '用于快速脚手架生成和Markdown管理的命令行工具，专为博客写作优化。',
     featured: false,
+    imageUrl: 'linear-gradient(135deg, #10b981 0%, #064e3b 100%)',
+    githubUrl: 'https://github.com',
+    startDate: '2023.06.01',
+    endDate: '2023.11.30',
+    readme: `## VOID.CLI
+
+用于快速脚手架生成和Markdown管理的命令行工具。
+
+### 命令
+
+\`\`\`
+void new <project-name>
+void build <project-name>
+void publish <project-name>
+\`\`\`
+
+### 技术栈
+
+- Rust
+- Clap
+- Command Line Interface`
   },
   {
     id: 'P-04',
@@ -753,6 +818,26 @@ export const PROJECTS: Project[] = [
     status: 'ACTIVE',
     description: 'A lightweight distributed key-value store designed for edge computing scenarios.',
     featured: false,
+    imageUrl: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+    githubUrl: 'https://github.com',
+    demoUrl: 'https://demo.example.com',
+    startDate: '2024.02.01',
+    readme: `## NEON.DB
+
+A lightweight distributed key-value store designed for edge computing scenarios.
+
+### 特性
+
+- 轻量级设计
+- 分布式架构
+- 边缘计算优化
+- Raft 共识算法
+
+### 性能
+
+- 高吞吐量
+- 低延迟
+- 弹性扩展`
   },
   {
     id: 'P-05',
@@ -762,6 +847,25 @@ export const PROJECTS: Project[] = [
     status: 'DEPLOYED',
     description: 'Browser-based pixel art editor with real-time collaboration features.',
     featured: false,
+    imageUrl: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+    demoUrl: 'https://demo.example.com',
+    startDate: '2023.09.01',
+    readme: `## PIXEL.ARTS
+
+Browser-based pixel art editor with real-time collaboration features.
+
+### 功能
+
+- 像素级编辑
+- 实时协作
+- 图层管理
+- 导出功能
+
+### 技术栈
+
+- HTML5 Canvas
+- JavaScript
+- WebSocket（实时协作）`
   }
 ];
 
