@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Outlet, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import Layout from './components/Layout';
 import { LangProvider } from './contexts/LangContext';
 
@@ -29,7 +29,7 @@ const ScrollToTop: React.FC = () => {
   const location = useLocation();
   
   // 详情页面路径（包含 :id 的路由）
-  const isDetailPage = /\/(posts|announcement|anime|diary|gallery)\/.+$/.test(location.pathname);
+  const isDetailPage = /\/(posts|announcement|anime|diary|gallery|projects)\/.+$/.test(location.pathname);
   const isHomePage = location.pathname === '/';
   
   React.useEffect(() => {

@@ -411,12 +411,13 @@ const PostDetail: React.FC = () => {
             标签
           </span>
           {post.tags.map((tag, index) => (
-            <span 
+            <Link 
               key={index}
+              to={`/posts?tag=${encodeURIComponent(tag)}`}
               className="px-4 py-2 bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 rounded-full text-sm font-mono hover:border-neon hover:text-neon dark:hover:border-neon dark:hover:text-neon hover:shadow-[0_0_12px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_0_12px_rgba(0,255,136,0.2)] transition-all cursor-pointer group"
             >
               {tag}
-            </span>
+            </Link>
           ))}
         </div>
       </div>

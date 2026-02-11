@@ -57,11 +57,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
   const filteredAnime = ANIME_LIST.filter(a =>
     a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.studio.toLowerCase().includes(searchQuery.toLowerCase())
+    a.studio?.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const filteredGallery = GALLERY_IMAGES.filter(g =>
     g.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    g.category.toLowerCase().includes(searchQuery.toLowerCase())
+    g.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // 滚动监听
@@ -74,6 +74,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // ESC 键监听 - 关闭搜索
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isSearchOpen) {
+        setIsSearchOpen(false);
+        setSearchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSearchOpen]);
 
   // 主题切换
   useEffect(() => {
@@ -228,7 +240,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           {filteredGallery.map(img => (
                             <Link key={img.id} to="/gallery" onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
                               <span className="text-gray-300 group-hover:text-white font-sans">{img.title}</span>
-                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{img.category}</span>
+                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{img.tags?.[0] || 'PHOTO'}</span>
                             </Link>
                           ))}
                         </div>

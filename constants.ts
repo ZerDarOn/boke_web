@@ -885,6 +885,7 @@ export const SKILL_NODES: SkillNode[] = [
 ];
 
 export const CATEGORIES = [
+  { name: 'ALL', count: 7, icon: '📚' },
   { name: 'PHILOSOPHY', count: 1, icon: '☯️' },
   { name: 'ENGINEERING', count: 1, icon: '⚙️' },
   { name: 'LIFESTYLE', count: 1, icon: '🍵' },
@@ -1003,13 +1004,13 @@ export const RELATIONSHIP_NODES: RelationNode[] = [
 ];
 
 export const ANIME_LIST: AnimeItem[] = [
-  { id: '1', title: 'Ghost in the Shell', cover: '#1a1b26', totalEps: 26, currentEp: 24, status: 'WATCHING', score: 9.5, favorite: true },
-  { id: '2', title: 'Cyberpunk: Edgerunners', cover: '#10b981', totalEps: 10, currentEp: 10, status: 'COMPLETED', score: 9.0, favorite: true },
-  { id: '3', title: 'Serial Experiments Lain', cover: '#525252', totalEps: 13, currentEp: 13, status: 'COMPLETED', score: 10.0, favorite: false },
-  { id: '4', title: 'Ergo Proxy', cover: '#262626', totalEps: 23, currentEp: 5, status: 'ON_HOLD', favorite: false },
-  { id: '5', title: 'Psycho-Pass', cover: '#059669', totalEps: 22, currentEp: 12, status: 'WATCHING', favorite: false },
-  { id: '6', title: 'Sword Art Online', cover: '#d1d5db', totalEps: 24, currentEp: 3, status: 'DROPPED', favorite: false },
-  { id: '7', title: 'Steins;Gate', cover: '#404040', totalEps: 24, currentEp: 24, status: 'COMPLETED', score: 9.8, favorite: true },
+  { id: '1', title: 'Ghost in the Shell', cover: '#1a1b26', totalEps: 26, currentEp: 24, status: 'WATCHING', score: 9.5, favorite: true, studio: 'Production I.G' },
+  { id: '2', title: 'Cyberpunk: Edgerunners', cover: '#10b981', totalEps: 10, currentEp: 10, status: 'COMPLETED', score: 9.0, favorite: true, studio: 'Studio Trigger' },
+  { id: '3', title: 'Serial Experiments Lain', cover: '#525252', totalEps: 13, currentEp: 13, status: 'COMPLETED', score: 10.0, favorite: false, studio: 'Triangle Staff' },
+  { id: '4', title: 'Ergo Proxy', cover: '#262626', totalEps: 23, currentEp: 5, status: 'ON_HOLD', favorite: false, studio: 'Manglobe' },
+  { id: '5', title: 'Psycho-Pass', cover: '#059669', totalEps: 22, currentEp: 12, status: 'WATCHING', favorite: false, studio: 'Production I.G' },
+  { id: '6', title: 'Sword Art Online', cover: '#d1d5db', totalEps: 24, currentEp: 3, status: 'DROPPED', favorite: false, studio: 'A-1 Pictures' },
+  { id: '7', title: 'Steins;Gate', cover: '#404040', totalEps: 24, currentEp: 24, status: 'COMPLETED', score: 9.8, favorite: true, studio: 'White Fox' },
 ];
 
 export const GALLERY_IMAGES: GalleryItem[] = [

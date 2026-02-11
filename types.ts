@@ -95,6 +95,7 @@ export interface AnimeItem {
   status: 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
   score?: number;
   favorite?: boolean;
+  studio?: string;
 }
 
 export interface AnimeDetail {
