@@ -1122,6 +1122,40 @@ export const SKILLS_DATA: SkillGroup[] = [
   }
 ];
 
+export const LONG_FORM_DIARIES: LongFormDiary[] = [
+  {
+    id: 'd-001',
+    title: '这是我的第一篇日记',
+    subtitle: '随时随地分享生活',
+    date: '2024.05.20',
+    location: '东京',
+    mood: '😊',
+    weather: '☀️',
+    coverImage: 'https://upload.wikimedia.org/wikipedia/en/thumb/0/05/Hello_kitty_character_portrait.png/220px-Hello_kitty_character_portrait.png',
+    tags: ['生活', '旅行', '记录'],
+    readingTime: '3 min',
+    content: `今天是在东京的第二天，天气格外的好。早晨的阳光透过窗帘洒进来，整个房间都被温暖的光线包裹。
+
+## 早晨的咖啡
+
+在附近的小巷里找到了一家手冲咖啡店。店主是一位年迈的先生，他告诉我这家店已经开了三十年。每一杯咖啡都是用心冲泡的，我能感受到那份坚持。
+
+"咖啡是时间的艺术。"他这样说道。
+
+## 涩谷的黄昏
+
+傍晚时分去了涩谷。人潮涌动，霓虹灯开始闪烁。站在十字路口，我看着来来往往的人群，每个人都像是在自己的轨道上运行的线程。
+
+有时候我会想，在这个数字化的世界里，我们是否还能保留一些真实的连接？
+
+## 晚餐时间
+
+在居酒屋吃了一顿温暖的晚餐。旁边坐着一群上班族，他们在谈论工作，但我能从他们的笑声中感受到纯粹的快乐。
+
+这一天过得很充实。记录下来，是为了不让这些美好的瞬间流失。`
+  }
+];
+
 export const ANNOUNCEMENTS: import('./types').Announcement[] = [
   {
     id: '1',

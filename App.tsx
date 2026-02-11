@@ -17,6 +17,7 @@ import Network from './pages/Network';
 import Dashboard from './pages/Dashboard';
 import Anime from './pages/Anime';
 import Diary from './pages/Diary';
+import DiaryDetail from './pages/DiaryDetail';
 import Gallery from './pages/Gallery';
 import GalleryDetail from './pages/GalleryDetail';
 
@@ -89,6 +90,7 @@ const App: React.FC = () => {
           {/* 我的 */}
           <Route path="/anime" element={<Anime />} />
           <Route path="/diary" element={<Diary />} />
+          <Route path="/diary/:id" element={<DiaryDetail />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/gallery/:id" element={<GalleryDetail />} />
           

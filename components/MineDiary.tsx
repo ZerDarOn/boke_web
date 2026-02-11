@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { DIARY_ENTRIES } from '../constants';
 import { Sun, CloudRain, ArrowRight } from 'lucide-react';
 
@@ -127,13 +128,13 @@ const MineDiary: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="bg-[#1a1a1a] p-4 flex justify-between items-center">
-                    <span className="text-xs font-mono text-gray-400">55 天前</span>
-                    <button className="text-xs font-bold text-[#f472b6] flex items-center gap-1 hover:text-white transition-colors">
-                        阅读全文 <ArrowRight size={12} />
-                    </button>
-                </div>
+                 {/* Footer */}
+                 <div className="bg-[#1a1a1a] p-4 flex justify-between items-center">
+                     <span className="text-xs font-mono text-gray-400">55 天前</span>
+                     <Link to="/diary/d-001" className="text-xs font-bold text-[#f472b6] flex items-center gap-1 hover:text-white transition-colors">
+                         阅读全文 <ArrowRight size={12} />
+                     </Link>
+                 </div>
 
             </div>
         </div>

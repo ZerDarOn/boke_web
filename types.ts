@@ -16,6 +16,20 @@ export interface DiaryEntry {
   stamp: string;
 }
 
+export interface LongFormDiary {
+  id: string;
+  title: string;
+  subtitle: string;
+  content: string;
+  date: string;
+  location: string;
+  mood: '😊' | '🌙' | '☔' | '🌸' | '⚡';
+  weather: '☀️' | '☁️' | '🌧️' | '⛈️' | '❄️';
+  coverImage: string;
+  tags: string[];
+  readingTime: string;
+}
+
 export interface Project {
   id: string;
   name: string;
