@@ -5,7 +5,8 @@ import Sidebar from './Sidebar';
 import RightSidebar from './RightSidebar';
 import Hero from './Hero';
 import { Search, X } from 'lucide-react';
-import { BLOG_POSTS, PROJECTS, DIARY_ENTRIES, ANNOUNCEMENTS, ANIME_LIST, GALLERY_IMAGES, TRANSLATIONS } from '../constants';
+import { BLOG_POSTS, PROJECTS, DIARY_ENTRIES, ANNOUNCEMENTS, ANIME_LIST, GALLERY_IMAGES } from '../constants';
+import { useLang } from '../contexts/LangContext';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -21,11 +22,11 @@ export const HeroContext = React.createContext<{
 });
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { lang, setLang, t } = useLang();
   const [scrollY, setScrollY] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [lang, setLang] = useState<'EN' | 'ZH'>('ZH');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [primaryHue, setPrimaryHue] = useState(150);
@@ -33,9 +34,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   
   // Hero 背景索引 - 全局状态，所有页面共享
   const [bgIndex, setBgIndex] = useState(0);
-
+  
   const location = useLocation();
-  const t = TRANSLATIONS[lang];
 
   // 搜索逻辑
   const filteredPosts = BLOG_POSTS.filter(p =>
@@ -46,7 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const filteredProjects = PROJECTS.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.tech.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+    p.tech.some(tech => tech.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   const filteredDiaries = DIARY_ENTRIES.filter(d =>
     d.content.toLowerCase().includes(searchQuery.toLowerCase())

@@ -1358,7 +1358,7 @@ export const ANNOUNCEMENTS: import('./types').Announcement[] = [
   }
 ];
 
-export const TRANSLATIONS = {
+ export const TRANSLATIONS = {
     EN: {
         HOME: 'HOME',
         POSTS: 'POSTS',
@@ -1377,7 +1377,36 @@ export const TRANSLATIONS = {
         TOTAL_PROJECTS: 'TOTAL_PROJECTS',
         COMPLETED: 'COMPLETED',
         IN_PROGRESS: 'IN_PROGRESS',
-        LANG: 'EN'
+        LANG: 'EN',
+        SYSTEM_VITALS: 'System Vitals',
+        UPTIME_LABEL: 'CURRENT SESSION UPTIME',
+        DB_CONNECTION: 'DB_CONNECTION',
+        STORAGE_USAGE: 'STORAGE USAGE',
+        STABLE: 'STABLE',
+        TOTAL_REQUESTS: 'Total Requests',
+        THIS_WEEK: 'THIS WEEK',
+        UNIQUE_VISITORS: 'Unique Visitors',
+        TOTAL_ALBUMS: 'Total Albums',
+        PHOTOS_STORED: 'Photos Stored',
+        DIARY_ENTRIES_LABEL: 'Diary Entries',
+        CONTENT_DISTRIBUTION: 'Content Distribution',
+        COMMENTS_LABEL: 'Comments',
+        INTERACTIONS: 'Interactions',
+        TOP_5_PAGES: 'TOP 5 POPULAR PAGES',
+        LIVE: 'LIVE',
+        MAINTENANCE_MODE: 'MAINTENANCE MODE',
+        MAINTENANCE_DESC: 'Scheduled system optimization occurs every Sunday at 03:00 AM UTC.',
+        VIEW_LOG: 'View Log',
+        THIS_MONTH: 'THIS MONTH',
+        LIKES: 'LIKES',
+        FAVORITES: 'FAVORITES',
+        POST_COMMENTS: 'Post Comments',
+        ANIME_COMMENTS: 'Anime Comments',
+        GALLERY_COMMENTS: 'Gallery Comments',
+        LABEL_ARTICLE: 'Articles',
+        LABEL_DIARY: 'Diary',
+        LABEL_GALLERY: 'Gallery',
+        LABEL_ANIME: 'Anime'
     },
     ZH: {
         HOME: '主页',
@@ -1397,6 +1426,35 @@ export const TRANSLATIONS = {
         TOTAL_PROJECTS: '项目总数',
         COMPLETED: '已完成',
         IN_PROGRESS: '进行中',
-        LANG: '中文'
+        LANG: '中文',
+        SYSTEM_VITALS: '系统状态',
+        UPTIME_LABEL: '当前会话运行时间',
+        DB_CONNECTION: '数据库连接',
+        STORAGE_USAGE: '存储使用率',
+        STABLE: '稳定',
+        TOTAL_REQUESTS: '总请求数',
+        THIS_WEEK: '本周',
+        UNIQUE_VISITORS: '独立访客',
+        TOTAL_ALBUMS: '相册总数',
+        PHOTOS_STORED: '照片存储',
+        DIARY_ENTRIES_LABEL: '日记条数',
+        CONTENT_DISTRIBUTION: '内容分布',
+        COMMENTS_LABEL: '评论',
+        INTERACTIONS: '互动',
+        TOP_5_PAGES: '热门页面前5',
+        LIVE: '实时',
+        MAINTENANCE_MODE: '维护模式',
+        MAINTENANCE_DESC: '计划每周日凌晨 03:00 进行系统优化。',
+        VIEW_LOG: '查看日志',
+        THIS_MONTH: '本月',
+        LIKES: '点赞',
+        FAVORITES: '收藏',
+        POST_COMMENTS: '文章评论',
+        ANIME_COMMENTS: '动画评论',
+        GALLERY_COMMENTS: '相册评论',
+        LABEL_ARTICLE: '文章',
+        LABEL_DIARY: '日记',
+        LABEL_GALLERY: '相册',
+        LABEL_ANIME: '动画'
     }
-};
+ };

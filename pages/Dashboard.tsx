@@ -1,11 +1,10 @@
 import React from 'react';
 import SystemDashboard from '../components/SystemDashboard';
-import { TRANSLATIONS } from '../constants';
-
+import { useLang } from '../contexts/LangContext';
+ 
 const Dashboard: React.FC = () => {
-  const lang: 'EN' | 'ZH' = 'ZH';
-  const t = TRANSLATIONS[lang];
-
+  const { t } = useLang();
+ 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       <h2 className="text-3xl font-sans font-black text-ink dark:text-paper flex items-center gap-4">

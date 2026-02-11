@@ -7,7 +7,9 @@ import {
   Camera,
   X,
   MessageSquare,
-  Send
+  Send,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';

@@ -1,10 +1,16 @@
 import React from 'react';
-
+import { useLocation } from 'react-router-dom';
+ 
 interface BackToTopProps {
   color?: 'neon' | 'pink' | 'ink';
 }
 
 const BackToTop: React.FC<BackToTopProps> = ({ color = 'neon' }) => {
+  const location = useLocation();
+  
+  // 详情页面（包含 :id 的路由）
+  const isDetailPage = /\/(posts|announcement|anime|diary|gallery)\/.+$/.test(location.pathname);
+  
   const getButtonClass = () => {
     switch (color) {
       case 'neon':
@@ -17,11 +23,16 @@ const BackToTop: React.FC<BackToTopProps> = ({ color = 'neon' }) => {
         return 'bg-neon dark:bg-neon dark:text-white hover:bg-neon/80 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] dark:hover:shadow-[0_0_20px_rgba(0,255,136,0.5)]';
     }
   };
-
+ 
+  const handleScrollToTop = () => {
+    const scrollPosition = isDetailPage ? window.innerHeight : 0;
+    window.scrollTo({ top: scrollPosition, left: 0, behavior: 'smooth' });
+  };
+ 
   return (
     <div className="text-center">
       <button
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        onClick={handleScrollToTop}
         className={`group px-8 py-3 font-mono text-sm rounded transition-all duration-300 hover:-translate-y-1 ${getButtonClass()}`}
       >
         ↑ 返回顶部
@@ -29,5 +40,5 @@ const BackToTop: React.FC<BackToTopProps> = ({ color = 'neon' }) => {
     </div>
   );
 };
-
+ 
 export default BackToTop;

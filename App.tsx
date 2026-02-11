@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Outlet, Link } from 'react-router-dom';
 import Layout from './components/Layout';
+import { LangProvider } from './contexts/LangContext';
 
 // Pages
 import Home from './pages/Home';
@@ -25,29 +26,26 @@ import GalleryDetail from './pages/GalleryDetail';
 // 路由切换滚动逻辑
 const ScrollToTop: React.FC = () => {
   const location = useLocation();
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
+  // 详情页面路径（包含 :id 的路由）
+  const isDetailPage = /\/(posts|announcement|anime|diary|gallery)\/.+$/.test(location.pathname);
+  const isHomePage = location.pathname === '/';
   
   React.useEffect(() => {
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    
-    if (location.pathname !== '/') {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      timeoutRef.current = setTimeout(() => {
-        const scrollPosition = window.innerHeight * 0.7;
-        window.scrollTo({ top: scrollPosition, behavior: 'smooth' });
-      }, 800);
+    // 详情页：平滑滚动到100%位置
+    if (isDetailPage) {
+      window.scrollTo({ top: window.innerHeight, left: 0, behavior: 'smooth' });
     }
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [location.pathname]);
-
+    // 其他列表页：平滑滚动到70%位置
+    else if (!isHomePage) {
+      window.scrollTo({ top: window.innerHeight * 0.7, left: 0, behavior: 'smooth' });
+    }
+    // 主页：回到顶部
+    else {
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    }
+  }, [location.pathname, isHomePage, isDetailPage]);
+  
   return null;
 };
 
@@ -106,44 +104,37 @@ const NotFound: React.FC = () => (
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
-      <ScrollToTop />
-      <Routes>
-        {/* 所有页面共享 Layout */}
-        <Route element={<Layout />}>
-          {/* 首页 */}
-          <Route path="/" element={<Home />} />
-          
-          {/* 文章相关 */}
-          <Route path="/posts" element={<Posts />} />
-          <Route path="/posts/:id" element={<PostDetail />} />
-          <Route path="/archives" element={<Archives />} />
-          <Route path="/announcement" element={<Announcement />} />
-          <Route path="/announcement/:id" element={<AnnouncementDetail />} />
-          
-          {/* 个人展示 */}
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/skills" element={<Skills />} />
-          <Route path="/timeline" element={<Timeline />} />
-          
-          {/* 关于 */}
-          <Route path="/about" element={<About />} />
-          <Route path="/network" element={<Network />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          
-          {/* 我的 */}
-          <Route path="/anime" element={<Anime />} />
-          <Route path="/anime/:id" element={<AnimeDetail />} />
-          <Route path="/diary" element={<Diary />} />
-          <Route path="/diary/:id" element={<DiaryDetail />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/gallery/:id" element={<GalleryDetail />} />
+    <LangProvider>
+      <BrowserRouter>
+        <ScrollToTop />
+        <Routes>
+          {/* Layout包裹的页面 */}
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route path="posts" element={<Posts />} />
+            <Route path="posts/:id" element={<PostDetail />} />
+            <Route path="archives" element={<Archives />} />
+            <Route path="announcement" element={<Announcement />} />
+            <Route path="announcement/:id" element={<AnnouncementDetail />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="skills" element={<Skills />} />
+            <Route path="timeline" element={<Timeline />} />
+            <Route path="about" element={<About />} />
+            <Route path="network" element={<Network />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="anime" element={<Anime />} />
+            <Route path="anime/:id" element={<AnimeDetail />} />
+            <Route path="diary" element={<Diary />} />
+            <Route path="diary/:id" element={<DiaryDetail />} />
+            <Route path="gallery" element={<Gallery />} />
+            <Route path="gallery/:id" element={<GalleryDetail />} />
+          </Route>
           
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </LangProvider>
   );
 };
 
