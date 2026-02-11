@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ANIME_LIST } from '../constants';
-import { PlayCircle, CheckCircle, PauseCircle, XCircle } from 'lucide-react';
+import { PlayCircle, CheckCircle, PauseCircle, XCircle, Heart, HeartOff } from 'lucide-react';
 
 const MineAnime: React.FC = () => {
-  const [filter, setFilter] = useState<'ALL' | 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED'>('ALL');
+  const [filter, setFilter] = useState<'FAVORITE' | 'ALL' | 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED'>('ALL');
 
-  const filteredList = filter === 'ALL' 
-    ? ANIME_LIST 
+  const filteredList = filter === 'ALL'
+    ? ANIME_LIST
+    : filter === 'FAVORITE'
+    ? ANIME_LIST.filter(item => item.favorite)
     : ANIME_LIST.filter(item => item.status === filter);
 
   const getStatusIcon = (status: string) => {
@@ -41,6 +44,7 @@ const MineAnime: React.FC = () => {
 
           <div className="flex flex-wrap gap-2">
               {[
+                  { key: 'FAVORITE', label: '❤️ 收藏' },
                   { key: 'ALL', label: '全部' },
                   { key: 'WATCHING', label: '正在追看' },
                   { key: 'COMPLETED', label: '已完结' },
@@ -52,8 +56,8 @@ const MineAnime: React.FC = () => {
                     onClick={() => setFilter(opt.key as any)}
                     className={`
                         px-4 py-1.5 text-xs font-bold font-mono transition-all duration-300 uppercase flex items-center gap-2
-                        ${filter === opt.key 
-                            ? 'bg-ink dark:bg-white text-white dark:text-ink shadow-[4px_4px_0px_#10b981] translate-y-[-2px]' 
+                        ${filter === opt.key
+                            ? 'bg-pink-500 text-white shadow-[4px_4px_0px_#ec4899] translate-y-[-2px]' 
                             : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#222]'}
                     `}
                   >
@@ -66,59 +70,72 @@ const MineAnime: React.FC = () => {
       {/* Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredList.map((item) => (
-              <div key={item.id} className="group relative bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 hover:border-neon transition-colors duration-300">
-                  
-                  {/* Poster Image Placeholder */}
-                  <div className="aspect-[2/3] w-full relative overflow-hidden bg-gray-100 dark:bg-[#050505]">
-                      <div 
-                          className="w-full h-full transition-transform duration-500 group-hover:scale-105"
-                          style={{ backgroundColor: item.cover }}
-                      ></div>
-                      
-                      {/* Overlay Status Tag */}
-                      <div className="absolute top-2 left-2">
-                           <span className={`
-                                flex items-center gap-1 px-2 py-1 text-[10px] font-bold font-mono uppercase tracking-wider shadow-md
-                                ${item.status === 'WATCHING' ? 'bg-neon text-white' : ''}
-                                ${item.status === 'COMPLETED' ? 'bg-ink text-white' : ''}
-                                ${item.status === 'ON_HOLD' ? 'bg-gray-200 text-gray-600' : ''}
-                                ${item.status === 'DROPPED' ? 'bg-gray-100 text-gray-400 line-through decoration-black' : ''}
-                           `}>
+              <Link
+                key={item.id}
+                to={`/anime/${item.id}`}
+                className="group relative bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 hover:border-neon transition-colors duration-300 block"
+              >
+
+                   {/* Poster Image Placeholder */}
+                   <div className="aspect-[2/3] w-full relative overflow-hidden bg-gray-100 dark:bg-[#050505]">
+                       <div
+                           className="w-full h-full transition-transform duration-500 group-hover:scale-105"
+                           style={{ backgroundColor: item.cover }}
+                       ></div>
+
+                       {/* Overlay Status Tag */}
+                       <div className="absolute top-2 left-2">
+                            <span className={`
+                                 flex items-center gap-1 px-2 py-1 text-[10px] font-bold font-mono uppercase tracking-wider shadow-md
+                                 ${item.status === 'WATCHING' ? 'bg-neon text-white' : ''}
+                                 ${item.status === 'COMPLETED' ? 'bg-ink text-white' : ''}
+                                 ${item.status === 'ON_HOLD' ? 'bg-gray-200 text-gray-600' : ''}
+                                 ${item.status === 'DROPPED' ? 'bg-gray-100 text-gray-400 line-through decoration-black' : ''}
+                            `}>
                                {getStatusIcon(item.status)}
                                {getStatusLabel(item.status)}
-                           </span>
-                      </div>
+                            </span>
+                       </div>
 
-                      {/* Score Badge */}
-                      {item.score && (
-                          <div className="absolute top-2 right-2 w-8 h-8 bg-black/80 backdrop-blur-sm text-neon font-black font-sans flex items-center justify-center text-sm border border-white/20">
-                              {item.score}
-                          </div>
-                      )}
-                  </div>
+                       {/* Score Badge */}
+                       {item.score && (
+                           <div className="absolute top-2 right-2 w-8 h-8 bg-black/80 backdrop-blur-sm text-neon font-black font-sans flex items-center justify-center text-sm border border-white/20">
+                               {item.score}
+                           </div>
+                       )}
 
-                  {/* Info */}
-                  <div className="p-4">
-                      <h3 className="font-sans font-bold text-sm text-ink dark:text-white mb-3 line-clamp-1 group-hover:text-neon transition-colors">
-                          {item.title}
-                      </h3>
-                      
-                      {/* Progress Bar */}
-                      <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] font-mono text-gray-500 dark:text-gray-400">
-                              <span>EPISODE</span>
-                              <span>{item.currentEp} / {item.totalEps}</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-gray-100 dark:bg-[#222] overflow-hidden">
-                              <div 
-                                className="h-full bg-neon transition-all duration-500" 
-                                style={{ width: `${(item.currentEp / item.totalEps) * 100}%` }}
-                              ></div>
-                          </div>
-                      </div>
-                  </div>
+                       {/* Favorite Badge */}
+                       {item.favorite && (
+                           <div className="absolute bottom-2 right-2">
+                               <div className="w-8 h-8 bg-pink-500/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
+                                   <Heart size={14} className="text-white fill-white" />
+                               </div>
+                           </div>
+                       )}
+                   </div>
 
-              </div>
+                   {/* Info */}
+                   <div className="p-4">
+                       <h3 className="font-sans font-bold text-sm text-ink dark:text-white mb-3 line-clamp-1 group-hover:text-neon transition-colors">
+                           {item.title}
+                       </h3>
+
+                       {/* Progress Bar */}
+                       <div className="space-y-1">
+                           <div className="flex justify-between text-[10px] font-mono text-gray-500 dark:text-gray-400">
+                               <span>EPISODE</span>
+                               <span>{item.currentEp} / {item.totalEps}</span>
+                           </div>
+                           <div className="h-1.5 w-full bg-gray-100 dark:bg-[#222] overflow-hidden">
+                               <div
+                                 className="h-full bg-neon transition-all duration-500"
+                                 style={{ width: `${(item.currentEp / item.totalEps) * 100}%` }}
+                               ></div>
+                           </div>
+                       </div>
+                   </div>
+
+               </Link>
           ))}
       </div>
     </div>

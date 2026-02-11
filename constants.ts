@@ -899,13 +899,13 @@ export const RELATIONSHIP_NODES: RelationNode[] = [
 ];
 
 export const ANIME_LIST: AnimeItem[] = [
-  { id: '1', title: 'Ghost in the Shell', cover: '#1a1b26', totalEps: 26, currentEp: 24, status: 'WATCHING', score: 9.5 },
-  { id: '2', title: 'Cyberpunk: Edgerunners', cover: '#10b981', totalEps: 10, currentEp: 10, status: 'COMPLETED', score: 9.0 },
-  { id: '3', title: 'Serial Experiments Lain', cover: '#525252', totalEps: 13, currentEp: 13, status: 'COMPLETED', score: 10.0 },
-  { id: '4', title: 'Ergo Proxy', cover: '#262626', totalEps: 23, currentEp: 5, status: 'ON_HOLD' },
-  { id: '5', title: 'Psycho-Pass', cover: '#059669', totalEps: 22, currentEp: 12, status: 'WATCHING' },
-  { id: '6', title: 'Sword Art Online', cover: '#d1d5db', totalEps: 24, currentEp: 3, status: 'DROPPED' },
-  { id: '7', title: 'Steins;Gate', cover: '#404040', totalEps: 24, currentEp: 24, status: 'COMPLETED', score: 9.8 },
+  { id: '1', title: 'Ghost in the Shell', cover: '#1a1b26', totalEps: 26, currentEp: 24, status: 'WATCHING', score: 9.5, favorite: true },
+  { id: '2', title: 'Cyberpunk: Edgerunners', cover: '#10b981', totalEps: 10, currentEp: 10, status: 'COMPLETED', score: 9.0, favorite: true },
+  { id: '3', title: 'Serial Experiments Lain', cover: '#525252', totalEps: 13, currentEp: 13, status: 'COMPLETED', score: 10.0, favorite: false },
+  { id: '4', title: 'Ergo Proxy', cover: '#262626', totalEps: 23, currentEp: 5, status: 'ON_HOLD', favorite: false },
+  { id: '5', title: 'Psycho-Pass', cover: '#059669', totalEps: 22, currentEp: 12, status: 'WATCHING', favorite: false },
+  { id: '6', title: 'Sword Art Online', cover: '#d1d5db', totalEps: 24, currentEp: 3, status: 'DROPPED', favorite: false },
+  { id: '7', title: 'Steins;Gate', cover: '#404040', totalEps: 24, currentEp: 24, status: 'COMPLETED', score: 9.8, favorite: true },
 ];
 
 export const GALLERY_IMAGES: GalleryItem[] = [
@@ -1119,6 +1119,184 @@ export const SKILLS_DATA: SkillGroup[] = [
       { name: 'UI / UX', level: 85, projectCount: 10, rank: 'EXPERT' },
       { name: 'Motion Design', level: 72, projectCount: 3, rank: 'ADEPT' },
     ]
+  }
+];
+
+export const ANIME_DETAILS: AnimeDetail[] = [
+  {
+    id: '1',
+    title: 'Ghost in the Shell',
+    coverImage: '#1a1b26',
+    bannerImage: '#0f1014',
+    type: 'TV',
+    episodes: 26,
+    status: 'WATCHING',
+    score: 9.5,
+    aired: '1995',
+    studios: ['Production I.G'],
+    genres: ['Sci-Fi', 'Action', 'Cyberpunk', 'Psychological'],
+    synopsis: `In the year 2029, the world is interconnected by a vast electronic network that permeates all aspects of life. Cybernetics augment human capabilities, allowing people to replace body parts with prosthetics or even transfer their consciousness into fully artificial bodies.
+
+Major Motoko Kusanagi is a cyborg operative working for Section 9, an elite counter-terrorism unit. When a mysterious hacker known as the Puppet Master begins infiltrating the minds of cyborgs, Section 9 is called in to investigate.
+
+As Kusanagi delves deeper into the case, she begins to question her own identity and the nature of consciousness. What does it mean to be human when your body can be replaced and your memories can be manipulated?`,
+    myEpisodes: 24,
+    myScore: 9.5,
+    myStatus: 'WATCHING',
+    startDate: '2024.01.15',
+    favorite: true,
+    tags: ['赛博朋克', '哲学思考', '经典'],
+    bilibiliUrl: 'https://www.bilibili.com/bangumi/media/md28230768'
+  },
+  {
+    id: '2',
+    title: 'Cyberpunk: Edgerunners',
+    coverImage: '#10b981',
+    bannerImage: '#064e3b',
+    type: 'TV',
+    episodes: 10,
+    status: 'COMPLETED',
+    score: 9.0,
+    aired: '2022',
+    studios: ['Trigger'],
+    genres: ['Sci-Fi', 'Action', 'Cyberpunk', 'Tragedy'],
+    synopsis: `In Night City, a metropolis obsessed with power and modification, David Martinez, a street kid struggling to survive, decides to become an edgerunner—a mercenary outlaw also known as a cyberpunk.
+
+After losing everything in a tragic incident, David obtains a military-grade implant and joins forces with a crew of edgerunners led by the enigmatic Lucy. Together they take on dangerous missions, pushing their bodies and minds to the limit.
+
+But in Night City, power comes with a terrible price. As David becomes more cybernetically enhanced, he risks losing his humanity—and the one person he cares about.`,
+    myEpisodes: 10,
+    myScore: 9.0,
+    myStatus: 'COMPLETED',
+    startDate: '2022.09.13',
+    finishDate: '2022.09.20',
+    favorite: true,
+    tags: ['视觉盛宴', '悲剧', '夜之城'],
+    bilibiliUrl: 'https://www.bilibili.com/bangumi/media/md28230769'
+  },
+  {
+    id: '3',
+    title: 'Serial Experiments Lain',
+    coverImage: '#525252',
+    bannerImage: '#292524',
+    type: 'TV',
+    episodes: 13,
+    status: 'COMPLETED',
+    score: 10.0,
+    aired: '1998',
+    studios: ['Triangle Staff'],
+    genres: ['Sci-Fi', 'Psychological', 'Mystery', 'Horror'],
+    synopsis: `Lain Iwakura appears to be an ordinary, shy middle school girl. But when her classmates begin receiving strange emails from Chisa Yomoda—a student who committed suicide—Lain's curiosity leads her into the mysterious world of the Wired, a virtual reality network similar to the internet.
+
+As Lain explores the Wired, she discovers hidden powers and dark secrets. The lines between reality and virtual worlds blur, and Lain must confront questions about identity, consciousness, and the nature of existence itself.
+
+Is Lain real? Is she a program? And what is her connection to the Wired and the forces manipulating it from the shadows?`,
+    myEpisodes: 13,
+    myScore: 10.0,
+    myStatus: 'COMPLETED',
+    startDate: '2023.03.10',
+    finishDate: '2023.03.23',
+    favorite: false,
+    tags: ['神作', '意识流', '赛博恐怖'],
+    bilibiliUrl: 'https://www.bilibili.com/bangumi/media/md28230770'
+  },
+  {
+    id: '4',
+    title: 'Ergo Proxy',
+    coverImage: '#262626',
+    bannerImage: '#18181b',
+    type: 'TV',
+    episodes: 23,
+    status: 'ON_HOLD',
+    aired: '2006',
+    studios: ['Manglobe'],
+    genres: ['Sci-Fi', 'Mystery', 'Psychological', 'Dystopian'],
+    synopsis: `In a post-apocalyptic future, the city of Romdo is a utopian paradise created by AutoReivs—androids that assist humans. But when a series of murders committed by infected AutoReivs begins to spread, Detective Re-l Mayer is assigned to investigate.
+
+What she discovers will shake the foundations of Romdo. A mysterious monster called Proxy appears, and with it, questions about the nature of humanity, artificial intelligence, and the truth behind the city's perfect facade.
+
+Re-l's search for answers leads her beyond Romdo's walls, into the wasteland where she encounters Vincent Law—a man with no memory of who he is, but who may hold the key to everything.`,
+    myEpisodes: 5,
+    myScore: undefined,
+    myStatus: 'ON_HOLD',
+    startDate: '2024.02.01',
+    favorite: false,
+    tags: ['悬疑', '末世', '待续'],
+    bilibiliUrl: 'https://www.bilibili.com/bangumi/media/md28230771'
+  },
+  {
+    id: '5',
+    title: 'Psycho-Pass',
+    coverImage: '#059669',
+    bannerImage: '#065f46',
+    type: 'TV',
+    episodes: 22,
+    status: 'WATCHING',
+    aired: '2012',
+    studios: ['Production I.G'],
+    genres: ['Sci-Fi', 'Psychological', 'Action', 'Police'],
+    synopsis: `In the 22nd century, Japan is governed by the Sibyl System—an AI that can measure the mental state of every citizen, assigning them a "Psycho-Pass" color and number. Those whose Hue clouds too much are identified as potential criminals, even before they commit any crime.
+
+Akane Tsunemori is a young Inspector assigned to the Criminal Investigation Division's Public Safety Bureau. Working alongside Enforcers—latent criminals used as hunting dogs—Akane must enforce the law while grappling with the moral implications of a system that judges people's thoughts and potential.
+
+But as Akane delves into cases that challenge the Sibyl System, she begins to question whether justice can truly be determined by an algorithm.`,
+    myEpisodes: 12,
+    myScore: undefined,
+    myStatus: 'WATCHING',
+    startDate: '2024.01.05',
+    favorite: false,
+    tags: ['反乌托邦', '道德困境', '心理'],
+    bilibiliUrl: 'https://www.bilibili.com/bangumi/media/md28230772'
+  },
+  {
+    id: '6',
+    title: 'Sword Art Online',
+    coverImage: '#d1d5db',
+    bannerImage: '#9ca3af',
+    type: 'TV',
+    episodes: 24,
+    status: 'DROPPED',
+    aired: '2012',
+    studios: ['A-1 Pictures'],
+    genres: ['Action', 'Adventure', 'Fantasy', 'Romance'],
+    synopsis: `In the year 2022, Virtual Reality Massive Multiplayer Online Role-Playing Game (VRMMORPG) becomes a reality. On the launch day of Sword Art Online, ten thousand players log in to experience the virtual world.
+
+But when players attempt to log out, they discover they cannot. The game's creator has trapped them inside, and the only way to escape is to clear all one hundred floors of the game's tower.
+
+Kazuto "Kirito" Kirigaya is one of the beta testers and uses his knowledge to survive. As the death game progresses, players form alliances, fall in love, and face the ultimate question: is a virtual life worth living?`,
+    myEpisodes: 3,
+    myScore: undefined,
+    myStatus: 'DROPPED',
+    startDate: '2023.12.01',
+    favorite: false,
+    tags: ['已弃番', '不如意'],
+    bilibiliUrl: 'https://www.bilibili.com/bangumi/media/md28230773'
+  },
+  {
+    id: '7',
+    title: 'Steins;Gate',
+    coverImage: '#404040',
+    bannerImage: '#27272a',
+    type: 'TV',
+    episodes: 24,
+    status: 'COMPLETED',
+    score: 9.8,
+    aired: '2011',
+    studios: ['White Fox'],
+    genres: ['Sci-Fi', 'Thriller', 'Psychological', 'Romance'],
+    synopsis: `Rintarou Okabe is an eccentric self-proclaimed "mad scientist" who runs a laboratory with his friends Mayuri and Daru. They accidentally discover a way to send text messages to the past, creating what they call "D-Mails."
+
+As Okabe experiments more, he gains the ability to travel back in time physically. But changing the past has consequences—each alteration ripples through time, creating new timelines and unforeseen tragedies.
+
+When a secret organization called SERN learns of their time machine, Okabe must race against time—and fate itself—to save the people he cares about. But how many times can he rewrite history before he loses himself?`,
+    myEpisodes: 24,
+    myScore: 9.8,
+    myStatus: 'COMPLETED',
+    startDate: '2023.05.20',
+    finishDate: '2023.06.12',
+    favorite: true,
+    tags: ['神作', '时间旅行', '催泪'],
+    bilibiliUrl: 'https://www.bilibili.com/bangumi/media/md28230774'
   }
 ];
 

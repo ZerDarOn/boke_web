@@ -88,6 +88,31 @@ export interface AnimeItem {
   currentEp: number;
   status: 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
   score?: number;
+  favorite?: boolean;
+}
+
+export interface AnimeDetail {
+  id: string;
+  title: string;
+  coverImage: string;
+  bannerImage: string;
+  type: 'TV' | 'OVA' | 'Movie' | 'Special' | 'ONA';
+  episodes: number;
+  status: 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
+  score?: number;
+  aired: string;
+  studios: string[];
+  genres: string[];
+  synopsis: string;
+  myEpisodes: number;
+  myScore?: number;
+  myStatus: 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
+  startDate?: string;
+  finishDate?: string;
+  favorite: boolean;
+  notes?: string;
+  tags?: string[];
+  bilibiliUrl?: string;
 }
 
 export interface GalleryItem {

@@ -18,7 +18,7 @@ import {
   Share2,
   Link2
 } from 'lucide-react';
-import GiscusComments from '../components/GiscusComments';
+import SimpleComments from '../components/GiscusComments';
 import TableOfContents from '../components/TableOfContents';
 
 const PostDetail: React.FC = () => {
@@ -510,7 +510,7 @@ const PostDetail: React.FC = () => {
         <h3 className="text-2xl font-serif font-bold mb-6 pb-2 border-b border-gray-200 dark:border-white/10 text-ink dark:text-white">
           评论
         </h3>
-        <GiscusComments theme={theme} />
+        <SimpleComments theme={theme} />
       </div>
 
       {/* 返回顶部 */}
