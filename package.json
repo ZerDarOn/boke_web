@@ -1,30 +1,21 @@
 {
   "name": "ink-spirit-blog",
-  "private": true,
   "version": "1.0.0",
-  "type": "module",
+  "description": "INK.SPIRIT - Cyber-Wuxia Personal Blog (Fullstack)",
+  "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install"
   },
-  "dependencies": {
-    "lucide-react": "^0.563.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.1.0",
-    "react-syntax-highlighter": "^16.1.0",
-    "rehype-raw": "^7.0.0",
-    "rehype-slug": "^6.0.0",
-    "rehype-toc": "^3.0.2",
-    "remark-gfm": "^4.0.1"
-  },
+  "keywords": ["blog", "react", "cyberpunk", "wuxia"],
+  "author": "CYBER.RONIN",
+  "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@types/react-syntax-highlighter": "^15.5.13",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "concurrently": "^8.2.0"
   }
 }
