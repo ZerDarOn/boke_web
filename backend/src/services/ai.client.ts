@@ -4,7 +4,7 @@
  */
 
 import axios from 'axios';
-import { config } from './config/env';
+import { config } from '../config/env';
 
 const AI_SERVICE_URL = config.AI_SERVICE_URL || 'http://localhost:8000';
 const REQUEST_TIMEOUT = 60000; // 60 seconds for AI requests

@@ -4,6 +4,64 @@
 
 This guide helps you initialize the database for the INK.SPIRIT Blog backend with all the sample data needed for the frontend.
 
+## 🚀 Quick Start (Auto-Initialization)
+
+### ⚡ Fastest Way - Auto-Initialize on Startup
+
+The backend now supports **automatic database initialization** on first startup!
+
+1. **Set up `.env` file:**
+   ```bash
+   cp .env.example .env
+   # Edit DATABASE_URL with your PostgreSQL connection string
+   ```
+
+2. **Start the backend:**
+   ```bash
+   npm run dev
+   ```
+
+   The backend will:
+   - 🔍 Check if database is initialized
+   - 🔄 Run migrations if needed
+   - 🌱 Seed with sample data if empty
+   - ✅ Start the server
+
+   > **Note**: Database is only initialized on first startup. Subsequent starts will skip initialization.
+
+3. **Control auto-initialization:**
+   ```bash
+   # .env file
+   INIT_DB="true"   # Enable auto-initialization (default for development)
+   INIT_DB="false"  # Disable (recommended for production)
+   ```
+
+---
+
+## 🛠️ Manual Database Management
+
+### Initialize Database Manually
+```bash
+npm run db:init
+```
+
+### Check Database Health
+```bash
+npm run db:health
+```
+
+### Reset Database (WARNING: Deletes All Data!)
+```bash
+npm run db:force-reset
+```
+
+### Traditional Full Reset
+```bash
+npm run db:reset
+```
+
+---
+
 ## 🔧 Prerequisites
 
 Before starting, ensure you have:
@@ -12,7 +70,7 @@ Before starting, ensure you have:
 2. **PostgreSQL** database installed and running
 3. **npm** dependencies installed
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Traditional)
 
 ### 1. Install Dependencies
 

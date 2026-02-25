@@ -276,6 +276,7 @@ SVG 滤镜提供了 \`feTurbulence\` 和 \`feDisplacementMap\` 两个滤镜，�
         isPublished: true,
         authorId: adminUser.id,
       },
+    }),
   ]);
   console.log(`✅ Created ${posts.length} posts\n`);
 
@@ -927,11 +928,4 @@ Browser-based pixel art editor with real-time collaboration features.
   console.log('');
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ Database initialization failed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+export { main };
