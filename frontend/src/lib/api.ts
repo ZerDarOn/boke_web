@@ -439,9 +439,9 @@ export interface NetworkNode {
 }
 
 export const networkApi = {
-  // GET /api/network - 获取关系网络
+  // GET /api/network/nodes - 获取关系网络
   getAll: async () => {
-    return apiRequest<NetworkNode[]>(`/api/network`);
+    return apiRequest<NetworkNode[]>(`/api/network/nodes`);
   },
 };
 

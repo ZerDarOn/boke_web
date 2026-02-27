@@ -9,6 +9,7 @@ export class DashboardController {
       const stats = await DashboardService.getStats();
       response.success(res, stats);
     } catch (error: any) {
+      console.error('Dashboard stats error:', error);
       response.error(res, error.message || 'Failed to fetch dashboard stats');
     }
   }

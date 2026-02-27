@@ -73,21 +73,15 @@ export interface DashboardStats {
   totalRequests: number;
   uniqueVisitors: number;
   contentStats: {
+    totalContent: number;
+    totalLikes: number;
+    totalFavorites: number;
+    totalComments: number;
     articles: number;
-    diaries: number;
     photos: number;
-    anime: number;
+    diaries: number;
   };
-  interactions: {
-    likes: number;
-    favorites: number;
-    comments: number;
-  };
-  commentDistribution: {
-    posts: number;
-    anime: number;
-    gallery: number;
-  };
+  commentDistribution: { label: string; count: number; color: string }[];
 }
 
 // 搜索结果
