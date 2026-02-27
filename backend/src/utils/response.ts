@@ -9,6 +9,7 @@ export const success = <T>(
   statusCode = 200
 ): void => {
   const response: ApiResponse<T> = {
+    success: true,
     data,
     ...(message && { message }),
     ...(meta && { meta }),
