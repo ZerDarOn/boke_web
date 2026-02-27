@@ -1,0 +1,19 @@
+import React from 'react';
+import SystemDashboard from '../components/SystemDashboard';
+import { useLang } from '../contexts/LangContext';
+ 
+const Dashboard: React.FC = () => {
+  const { t } = useLang();
+ 
+  return (
+    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+      <h2 className="text-3xl font-sans font-black text-ink dark:text-paper flex items-center gap-4">
+        / {t.DASHBOARD}
+        <div className="h-[2px] flex-1 bg-ink/10 dark:bg-paper/20"></div>
+      </h2>
+      <SystemDashboard />
+    </div>
+  );
+};
+
+export default Dashboard;
