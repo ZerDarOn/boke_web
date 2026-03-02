@@ -39,9 +39,26 @@ app.use(helmet({
   },
 }));
 
-// CORS
+// CORS - 允许 localhost 和本地 IP 地址访问
+const allowedOrigins = config.FRONTEND_URLS;
+
+console.log('🔍 CORS 允许的来源列表:');
+allowedOrigins.forEach(origin => console.log(`  - ${origin}`));
+
 app.use(cors({
-  origin: config.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked for origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

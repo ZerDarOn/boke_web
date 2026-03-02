@@ -7,6 +7,8 @@ import {
 import { authenticate, optionalAuth } from '../middleware/auth.middleware';
 import { success, error } from '../utils/response';
 import * as uploadService from '../services/upload.service';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
 
@@ -93,6 +95,34 @@ router.get('/:type/:filename/info', async (req, res) => {
     return success(res, info);
   } catch (err: any) {
     return error(res, err.message, 500);
+  }
+});
+
+// 获取已上传文件列表
+router.get('/', async (req, res) => {
+  try {
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    
+    if (!fs.existsSync(uploadsDir)) {
+      return success(res, { data: [] });
+    }
+    
+    const files = fs.readdirSync(uploadsDir).map(filename => {
+      const filePath = path.join(uploadsDir, filename);
+      const stats = fs.statSync(filePath);
+      
+      return {
+        name: filename,
+        path: `/uploads/${filename}`,
+        size: stats.size,
+        modifiedAt: stats.mtime.toISOString(),
+        isFile: stats.isFile(),
+      };
+    });
+    
+    return success(res, { data: files });
+  } catch (err: any) {
+    return error(res, err.message || '获取文件列表失败', 500);
   }
 });
 

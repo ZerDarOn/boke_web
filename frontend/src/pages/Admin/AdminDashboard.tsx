@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import AdminLayout from '../../components/AdminLayout';
+import { api } from '../../lib/api';
+import type { DashboardStats } from '../../lib/api';
+import { Loader2 } from 'lucide-react';
 
 interface DashboardStats {
   totalPosts: number;
@@ -17,6 +18,7 @@ interface DashboardStats {
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStats();
@@ -25,10 +27,16 @@ const AdminDashboard: React.FC = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/dashboard/overview');
-      setStats(response.data);
+      setError(null);
+      const result = await api.dashboard.getStats();
+      if (result.success && result.data) {
+        setStats(result.data);
+      } else {
+        setError(result.error || 'Failed to fetch dashboard stats');
+      }
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);
+      setError('Failed to fetch dashboard stats');
     } finally {
       setLoading(false);
     }
@@ -36,56 +44,72 @@ const AdminDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-96">
-          <div className="text-ink dark:text-paper text-xl">加载统计中...</div>
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-neon" size={32} />
+          <p className="text-ink dark:text-paper text-xl">加载统计中...</p>
         </div>
-      </AdminLayout>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <p className="text-red-600 dark:text-red-300 font-mono text-sm">
+          ERROR: {error}
+        </p>
+        <button
+          onClick={fetchStats}
+          className="mt-2 text-sm text-red-600 dark:text-red-300 underline"
+        >
+          重试
+        </button>
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-ink dark:text-paper">文章总数</h3>
-              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.totalPosts || 0}</span>
+              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.contentStats?.articles || 0}</span>
             </div>
             <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
-              已发布 {stats?.totalPosts || 0} 篇文章
+              已发布 {stats?.contentStats?.articles || 0} 篇文章
             </p>
           </div>
 
           <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-ink dark:text-paper">项目总数</h3>
-              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.totalProjects || 0}</span>
+              <h3 className="text-lg font-semibold text-ink dark:text-paper">相册图片</h3>
+              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.contentStats?.photos || 0}</span>
             </div>
             <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
-              {stats?.totalProjects || 0} 个项目
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-ink dark:text-paper">动漫总数</h3>
-              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.totalAnime || 0}</span>
-            </div>
-            <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
-              {stats?.totalAnime || 0} 部动漫
+              {stats?.contentStats?.photos || 0} 张照片
             </p>
           </div>
 
           <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-ink dark:text-paper">日记总数</h3>
-              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.totalDiaries || 0}</span>
+              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.contentStats?.diaries || 0}</span>
             </div>
             <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
-              {stats?.totalDiaries || 0} 篇日记
+              {stats?.contentStats?.diaries || 0} 篇日记
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-ink dark:text-paper">总内容数</h3>
+              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.contentStats?.totalContent || 0}</span>
+            </div>
+            <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
+              {stats?.contentStats?.totalContent || 0} 个内容项
             </p>
           </div>
         </div>
@@ -93,31 +117,21 @@ const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-ink dark:text-paper">相册图片</h3>
-              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.totalGalleryImages || 0}</span>
+              <h3 className="text-lg font-semibold text-ink dark:text-paper">点赞总数</h3>
+              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.contentStats?.totalLikes || 0}</span>
             </div>
             <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
-              {stats?.totalGalleryImages || 0} 张照片
+              {stats?.contentStats?.totalLikes || 0} 次点赞
             </p>
           </div>
 
           <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-ink dark:text-paper">评论总数</h3>
-              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.totalComments || 0}</span>
+              <h3 className="text-lg font-semibold text-ink dark:text-paper">总请求数</h3>
+              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.totalRequests || 0}</span>
             </div>
             <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
-              {stats?.totalComments || 0} 条评论
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-ink dark:text-paper">访问统计</h3>
-              <span className="text-3xl font-bold text-ink-50 dark:text-gray-300">{stats?.pageViews || 0}</span>
-            </div>
-            <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
-              总访问量
+              系统总访问量
             </p>
           </div>
 
@@ -128,6 +142,16 @@ const AdminDashboard: React.FC = () => {
             </div>
             <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
               唯一访客数
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-ink dark:text-paper">系统运行时间</h3>
+              <span className="text-xl font-bold text-ink-50 dark:text-gray-300">{stats?.uptime || '-'}</span>
+            </div>
+            <p className="mt-2 text-sm text-ink/70 dark:text-gray-400">
+              系统已持续运行
             </p>
           </div>
         </div>
@@ -170,8 +194,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </AdminLayout>
-  );
+    );
 };
 
 export default AdminDashboard;

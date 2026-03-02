@@ -10,6 +10,11 @@ export const config = {
     JWT_SECRET: process.env.JWT_SECRET || 'default-secret-change-me',
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
     FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+    FRONTEND_URLS: [
+        process.env.FRONTEND_URL || 'http://localhost:3000',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ].filter((url, index, self) => self.indexOf(url) === index),
     API_URL: process.env.API_URL || 'http://localhost:3001',
     MAX_FILE_SIZE: parseInt(process.env.MAX_FILE_SIZE || '10485760'),
     UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
@@ -17,4 +22,4 @@ export const config = {
     AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
     INIT_DB: process.env.INIT_DB || 'true',  // Enable auto-initialization by default
     RESET_DB: process.env.RESET_DB || 'false',  // Force rebuild database
-  };
+};

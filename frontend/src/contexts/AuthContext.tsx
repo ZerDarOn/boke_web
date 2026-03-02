@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../lib/api';
 
 interface User {
   id: string;
@@ -34,61 +35,63 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
-    checkAuth();
+    // 延迟执行，避免竞态条件
+    const timer = setTimeout(() => {
+      checkAuth();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const checkAuth = async () => {
     try {
-      setLoading(true);
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        setUser(null);
-        return;
-      }
+      setIsChecking(true);
+      console.log('🔐 checkAuth() called');
+      
+      const result = await api.auth.me();
+      console.log('🔐 checkAuth result:', result);
 
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData.data);
+      if (result.success && result.data) {
+        setUser(result.data);
+        console.log('✅ User set from checkAuth:', result.data);
       } else {
         localStorage.removeItem('auth_token');
         setUser(null);
+        console.log('❌ No valid user data, cleared token');
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('❌ checkAuth failed:', error);
       setUser(null);
     } finally {
-      setLoading(false);
+      setIsChecking(false);
     }
   };
 
   const login = async (username: string, password: string): Promise<void> => {
+    console.log('🔐 AuthContext.login() called');
+    console.log('📝 Username:', username);
+    console.log('🔑 Password:', password);
+
     try {
       setLoading(true);
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
+      const result = await api.auth.login(username, password);
+      
+      console.log('📡 API result:', result);
 
-      const data = await response.json();
-
-      if (data.token) {
-        localStorage.setItem('auth_token', data.token);
-        setUser(data.user);
+      if (result.success && result.data && result.data.token) {
+        localStorage.setItem('auth_token', result.data.token);
+        setUser(result.data.user);
+        console.log('✅ Token saved to localStorage');
+        console.log('✅ User set:', result.data.user);
       } else {
-        throw new Error(data.message || 'Login failed');
+        console.log('❌ Login failed - no token in response');
+        throw new Error(result.error || 'Login failed');
       }
     } catch (error: any) {
+      console.error('❌ Login error:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -97,16 +100,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async (): Promise<void> => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
+      console.log('🔐 logout() called');
+      await api.auth.logout();
       localStorage.removeItem('auth_token');
       setUser(null);
+      console.log('✅ Logged out successfully');
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('❌ Logout failed:', error);
     }
   };
 

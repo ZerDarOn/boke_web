@@ -3,8 +3,29 @@
  * Provides typed API calls to backend
  */
 
-// API Base URL - 使用环境变量，默认 localhost
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// API Base URL - 动态生成，兼容 localhost 和 IP 地址访问
+const getApiBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  const isBrowser = typeof window !== 'undefined';
+  if (!isBrowser) {
+    return 'http://localhost:3001';
+  }
+
+  const origin = window.location.origin;
+  const port = window.location.port;
+
+  if (origin.includes('192.168.') || origin.includes('localhost')) {
+    const hostname = window.location.hostname;
+    return `http://${hostname}:3001`;
+  }
+
+  return 'http://localhost:3001';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * API Response Wrapper
@@ -57,6 +78,81 @@ async function apiRequest<T>(
     };
   }
 }
+
+// ==================== Auth ====================
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string;
+  role: string;
+  avatar?: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  github?: string;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  user: User;
+  token: string;
+  refreshToken: string;
+}
+
+export const authApi = {
+  login: async (username: string, password: string) => {
+    return apiRequest<LoginResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  },
+
+  me: async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      return { success: false, error: 'No token found' };
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      return { success: false, error: data.message || 'Failed to get user info' };
+    }
+
+    return { success: true, data: data.data as User };
+  },
+
+  logout: async () => {
+    const token = localStorage.getItem('auth_token');
+    
+    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      return { success: false, error: 'Failed to logout' };
+    }
+
+    return { success: true };
+  },
+};
 
 // ==================== Blog Posts ====================
 
@@ -209,6 +305,29 @@ export const projectsApi = {
   getById: async (id: string) => {
     return apiRequest<Project>(`/api/projects/${id}`);
   },
+
+  // POST /api/projects - 创建项目
+  create: async (data: Partial<Project>) => {
+    return apiRequest<Project>(`/api/projects`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/projects/:id - 更新项目
+  update: async (id: string, data: Partial<Project>) => {
+    return apiRequest<Project>(`/api/projects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/projects/:id - 删除项目
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/projects/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ==================== Anime ====================
@@ -254,6 +373,29 @@ export const animeApi = {
   getById: async (id: string) => {
     return apiRequest<Anime>(`/api/anime/${id}`);
   },
+
+  // POST /api/anime - 创建动漫
+  create: async (data: Partial<Anime>) => {
+    return apiRequest<Anime>(`/api/anime`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/anime/:id - 更新动漫
+  update: async (id: string, data: Partial<Anime>) => {
+    return apiRequest<Anime>(`/api/anime/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/anime/:id - 删除动漫
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/anime/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ==================== Diary ====================
@@ -295,6 +437,29 @@ export const diaryApi = {
   // GET /api/diary/:id - 获取日记详情
   getById: async (id: string) => {
     return apiRequest<Diary>(`/api/diary/${id}`);
+  },
+
+  // POST /api/diary - 创建日记
+  create: async (data: Partial<Diary>) => {
+    return apiRequest<Diary>(`/api/diary`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/diary/:id - 更新日记
+  update: async (id: string, data: Partial<Diary>) => {
+    return apiRequest<Diary>(`/api/diary/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/diary/:id - 删除日记
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/diary/${id}`, {
+      method: 'DELETE',
+    });
   },
 };
 
@@ -358,6 +523,29 @@ export const galleryApi = {
   getById: async (id: string) => {
     return apiRequest<GalleryImage>(`/api/gallery/${id}`);
   },
+
+  // POST /api/gallery - 创建图片
+  create: async (data: Partial<GalleryImage>) => {
+    return apiRequest<GalleryImage>(`/api/gallery`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/gallery/:id - 更新图片
+  update: async (id: string, data: Partial<GalleryImage>) => {
+    return apiRequest<GalleryImage>(`/api/gallery/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/gallery/:id - 删除图片
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/gallery/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ==================== Skills ====================
@@ -392,6 +580,34 @@ export const skillsApi = {
   getAll: async () => {
     return apiRequest<Skill[]>(`/api/skills/nodes`);
   },
+
+  // GET /api/skills/:id - 获取技能详情
+  getById: async (id: string) => {
+    return apiRequest<Skill>(`/api/skills/${id}`);
+  },
+
+  // POST /api/skills - 创建技能
+  create: async (data: Partial<Skill>) => {
+    return apiRequest<Skill>(`/api/skills`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/skills/:id - 更新技能
+  update: async (id: string, data: Partial<Skill>) => {
+    return apiRequest<Skill>(`/api/skills/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/skills/:id - 删除技能
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/skills/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ==================== Timeline ====================
@@ -420,6 +636,34 @@ export const timelineApi = {
 
     return apiRequest<TimelineEvent[]>(`/api/timeline?${queryParams}`);
   },
+
+  // GET /api/timeline/:id - 获取事件详情
+  getById: async (id: string) => {
+    return apiRequest<TimelineEvent>(`/api/timeline/${id}`);
+  },
+
+  // POST /api/timeline - 创建事件
+  create: async (data: Partial<TimelineEvent>) => {
+    return apiRequest<TimelineEvent>(`/api/timeline`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/timeline/:id - 更新事件
+  update: async (id: string, data: Partial<TimelineEvent>) => {
+    return apiRequest<TimelineEvent>(`/api/timeline/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/timeline/:id - 删除事件
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/timeline/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ==================== Network ====================
@@ -442,6 +686,34 @@ export const networkApi = {
   // GET /api/network/nodes - 获取关系网络
   getAll: async () => {
     return apiRequest<NetworkNode[]>(`/api/network/nodes`);
+  },
+
+  // GET /api/network/nodes/:id - 获取节点详情
+  getById: async (id: string) => {
+    return apiRequest<NetworkNode>(`/api/network/nodes/${id}`);
+  },
+
+  // POST /api/network/nodes - 创建节点
+  create: async (data: Partial<NetworkNode>) => {
+    return apiRequest<NetworkNode>(`/api/network/nodes`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/network/nodes/:id - 更新节点
+  update: async (id: string, data: Partial<NetworkNode>) => {
+    return apiRequest<NetworkNode>(`/api/network/nodes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/network/nodes/:id - 删除节点
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/network/nodes/${id}`, {
+      method: 'DELETE',
+    });
   },
 };
 
@@ -510,6 +782,29 @@ export const announcementsApi = {
   getById: async (id: string) => {
     return apiRequest<Announcement>(`/api/announcements/${id}`);
   },
+
+  // POST /api/announcements - 创建公告
+  create: async (data: Partial<Announcement>) => {
+    return apiRequest<Announcement>(`/api/announcements`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/announcements/:id - 更新公告
+  update: async (id: string, data: Partial<Announcement>) => {
+    return apiRequest<Announcement>(`/api/announcements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/announcements/:id - 删除公告
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/announcements/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ==================== Search ====================
@@ -544,8 +839,49 @@ export const healthApi = {
   },
 };
 
+// ==================== Users (Placeholder - backend not implemented) ====================
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string;
+  role: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export const usersApi = {
+  // GET /api/users - 获取用户列表 (placeholder)
+  getAll: async () => {
+    return { success: false as const, error: 'Users API not implemented' };
+  },
+
+  // GET /api/users/:id - 获取用户详情 (placeholder)
+  getById: async (id: string) => {
+    return { success: false as const, error: 'Users API not implemented' };
+  },
+
+  // POST /api/users - 创建用户 (placeholder)
+  create: async (data: Partial<AdminUser>) => {
+    return { success: false as const, error: 'Users API not implemented' };
+  },
+
+  // PUT /api/users/:id - 更新用户 (placeholder)
+  update: async (id: string, data: Partial<AdminUser>) => {
+    return { success: false as const, error: 'Users API not implemented' };
+  },
+
+  // DELETE /api/users/:id - 删除用户 (placeholder)
+  delete: async (id: string) => {
+    return { success: false as const, error: 'Users API not implemented' };
+  },
+};
+
 // Export all APIs
 export const api = {
+  auth: authApi,
   posts: postsApi,
   projects: projectsApi,
   anime: animeApi,
@@ -558,4 +894,5 @@ export const api = {
   announcements: announcementsApi,
   search: searchApi,
   health: healthApi,
+  users: usersApi,
 };

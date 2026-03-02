@@ -35,11 +35,12 @@ async function main() {
     app.listen(PORT, () => {
       console.log(`
 🚀 INK.SPIRIT Backend Server
-══════════════════════════════════════
+═════════════════════════════════════
 📡 Server running on port: ${PORT}
 🌐 Environment: ${config.NODE_ENV}
-📊 API Documentation: http://localhost:${PORT}/api/health
-══════════════════════════════════════
+📊 API Health: http://localhost:${PORT}/api/health
+🔐 Admin Panel: http://localhost:3000/admin/login
+═════════════════════════════════════
       `);
     });
   } catch (error) {
