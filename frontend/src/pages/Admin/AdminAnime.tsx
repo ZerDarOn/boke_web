@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
-import { Search, Plus, Edit, Trash2, Heart, Star, Filter, Loader2, X, Save } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Heart, Star, Filter, Loader2, X, Save, Upload, Image as ImageIcon, XCircle } from 'lucide-react';
 
 interface Anime {
   id: string;
@@ -34,6 +34,10 @@ const AdminAnime: React.FC = () => {
   const [editingAnime, setEditingAnime] = useState<Anime | null>(null);
   const [formData, setFormData] = useState<Partial<Anime>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Image upload states
+  const [uploading, setUploading] = useState(false);
+  const [coverPreview, setCoverPreview] = useState<string>('');
 
   useEffect(() => {
     fetchAnime();
@@ -82,6 +86,7 @@ const AdminAnime: React.FC = () => {
   const handleEdit = (anime: Anime) => {
     setEditingAnime(anime);
     setFormData({ ...anime });
+    setCoverPreview(anime.cover || '');
     setIsModalOpen(true);
   };
 
@@ -97,7 +102,9 @@ const AdminAnime: React.FC = () => {
       favorite: false,
       genres: [],
       studios: [],
+      cover: '',
     });
+    setCoverPreview('');
     setIsModalOpen(true);
   };
 
@@ -149,6 +156,66 @@ const AdminAnime: React.FC = () => {
     } catch (error) {
       console.error('Failed to toggle favorite:', error);
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 验证文件类型
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('请选择有效的图片文件 (JPG/PNG/GIF/WebP)');
+      return;
+    }
+
+    // 验证文件大小 (最大 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('图片大小不能超过 5MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${getApiBaseUrl()}/api/upload/image/anime`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('上传失败');
+      }
+
+      const result = await response.json();
+      if (result.success && result.data?.url) {
+        handleInputChange('cover', result.data.url);
+        setCoverPreview(result.data.url);
+      } else {
+        throw new Error(result.error || '上传失败');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('图片上传失败，请重试');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveCover = () => {
+    handleInputChange('cover', '');
+    setCoverPreview('');
+  };
+
+  const getApiBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+    return 'http://localhost:3001';
   };
 
   const getStatusColor = (status: string) => {
@@ -454,22 +521,66 @@ const AdminAnime: React.FC = () => {
                         收藏
                       </label>
                     </div>
-                  </div>
+                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      封面链接
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cover || ''}
-                      onChange={(e) => handleInputChange('cover', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      placeholder="https://..."
-                    />
-                  </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                       封面图片
+                     </label>
+                     <div className="space-y-2">
+                       {/* 图片上传区域 */}
+                       <div className="flex items-center gap-3">
+                         <label className="flex-1 flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg cursor-pointer transition-colors">
+                           <Upload size={18} className="text-gray-600" />
+                           <span className="text-sm text-gray-700">
+                             {uploading ? '上传中...' : '点击上传图片'}
+                           </span>
+                           <input
+                             type="file"
+                             accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                             onChange={handleImageUpload}
+                             className="hidden"
+                             disabled={uploading}
+                           />
+                         </label>
+                       </div>
 
-                  <div>
+                       {/* 图片预览和删除按钮 */}
+                       {(formData.cover || coverPreview) && (
+                         <div className="relative inline-block">
+                           <img
+                             src={formData.cover || coverPreview}
+                             alt="封面预览"
+                             className="w-32 h-48 object-cover rounded-lg border border-gray-300"
+                           />
+                           <button
+                             type="button"
+                             onClick={handleRemoveCover}
+                             className="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-md transition-colors"
+                           >
+                             <XCircle size={16} />
+                           </button>
+                         </div>
+                       )}
+
+                       {/* 封面链接输入 */}
+                       <div className="flex items-center gap-2">
+                         <ImageIcon size={18} className="text-gray-600" />
+                         <input
+                           type="text"
+                           value={formData.cover || ''}
+                           onChange={(e) => handleInputChange('cover', e.target.value)}
+                           className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                           placeholder="或输入封面图片链接..."
+                         />
+                       </div>
+                     </div>
+                     <p className="text-xs text-gray-500">
+                       支持 JPG/PNG/GIF/WebP，最大 5MB；也可直接输入图片链接
+                     </p>
+                   </div>
+
+                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       类型标签 (用逗号分隔)
                     </label>

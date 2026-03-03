@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
 /**
  * 自定义霓虹光标组件 - 在深色管理后台中更显眼
@@ -98,8 +99,23 @@ const AdminLayout: React.FC = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showLoading, setShowLoading] = useState(false);
+
+  // 延迟显示loading，避免闪烁
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loading) {
+      timer = setTimeout(() => {
+        setShowLoading(true);
+      }, 500); // 500ms后才显示loading
+    } else {
+      setShowLoading(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   useEffect(() => {
+    // 只有在验证完成后且未登录才跳转
     if (!loading && !user) {
       navigate('/admin/login');
     }
@@ -131,10 +147,14 @@ const AdminLayout: React.FC = () => {
 
   const activeMenu = getActiveMenu();
 
-  if (loading) {
+  // 只在延迟后才显示loading，避免闪烁
+  if (showLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-ink/5 dark:bg-black/50">
-        <div className="text-2xl">检查登录状态...</div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-neon border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-lg text-gray-600">验证登录状态...</div>
+        </div>
       </div>
     );
   }

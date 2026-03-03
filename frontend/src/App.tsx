@@ -34,7 +34,8 @@ import AdminAnime from './pages/Admin/AdminAnime';
 import AdminSettings from './pages/Admin/AdminSettings';
 import AdminShortDiary from './pages/Admin/AdminShortDiary';
 import AdminActivities from './pages/Admin/AdminActivities';
-import { AdminProjects, AdminGallery, AdminDiary, AdminSkills, AdminTimeline, AdminNetwork, AdminAnnouncements, AdminUsers } from './pages/Admin/SimpleAdminPages';
+import AdminGallery from './pages/Admin/AdminGallery';
+import { AdminProjects, AdminDiary, AdminSkills, AdminTimeline, AdminNetwork, AdminAnnouncements, AdminUsers } from './pages/Admin/SimpleAdminPages';
 
 // 路由切换滚动逻辑
 const ScrollToTop: React.FC = () => {

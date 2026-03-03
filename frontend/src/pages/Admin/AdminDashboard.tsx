@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import type { DashboardStats } from '../../lib/api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FileText, Rocket, Tv, Camera, Database } from 'lucide-react';
 
 interface DashboardStats {
   totalPosts: number;
@@ -15,28 +15,52 @@ interface DashboardStats {
   uniqueVisitors: number;
 }
 
+interface Activity {
+  id: string;
+  project: string;
+  title: string;
+  tags: string[];
+  status: 'DONE' | 'IN_PROGRESS' | 'PLANNED';
+  date: string;
+}
+
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
-    fetchStats();
+    fetchData();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await api.dashboard.getStats();
-      if (result.success && result.data) {
-        setStats(result.data);
+
+      // 并行获取统计数据和动态
+      const [statsResult, activitiesResult] = await Promise.all([
+        api.dashboard.getStats(),
+        api.settings.getByKey('activities')
+      ]);
+
+      if (statsResult.success && statsResult.data) {
+        setStats(statsResult.data);
       } else {
-        setError(result.error || 'Failed to fetch dashboard stats');
+        setError(statsResult.error || 'Failed to fetch dashboard stats');
+      }
+
+      // 获取最新动态（最多 4 条）
+      if (activitiesResult.success && activitiesResult.data?.value) {
+        const parsedActivities = typeof activitiesResult.data.value === 'string'
+          ? JSON.parse(activitiesResult.data.value)
+          : activitiesResult.data.value;
+        setActivities(Array.isArray(parsedActivities) ? parsedActivities.slice(0, 4) : []);
       }
     } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error);
-      setError('Failed to fetch dashboard stats');
+      console.error('Failed to fetch dashboard data:', error);
+      setError('Failed to fetch dashboard data');
     } finally {
       setLoading(false);
     }
@@ -60,7 +84,7 @@ const AdminDashboard: React.FC = () => {
           ERROR: {error}
         </p>
         <button
-          onClick={fetchStats}
+          onClick={fetchData}
           className="mt-2 text-sm text-red-600 dark:text-red-300 underline"
         >
           重试
@@ -159,39 +183,75 @@ const AdminDashboard: React.FC = () => {
         {/* Recent Activity */}
         <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700 shadow-lg">
           <h2 className="text-xl font-bold mb-4 text-ink dark:text-paper">📊 最新动态</h2>
-          <div className="space-y-4">
-            <div className="flex items-start gap-4 p-4 bg-ink/5 dark:bg-black/20 rounded-lg">
-              <div className="text-2xl">📝</div>
-              <div className="flex-1">
-                <p className="font-medium text-ink dark:text-paper">发布了新文章</p>
-                <p className="text-sm text-ink/70 dark:text-gray-400">2024年5月20日 · 重构现实：赛博空间的虚无与存在</p>
-              </div>
-            </div>
+          {activities.length > 0 ? (
+            <div className="space-y-4">
+              {activities.map((activity) => {
+                let icon;
+                let iconBg;
+                
+                // 根据项目名称动态选择图标
+                if (activity.project.toLowerCase().includes('文章') || activity.project.toLowerCase().includes('post')) {
+                  icon = <FileText size={24} className="text-blue-600" />;
+                  iconBg = 'bg-blue-100 dark:bg-blue-900/30';
+                } else if (activity.project.toLowerCase().includes('项目') || activity.project.toLowerCase().includes('project')) {
+                  icon = <Rocket size={24} className="text-purple-600" />;
+                  iconBg = 'bg-purple-100 dark:bg-purple-900/30';
+                } else if (activity.project.toLowerCase().includes('动漫') || activity.project.toLowerCase().includes('anime')) {
+                  icon = <Tv size={24} className="text-pink-600" />;
+                  iconBg = 'bg-pink-100 dark:bg-pink-900/30';
+                } else if (activity.project.toLowerCase().includes('照片') || activity.project.toLowerCase().includes('gallery')) {
+                  icon = <Camera size={24} className="text-green-600" />;
+                  iconBg = 'bg-green-100 dark:bg-green-900/30';
+                } else {
+                  icon = <Database size={24} className="text-gray-600" />;
+                  iconBg = 'bg-gray-100 dark:bg-gray-800/30';
+                }
 
-            <div className="flex items-start gap-4 p-4 bg-ink/5 dark:bg-black/20 rounded-lg">
-              <div className="text-2xl">🚀</div>
-              <div className="flex-1">
-                <p className="font-medium text-ink dark:text-paper">上线新项目</p>
-                <p className="text-sm text-ink/70 dark:text-gray-400">2024年5月15日 · INK.ENGINE 博客主题</p>
-              </div>
-            </div>
+                const statusColor = activity.status === 'DONE' 
+                  ? 'text-green-600 dark:text-green-400'
+                  : activity.status === 'IN_PROGRESS'
+                  ? 'text-yellow-600 dark:text-yellow-400'
+                  : 'text-blue-600 dark:text-blue-400';
 
-            <div className="flex items-start gap-4 p-4 bg-ink/5 dark:bg-black/20 rounded-lg">
-              <div className="text-2xl">🎬</div>
-              <div className="flex-1">
-                <p className="font-medium text-ink dark:text-paper">观看动漫完成</p>
-                <p className="text-sm text-ink/70 dark:text-gray-400">2024年5月18日 · Cyberpunk: Edgerunners</p>
-              </div>
-            </div>
+                const statusText = activity.status === 'DONE'
+                  ? '已完成'
+                  : activity.status === 'IN_PROGRESS'
+                  ? '进行中'
+                  : '计划中';
 
-            <div className="flex items-start gap-4 p-4 bg-ink/5 dark:bg-black/20 rounded-lg">
-              <div className="text-2xl">📷</div>
-              <div className="flex-1">
-                <p className="font-medium text-ink dark:text-paper">上传新照片</p>
-                <p className="text-sm text-ink/70 dark:text-gray-400">2024年5月10日 · 东京赛博之旅 (12张)</p>
-              </div>
+                const formatDate = (dateString: string) => {
+                  try {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('zh-CN');
+                  } catch {
+                    return dateString;
+                  }
+                };
+
+                return (
+                  <div key={activity.id} className="flex items-start gap-4 p-4 bg-ink/5 dark:bg-black/20 rounded-lg hover:bg-ink/10 dark:hover:bg-black/30 transition-colors">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${iconBg}`}>
+                      {icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-ink dark:text-paper">{activity.title}</p>
+                      <p className="text-sm text-ink/70 dark:text-gray-400 mt-1">
+                        {activity.project} · {formatDate(activity.date)}
+                      </p>
+                      <span className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${statusColor} bg-opacity-10`}>
+                        {statusText}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <p className="mb-2">暂无最新动态</p>
+              <p className="text-sm">请前往"最新动态管理"页面添加动态</p>
+            </div>
+          )}
         </div>
       </div>
     );

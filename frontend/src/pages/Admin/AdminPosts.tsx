@@ -1,6 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
-import { Search, Plus, Edit, Trash2, FileText, Clock, Eye, Heart, Loader2, X, Save } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, FileText, Clock, Eye, Heart, Loader2, X, Save, Image } from 'lucide-react';
+
+// 简单的 Markdown 编辑器组件
+const SimpleMarkdownEditor: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  height?: number;
+}> = ({ value, onChange, height = 300 }) => {
+  return (
+    <div className="border border-gray-300 rounded-lg overflow-hidden">
+      <div className="bg-gray-50 px-4 py-2 border-b border-gray-300 flex items-center gap-2">
+        <span className="text-xs text-gray-500">Markdown 编辑器</span>
+        <span className="text-xs text-gray-400">|</span>
+        <span className="text-xs text-gray-400">支持 **粗体** *斜体* `代码`</span>
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ height }}
+        className="w-full px-4 py-3 font-mono text-sm resize-none focus:outline-none"
+        placeholder="在此输入 Markdown 内容..."
+      />
+    </div>
+  );
+};
 
 interface Post {
   id: string;
@@ -92,6 +116,34 @@ const AdminPosts: React.FC = () => {
 
   const handleInputChange = (key: keyof Post, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  // 处理图片上传到图床（使用DataURL作为临时方案）
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      alert('请选择图片文件');
+      return;
+    }
+
+    // 检查文件大小 (最大 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('图片大小不能超过 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageUrl = event.target?.result as string;
+      // 在当前光标位置插入Markdown图片语法
+      const imageMarkdown = `\n![${file.name}](${imageUrl})\n`;
+      const currentContent = formData.content || '';
+      handleInputChange('content', currentContent + imageMarkdown);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -364,33 +416,49 @@ const AdminPosts: React.FC = () => {
                   />
                 </div>
 
+                {/* 图片上传 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    内容 (Markdown)
+                    插入图片
                   </label>
-                  <textarea
-                    value={formData.content || ''}
-                    onChange={(e) => handleInputChange('content', e.target.value)}
-                    rows={8}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                    placeholder="文章内容 (支持 Markdown)"
-                  />
+                  <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors w-fit">
+                    <Image size={18} className="text-gray-600" />
+                    <span className="text-sm text-gray-700">选择图片上传</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">支持 JPG/PNG/GIF，最大 5MB</p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isPublished"
-                    checked={formData.isPublished || false}
-                    onChange={(e) => handleInputChange('isPublished', e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <label htmlFor="isPublished" className="text-sm font-medium text-gray-700">
-                    立即发布
-                  </label>
-                </div>
-              </div>
-            </form>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                     内容 (Markdown)
+                   </label>
+                   <SimpleMarkdownEditor
+                     value={formData.content || ''}
+                     onChange={(v) => handleInputChange('content', v)}
+                     height={300}
+                   />
+                 </div>
+
+                 <div className="flex items-center gap-2">
+                   <input
+                     type="checkbox"
+                     id="isPublished"
+                     checked={formData.isPublished || false}
+                     onChange={(e) => handleInputChange('isPublished', e.target.checked)}
+                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                   />
+                   <label htmlFor="isPublished" className="text-sm font-medium text-gray-700">
+                     立即发布
+                   </label>
+                 </div>
+               </div>
+             </form>
 
             {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">

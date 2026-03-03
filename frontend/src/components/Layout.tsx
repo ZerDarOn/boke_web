@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import Navigation from './Navigation';
 import Sidebar from './Sidebar';
 import RightSidebar from './RightSidebar';
 import Hero from './Hero';
-import { Search, X } from 'lucide-react';
+import { Search, X, Loader2 } from 'lucide-react';
 import { BLOG_POSTS, PROJECTS, DIARY_ENTRIES, ANNOUNCEMENTS, ANIME_LIST, GALLERY_IMAGES } from '../constants';
 import { useLang } from '../contexts/LangContext';
 import { useSiteConfig } from '../hooks/useSiteConfig';
+import { api } from '../lib/api';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -45,32 +46,130 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   
   const location = useLocation();
 
-  // 搜索逻辑
-  const filteredPosts = BLOG_POSTS.filter(p =>
-    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-  const filteredProjects = PROJECTS.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.tech.some(tech => tech.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-  const filteredDiaries = DIARY_ENTRIES.filter(d =>
-    d.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const filteredAnnouncements = ANNOUNCEMENTS.filter(a =>
-    a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const filteredAnime = ANIME_LIST.filter(a =>
-    a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.studio?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const filteredGallery = GALLERY_IMAGES.filter(g =>
-    g.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    g.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // API 搜索结果状态
+  const [searchResults, setSearchResults] = useState({
+    posts: [] as any[],
+    projects: [] as any[],
+    diaries: [] as any[],
+    announcements: [] as any[],
+    anime: [] as any[],
+    gallery: [] as any[],
+  });
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // API 搜索逻辑 - 带防抖
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults({ posts: [], projects: [], diaries: [], announcements: [], anime: [], gallery: [] });
+      setHasSearched(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setHasSearched(true);
+
+    try {
+      // 并行请求所有搜索
+      const [postsRes, projectsRes, diariesRes, announcementsRes, animeRes, galleryRes] = await Promise.all([
+        api.posts.getAll({ search: query, limit: 5 }),
+        api.projects.getAll({ search: query, limit: 5 }),
+        api.diary.getAll({ limit: 5 }), // 日记 API 可能不支持搜索，先获取后过滤
+        api.announcements.getAll(), // 公告获取后过滤
+        api.anime.getAll({ limit: 5 }), // 动漫获取后过滤
+        api.gallery.getAll({ limit: 5 }), // 相册获取后过滤
+      ]);
+
+      // 客户端过滤日记内容
+      const filteredDiaries = (diariesRes.data || []).filter((d: any) =>
+        d.content?.toLowerCase().includes(query.toLowerCase()) ||
+        d.title?.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 5);
+
+      // 客户端过滤公告
+      const filteredAnnouncements = (announcementsRes.data || []).filter((a: any) =>
+        a.title?.toLowerCase().includes(query.toLowerCase()) ||
+        a.content?.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 5);
+
+      // 客户端过滤动漫
+      const filteredAnime = (animeRes.data || []).filter((a: any) =>
+        a.title?.toLowerCase().includes(query.toLowerCase()) ||
+        a.studios?.some((s: string) => s.toLowerCase().includes(query.toLowerCase()))
+      ).slice(0, 5);
+
+      // 客户端过滤相册
+      const filteredGallery = (galleryRes.data || []).filter((g: any) =>
+        g.title?.toLowerCase().includes(query.toLowerCase()) ||
+        g.tags?.some((tag: string) => tag.toLowerCase().includes(query.toLowerCase()))
+      ).slice(0, 5);
+
+      setSearchResults({
+        posts: postsRes.data || [],
+        projects: projectsRes.data || [],
+        diaries: filteredDiaries,
+        announcements: filteredAnnouncements,
+        anime: filteredAnime,
+        gallery: filteredGallery,
+      });
+    } catch (error) {
+      console.error('Search error:', error);
+      // 如果 API 失败，回退到本地数据
+      const q = query.toLowerCase();
+      setSearchResults({
+        posts: BLOG_POSTS.filter(p =>
+          p.title.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          p.tags.some(tag => tag.toLowerCase().includes(q))
+        ).slice(0, 5),
+        projects: PROJECTS.filter(p =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.tech.some(tech => tech.toLowerCase().includes(q))
+        ).slice(0, 5),
+        diaries: DIARY_ENTRIES.filter(d =>
+          d.content.toLowerCase().includes(q)
+        ).slice(0, 5),
+        announcements: ANNOUNCEMENTS.filter(a =>
+          a.title.toLowerCase().includes(q) ||
+          a.content.toLowerCase().includes(q)
+        ).slice(0, 5),
+        anime: ANIME_LIST.filter(a =>
+          a.title.toLowerCase().includes(q) ||
+          a.studio?.toLowerCase().includes(q)
+        ).slice(0, 5),
+        gallery: GALLERY_IMAGES.filter(g =>
+          g.title.toLowerCase().includes(q) ||
+          g.tags?.some(tag => tag.toLowerCase().includes(q))
+        ).slice(0, 5),
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // 搜索防抖
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (searchQuery.trim()) {
+      searchTimeoutRef.current = setTimeout(() => {
+        performSearch(searchQuery);
+      }, 300); // 300ms 防抖
+    } else {
+      setSearchResults({ posts: [], projects: [], diaries: [], announcements: [], anime: [], gallery: [] });
+      setHasSearched(false);
+    }
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, performSearch]);
 
   // 滚动监听
   useEffect(() => {
@@ -176,14 +275,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <p className="font-mono text-sm tracking-widest text-neon/50">SYSTEM.READY</p>
                     <p className="text-xs">Type to query neural network...</p>
                   </div>
+                ) : isSearching ? (
+                  <div className="h-40 flex flex-col items-center justify-center text-gray-600 space-y-3">
+                    <Loader2 size={24} className="text-neon animate-spin" />
+                    <p className="font-mono text-xs tracking-widest">SEARCHING...</p>
+                  </div>
                 ) : (
                   <div className="space-y-6">
-                    {filteredPosts.length > 0 && (
+                    {searchResults.posts.length > 0 && (
                       <div>
-                        <h3 className="text-[10px] font-bold text-neon uppercase tracking-widest mb-2 px-2 border-l-2 border-neon/50">ARCHIVES ({filteredPosts.length})</h3>
+                        <h3 className="text-[10px] font-bold text-neon uppercase tracking-widest mb-2 px-2 border-l-2 border-neon/50">ARCHIVES ({searchResults.posts.length})</h3>
                         <div className="grid gap-2">
-                          {filteredPosts.map(post => (
-                            <Link key={post.id} to={`/posts/${post.slug}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                          {searchResults.posts.map((post: any) => (
+                            <Link key={post.id} to={`/posts/${post.slug || post.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
                               <span className="text-gray-300 group-hover:text-white font-sans">{post.title}</span>
                               <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{post.category}</span>
                             </Link>
@@ -191,51 +295,51 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </div>
                       </div>
                     )}
-                    {filteredProjects.length > 0 && (
+                    {searchResults.projects.length > 0 && (
                       <div>
-                        <h3 className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2 px-2 border-l-2 border-secondary/50">PROJECTS ({filteredProjects.length})</h3>
+                        <h3 className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2 px-2 border-l-2 border-secondary/50">PROJECTS ({searchResults.projects.length})</h3>
                         <div className="grid gap-2">
-                          {filteredProjects.map(proj => (
-                            <Link key={proj.id} to="/projects" onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
-                              <span className="text-gray-300 group-hover:text-white font-sans">{proj.name}</span>
+                          {searchResults.projects.map((proj: any) => (
+                            <Link key={proj.id} to={`/projects/${proj.slug || proj.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                              <span className="text-gray-300 group-hover:text-white font-sans">{proj.name || proj.title}</span>
                               <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{proj.status}</span>
                             </Link>
                           ))}
                         </div>
                       </div>
                     )}
-                    {filteredAnnouncements.length > 0 && (
+                    {searchResults.announcements.length > 0 && (
                       <div>
-                        <h3 className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-purple-400/50">ANNOUNCEMENTS ({filteredAnnouncements.length})</h3>
+                        <h3 className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-purple-400/50">ANNOUNCEMENTS ({searchResults.announcements.length})</h3>
                         <div className="grid gap-2">
-                          {filteredAnnouncements.map(ann => (
+                          {searchResults.announcements.map((ann: any) => (
                             <Link key={ann.id} to={`/announcement/${ann.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
                               <span className="text-gray-300 group-hover:text-white font-sans">{ann.title}</span>
-                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{ann.date}</span>
+                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{new Date(ann.date).toLocaleDateString()}</span>
                             </Link>
                           ))}
                         </div>
                       </div>
                     )}
-                    {filteredDiaries.length > 0 && (
+                    {searchResults.diaries.length > 0 && (
                       <div>
-                        <h3 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-blue-400/50">DIARY ({filteredDiaries.length})</h3>
+                        <h3 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-blue-400/50">DIARY ({searchResults.diaries.length})</h3>
                         <div className="grid gap-2">
-                          {filteredDiaries.map(diary => (
-                            <Link key={diary.id} to="/diary" onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
-                              <span className="text-gray-300 group-hover:text-white font-sans truncate">{diary.content.substring(0, 50)}...</span>
-                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{diary.date}</span>
+                          {searchResults.diaries.map((diary: any) => (
+                            <Link key={diary.id} to={`/diary/${diary.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                              <span className="text-gray-300 group-hover:text-white font-sans truncate">{diary.title || diary.content?.substring(0, 50)}...</span>
+                              <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{new Date(diary.date).toLocaleDateString()}</span>
                             </Link>
                           ))}
                         </div>
                       </div>
                     )}
-                    {filteredAnime.length > 0 && (
+                    {searchResults.anime.length > 0 && (
                       <div>
-                        <h3 className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-pink-400/50">ANIME ({filteredAnime.length})</h3>
+                        <h3 className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-pink-400/50">ANIME ({searchResults.anime.length})</h3>
                         <div className="grid gap-2">
-                          {filteredAnime.map(anime => (
-                            <Link key={anime.id} to="/anime" onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                          {searchResults.anime.map((anime: any) => (
+                            <Link key={anime.id} to={`/anime/${anime.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
                               <span className="text-gray-300 group-hover:text-white font-sans">{anime.title}</span>
                               <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{anime.status}</span>
                             </Link>
@@ -243,12 +347,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </div>
                       </div>
                     )}
-                    {filteredGallery.length > 0 && (
+                    {searchResults.gallery.length > 0 && (
                       <div>
-                        <h3 className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-orange-400/50">GALLERY ({filteredGallery.length})</h3>
+                        <h3 className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-orange-400/50">GALLERY ({searchResults.gallery.length})</h3>
                         <div className="grid gap-2">
-                          {filteredGallery.map(img => (
-                            <Link key={img.id} to="/gallery" onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                          {searchResults.gallery.map((img: any) => (
+                            <Link key={img.id} to={`/gallery/${img.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
                               <span className="text-gray-300 group-hover:text-white font-sans">{img.title}</span>
                               <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{img.tags?.[0] || 'PHOTO'}</span>
                             </Link>
@@ -256,7 +360,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </div>
                       </div>
                     )}
-                    {filteredPosts.length === 0 && filteredProjects.length === 0 && filteredAnnouncements.length === 0 && filteredDiaries.length === 0 && filteredAnime.length === 0 && filteredGallery.length === 0 && (
+                    {hasSearched && !isSearching && 
+                     searchResults.posts.length === 0 && 
+                     searchResults.projects.length === 0 && 
+                     searchResults.announcements.length === 0 && 
+                     searchResults.diaries.length === 0 && 
+                     searchResults.anime.length === 0 && 
+                     searchResults.gallery.length === 0 && (
                       <div className="text-center text-gray-500 py-8 font-mono text-xs">
                         // ERROR: NO_MATCH_FOUND
                       </div>

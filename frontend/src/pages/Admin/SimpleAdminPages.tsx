@@ -526,20 +526,6 @@ const AdminProjects: React.FC = () => (
   />
 );
 
-const AdminGallery: React.FC = () => (
-  <AdminPage
-    title="相册管理"
-    icon={<Camera size={24} className="text-ink dark:text-paper" />}
-    description="管理相册和照片，支持批量操作和 EXIF 信息查看"
-    apiEndpoint="gallery"
-    itemKey="name"
-    itemStats={[
-      { icon: <Eye size={14} />, value: "👁️ 浏览" },
-      { icon: <Palette size={14} />, value: "🎨 编辑" },
-    ]}
-  />
-);
-
 const AdminDiary: React.FC = () => (
   <AdminPage
     title="日记管理"
@@ -652,7 +638,6 @@ const AdminUsers: React.FC = () => (
 
 export {
   AdminProjects,
-  AdminGallery,
   AdminDiary,
   AdminSkills,
   AdminTimeline,

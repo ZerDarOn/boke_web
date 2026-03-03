@@ -33,17 +33,33 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // 优先从 localStorage 恢复用户数据，避免闪烁
+  const getStoredUser = (): User | null => {
+    try {
+      const stored = localStorage.getItem('auth_user');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
+  const [user, setUser] = useState<User | null>(getStoredUser);
+  // 如果有token但还没验证完，显示验证中而不是完全未登录
+  const hasToken = !!localStorage.getItem('auth_token');
+  const [loading, setLoading] = useState(hasToken); // 有token时才需要loading
   const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
-    // 延迟执行，避免竞态条件
-    const timer = setTimeout(() => {
+    // 有token才需要验证
+    if (hasToken) {
       checkAuth();
-    }, 100);
-
-    return () => clearTimeout(timer);
+    } else {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAuth = async () => {
@@ -55,10 +71,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('🔐 checkAuth result:', result);
 
       if (result.success && result.data) {
+        localStorage.setItem('auth_user', JSON.stringify(result.data));
         setUser(result.data);
         console.log('✅ User set from checkAuth:', result.data);
       } else {
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
         setUser(null);
         console.log('❌ No valid user data, cleared token');
       }
@@ -67,6 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
     } finally {
       setIsChecking(false);
+      setLoading(false);
     }
   };
 
@@ -83,8 +102,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (result.success && result.data && result.data.token) {
         localStorage.setItem('auth_token', result.data.token);
+        localStorage.setItem('auth_user', JSON.stringify(result.data.user));
         setUser(result.data.user);
-        console.log('✅ Token saved to localStorage');
+        console.log('✅ Token and user saved to localStorage');
         console.log('✅ User set:', result.data.user);
       } else {
         console.log('❌ Login failed - no token in response');
@@ -103,10 +123,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('🔐 logout() called');
       await api.auth.logout();
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
       setUser(null);
       console.log('✅ Logged out successfully');
     } catch (error) {
       console.error('❌ Logout failed:', error);
+      // 即使API失败也清除本地数据
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      setUser(null);
     }
   };
 

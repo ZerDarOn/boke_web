@@ -1,8 +1,56 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { projectsApi, Project } from '../lib/api';
 import { PROJECTS } from '../constants';
-import { Terminal, Cpu, Layers, ExternalLink } from 'lucide-react';
+import { Terminal, Cpu, Layers, ExternalLink, Loader2 } from 'lucide-react';
 
 const Arsenal: React.FC = () => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 从 API 获取项目列表
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoading(true);
+      try {
+        const result = await projectsApi.getAll({ featured: true, limit: 6 });
+        if (result.success && result.data && result.data.length > 0) {
+          setProjects(result.data);
+        } else {
+          // 回退到本地数据
+          setProjects(PROJECTS.filter(p => p.featured).map(p => ({
+            ...p,
+            createdAt: '',
+            updatedAt: ''
+          })) as Project[]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch projects:', err);
+        // 回退到本地数据
+        setProjects(PROJECTS.filter(p => p.featured).map(p => ({
+          ...p,
+          createdAt: '',
+          updatedAt: ''
+        })) as Project[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
+  // 根据项目ID或类型返回对应的图标
+  const getProjectIcon = (project: Project, index: number) => {
+    const iconClass = "text-gray-400 dark:text-neutral-600 group-hover:text-neon transition-colors";
+    if (project.type?.toLowerCase().includes('ui') || project.type?.toLowerCase().includes('design')) {
+      return <Layers className={iconClass} size={24} />;
+    } else if (project.type?.toLowerCase().includes('cli') || project.type?.toLowerCase().includes('tool')) {
+      return <Terminal className={iconClass} size={24} />;
+    } else {
+      return <Cpu className={iconClass} size={24} />;
+    }
+  };
+
   return (
     <section id="works" className="py-24 w-full bg-neutral-50 dark:bg-[#0a0a0a] text-ink dark:text-white relative rounded-lg overflow-hidden my-12 px-8 shadow-sm border border-gray-100 dark:border-white/10">
       {/* Background Grid Lines */}
@@ -17,17 +65,22 @@ const Arsenal: React.FC = () => {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-neon" size={32} />
+        </div>
+      )}
+
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {PROJECTS.filter(p => p.featured).map((project) => (
+        {!loading && projects.map((project, index) => (
           <div 
             key={project.id} 
             className="group bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 p-6 flex flex-col h-full hover:border-neon transition-colors duration-300 relative overflow-hidden"
           >
             {/* Tech Decoration */}
             <div className="absolute top-0 right-0 p-3 opacity-50">
-                {project.id === 'P-01' && <Cpu className="text-gray-400 dark:text-neutral-600 group-hover:text-neon" size={24} />}
-                {project.id === 'P-02' && <Terminal className="text-gray-400 dark:text-neutral-600 group-hover:text-neon" size={24} />}
-                {project.id === 'P-03' && <Layers className="text-gray-400 dark:text-neutral-600 group-hover:text-neon" size={24} />}
+              {getProjectIcon(project, index)}
             </div>
 
             {/* Header */}

@@ -27,7 +27,7 @@ import { postsApi } from '../lib/api';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [post, setPost] = useState<any>(BLOG_POSTS.find(p => p.id === id));
+  const [post, setPost] = useState<any>(BLOG_POSTS.find(p => p.id === id || p.slug === id));
   const [allPosts, setAllPosts] = useState<any[]>(BLOG_POSTS);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
@@ -117,16 +117,16 @@ const PostDetail: React.FC = () => {
           };
           setPost(apiPost as any);
         } else {
-          // Fallback: use local data
-          const localPost = BLOG_POSTS.find(p => p.id === id);
+          // Fallback: use local data (match by id or slug)
+          const localPost = BLOG_POSTS.find(p => p.id === id || p.slug === id);
           if (localPost) {
             setPost(localPost);
           }
         }
       } catch (error) {
         console.error('Failed to fetch post:', error);
-        // Fallback: use local data
-        const localPost = BLOG_POSTS.find(p => p.id === id);
+        // Fallback: use local data (match by id or slug)
+        const localPost = BLOG_POSTS.find(p => p.id === id || p.slug === id);
         if (localPost) {
           setPost(localPost);
         }
@@ -142,7 +142,10 @@ const PostDetail: React.FC = () => {
 
   // 将 useMemo 移到条件渲染之前，确保 Hooks 顺序一致
   const postsList = allPosts.length > 0 ? allPosts : BLOG_POSTS;
-  const currentIndex = postsList.findIndex((p: any) => p.id === post?.id);
+  // 使用 slug 或 id 匹配当前文章（兼容 API 和本地数据）
+  const currentIndex = postsList.findIndex((p: any) => 
+    p.slug === post?.slug || p.id === post?.id
+  );
   const prevPost = currentIndex > 0 ? postsList[currentIndex - 1] : null;
   const nextPost = currentIndex < postsList.length - 1 ? postsList[currentIndex + 1] : null;
 
@@ -150,7 +153,7 @@ const PostDetail: React.FC = () => {
     if (!post) return [];
     
     return postsList
-      .filter((p: any) => p.id !== post.id)
+      .filter((p: any) => p.slug !== post.slug && p.id !== post.id)
       .map((p: any) => ({
         ...p,
         relevanceScore: p.tags?.filter((tag: string) => post.tags?.includes(tag)).length || 0

@@ -28,19 +28,29 @@ const RightSidebar: React.FC = () => {
   const fetchActivities = async () => {
     try {
       const result = await api.settings.getByKey('activities');
+      console.log('Activities API result:', result);
       if (result.success && result.data?.value) {
         const parsedActivities = typeof result.data.value === 'string' 
           ? JSON.parse(result.data.value) 
           : result.data.value;
-        if (Array.isArray(parsedActivities)) {
-          setActivities(parsedActivities);
-          return;
+        console.log('Parsed activities:', parsedActivities);
+        if (Array.isArray(parsedActivities) && parsedActivities.length > 0) {
+          // 验证数据格式是否正确
+          const validActivities = parsedActivities.filter((item: any) => 
+            item && item.id && (item.project || item.title)
+          );
+          console.log('Valid activities:', validActivities);
+          if (validActivities.length > 0) {
+            setActivities(validActivities);
+            return;
+          }
         }
       }
     } catch (error) {
       console.error('Failed to fetch activities:', error);
     }
     // Fallback to local data
+    console.log('Using fallback local data');
     setActivities(LATEST_ACTIVITIES as Activity[]);
   };
 
@@ -128,7 +138,7 @@ const RightSidebar: React.FC = () => {
                   {/* 内容卡片 */}
                   <div className="relative bg-gray-50 dark:bg-white/5 p-3 rounded-lg hover:bg-gradient-to-br hover:from-gray-50 hover:to-gray-100 dark:hover:from-white/10 dark:hover:to-white/5 hover:shadow-md transition-all duration-300 group-hover:shadow-neon/5 group-hover:-translate-y-0.5">
                     <div className="flex justify-between items-start mb-1.5">
-                      <span className="font-bold text-xs text-ink dark:text-gray-200 truncate max-w-[140px]">{item.project}</span>
+                      <span className="font-bold text-xs text-ink dark:text-gray-200 truncate max-w-[140px]">{item.project || '未命名项目'}</span>
                       <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono whitespace-nowrap ${
                         item.status === 'IN_PROGRESS'
                           ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -139,7 +149,7 @@ const RightSidebar: React.FC = () => {
                         {item.status === 'IN_PROGRESS' ? '进行中' : item.status === 'DONE' ? '已完成' : '计划中'}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-medium">{item.title}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-medium">{item.title || '无标题'}</p>
                     
                     {/* 日期 */}
                     <p className="text-[9px] text-gray-400 dark:text-gray-500 font-mono mb-2">{item.date}</p>
