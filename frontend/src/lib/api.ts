@@ -53,12 +53,22 @@ async function apiRequest<T>(
   try {
     const url = `${API_BASE_URL}${endpoint}`;
     
+    // Properly merge headers without overwriting
+    const mergedHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add custom headers from options
+    if (options?.headers) {
+      const customHeaders = options.headers as Record<string, string>;
+      Object.entries(customHeaders).forEach(([key, value]) => {
+        mergedHeaders[key] = value;
+      });
+    }
+    
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
       ...options,
+      headers: mergedHeaders,
     });
 
     const data = await response.json();
@@ -66,7 +76,7 @@ async function apiRequest<T>(
     if (!response.ok) {
       return {
         success: false,
-        error: data.message || `HTTP ${response.status}: ${response.statusText}`,
+        error: data.message || data.error || `HTTP ${response.status}: ${response.statusText}`,
       };
     }
 
@@ -879,6 +889,92 @@ export const usersApi = {
   },
 };
 
+// ==================== Site Settings ====================
+
+export interface SiteConfig {
+  blogName: string;
+  blogSubtitle: string;
+  authorName: string;
+  authorTitle: string;
+  authorAvatar: string;
+  authorBio: string;
+  email: string;
+  github: string;
+  twitter: string;
+  bilibili: string;
+  wechat: string;
+  primaryColor: string;
+  secondaryColor: string;
+  defaultTheme: 'light' | 'dark';
+  pageCopy: {
+    diaryTitle: string;
+    diarySubtitle: string;
+    diaryQuote: string;
+    diaryStartLabel: string;
+    thoughtsTitle: string;
+    thoughtsLabel: string;
+    thoughtsBgText: string;
+    footerQuote: string;
+    announcementTitle: string;
+    announcementContent: string;
+    announcementLink: string;
+    announcementLinkText: string;
+    aboutContactTitle: string;
+    aboutContactCopyTip: string;
+  };
+  heroBackgrounds: any[];
+}
+
+// Helper to get auth headers
+const getAuthHeaders = (): Record<string, string> => {
+  const token = localStorage.getItem('auth_token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
+export const settingsApi = {
+  // GET /api/settings - 获取所有站点配置
+  getAll: async () => {
+    return apiRequest<SiteConfig>(`/api/settings`);
+  },
+
+  // GET /api/settings/:key - 获取单个配置
+  getByKey: async (key: string) => {
+    return apiRequest<{ key: string; value: any }>(`/api/settings/${key}`);
+  },
+
+  // PUT /api/settings - 更新单个配置（需要认证）
+  update: async (key: string, value: any) => {
+    return apiRequest<any>(`/api/settings`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ key, value }),
+    });
+  },
+
+  // PUT /api/settings/bulk - 批量更新配置（需要认证）
+  bulkUpdate: async (settings: Record<string, any>) => {
+    return apiRequest<{ message: string; count: number }>(`/api/settings/bulk`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ settings }),
+    });
+  },
+
+  // 保存完整站点配置（前端使用，需要认证）
+  saveSiteConfig: async (config: Partial<SiteConfig>) => {
+    // Remove undefined values and ensure clean JSON
+    const cleanConfig = JSON.parse(JSON.stringify(config));
+    
+    console.log('Sending settings to API:', { settings: cleanConfig });
+    
+    return apiRequest<any>(`/api/settings/bulk`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ settings: cleanConfig }),
+    });
+  },
+};
+
 // Export all APIs
 export const api = {
   auth: authApi,
@@ -895,4 +991,5 @@ export const api = {
   search: searchApi,
   health: healthApi,
   users: usersApi,
+  settings: settingsApi,
 };

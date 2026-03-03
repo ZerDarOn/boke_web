@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Sun, CloudRain, ArrowRight, Loader2 } from 'lucide-react';
 import { api, Diary } from '../lib/api';
+import { usePageCopy } from '../hooks/useSiteConfig';
 
 const MineDiary: React.FC = () => {
   const [diaries, setDiaries] = useState<Diary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pageCopy = usePageCopy();
   
   useEffect(() => {
     const fetchDiaries = async () => {
@@ -60,12 +62,12 @@ const MineDiary: React.FC = () => {
         {/* Header (Top) */}
         <div className="p-8 border-b border-gray-100 dark:border-white/10 flex justify-between items-center z-10 bg-white/95 dark:bg-[#050505]/95 backdrop-blur">
              <div>
-                <h2 className="text-3xl font-black font-sans text-ink dark:text-white">DIARY.STREAM</h2>
-                <span className="font-mono text-xs text-gray-400 tracking-[0.2em] uppercase">Private Thoughts</span>
+                <h2 className="text-3xl font-black font-sans text-ink dark:text-white">{pageCopy.diaryTitle}</h2>
+                <span className="font-mono text-xs text-gray-400 tracking-[0.2em] uppercase">{pageCopy.diarySubtitle}</span>
              </div>
              <div className="text-right hidden md:block">
                  <div className="font-serif text-sm text-gray-500 italic">
-                     "Writing is defragmentation of the soul."
+                     "{pageCopy.diaryQuote}"
                  </div>
              </div>
         </div>
@@ -77,7 +79,7 @@ const MineDiary: React.FC = () => {
                 {/* Start Marker */}
                 <div className="h-full flex flex-col justify-center items-center px-8 border-l border-ink/10 dark:border-white/10 opacity-50 select-none">
                     <span className="vertical-text font-serif text-2xl tracking-[0.5em] text-gray-300 dark:text-gray-600">
-                        记录开始
+                        {pageCopy.diaryStartLabel}
                     </span>
                 </div>
 

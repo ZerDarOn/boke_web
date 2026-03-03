@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import AboutFileExplorer from '../components/AboutFileExplorer';
 import { TRANSLATIONS } from '../constants';
 import { Mail, Github, Video, MessageCircle, Copy, Check } from 'lucide-react';
+import { usePageCopy } from '../hooks/useSiteConfig';
 
 const About: React.FC = () => {
   const lang: 'EN' | 'ZH' = 'ZH';
   const t = TRANSLATIONS[lang];
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+  const pageCopy = usePageCopy();
 
   const contactInfo = [
     {
@@ -58,7 +60,7 @@ const About: React.FC = () => {
           <span className="w-8 h-8 bg-neon/10 rounded-lg flex items-center justify-center">
             <Mail size={18} className="text-neon" />
           </span>
-          {lang === 'EN' ? 'Contact Me' : '联系方式'}
+          {pageCopy.aboutContactTitle}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -91,15 +93,9 @@ const About: React.FC = () => {
           })}
         </div>
 
-        {lang === 'EN' ? (
-          <p className="mt-4 text-xs text-gray-500 dark:text-gray-400 font-mono text-center">
-            Click on cards to copy or visit
-          </p>
-        ) : (
-          <p className="mt-4 text-xs text-gray-500 dark:text-gray-400 font-mono text-center">
-            点击卡片复制链接或访问
-          </p>
-        )}
+        <p className="mt-4 text-xs text-gray-500 dark:text-gray-400 font-mono text-center">
+          {pageCopy.aboutContactCopyTip}
+        </p>
       </div>
     </div>
   );

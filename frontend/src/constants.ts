@@ -3,6 +3,7 @@ import { BlogPost, DiaryEntry, Project, SkillNode, Activity, FileNode, RelationN
 export const BLOG_POSTS: BlogPost[] = [
   {
     id: '01',
+    slug: 'post-01',
     title: '重构现实：赛博空间的虚无与存在',
     date: '2024.05.21',
     category: 'PHILOSOPHY',
@@ -43,6 +44,7 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     id: '02',
+    slug: 'post-02',
     title: '水墨组件库开发实录',
     date: '2024.04.10',
     category: 'ENGINEERING',
@@ -138,6 +140,7 @@ SVG 滤镜提供了 \`feTurbulence\` 和 \`feDisplacementMap\` 两个滤镜，�
   },
   {
     id: '03',
+    slug: 'post-03',
     title: '数字游民的修仙指南',
     date: '2024.03.15',
     category: 'LIFESTYLE',

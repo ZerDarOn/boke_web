@@ -31,7 +31,10 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminPosts from './pages/Admin/AdminPosts';
 import AdminAnime from './pages/Admin/AdminAnime';
-import { AdminProjects, AdminGallery, AdminDiary, AdminSkills, AdminTimeline, AdminNetwork, AdminAnnouncements, AdminUsers, AdminSettings } from './pages/Admin/SimpleAdminPages';
+import AdminSettings from './pages/Admin/AdminSettings';
+import AdminShortDiary from './pages/Admin/AdminShortDiary';
+import AdminActivities from './pages/Admin/AdminActivities';
+import { AdminProjects, AdminGallery, AdminDiary, AdminSkills, AdminTimeline, AdminNetwork, AdminAnnouncements, AdminUsers } from './pages/Admin/SimpleAdminPages';
 
 // 路由切换滚动逻辑
 const ScrollToTop: React.FC = () => {
@@ -154,11 +157,13 @@ const App: React.FC = () => {
             <Route path="anime" element={<AdminAnime />} />
             <Route path="gallery" element={<AdminGallery />} />
             <Route path="diary" element={<AdminDiary />} />
+            <Route path="short-diary" element={<AdminShortDiary />} />
             <Route path="skills" element={<AdminSkills />} />
             <Route path="timeline" element={<AdminTimeline />} />
             <Route path="network" element={<AdminNetwork />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="users" element={<AdminUsers />} />
+            <Route path="activities" element={<AdminActivities />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 

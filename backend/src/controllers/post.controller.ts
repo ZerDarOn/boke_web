@@ -25,11 +25,17 @@ export class PostController {
     }
   }
 
-  // GET /api/posts/:id
+  // GET /api/posts/:id - 支持 ID 或 slug 查询
   static async getById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const post = await PostService.findById(id);
+      // 先尝试用 ID 查询
+      let post = await PostService.findById(id);
+      
+      // 如果找不到，尝试用 slug 查询
+      if (!post) {
+        post = await PostService.findBySlug(id);
+      }
 
       if (!post) {
         return response.notFound(res, 'Post not found');

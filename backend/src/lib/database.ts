@@ -127,6 +127,61 @@ async function isDatabaseInitialized(): Promise<boolean> {
 }
 
 /**
+ * Check if a specific table exists in the database
+ */
+async function tableExists(tableName: string): Promise<boolean> {
+  try {
+    const result = await prisma.$queryRaw<{ exists: boolean }[]>`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = ${tableName}
+      ) as exists
+    `;
+    return result[0]?.exists || false;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Check if schema needs sync (new tables missing)
+ * Returns true if any required table is missing
+ */
+async function schemaNeedsSync(): Promise<boolean> {
+  const requiredTables = [
+    'users',
+    'posts',
+    'projects',
+    'skills',
+    'site_config',  // New table for SiteConfig feature
+  ];
+  
+  for (const table of requiredTables) {
+    const exists = await tableExists(table);
+    if (!exists) {
+      console.log(`   ⚠️  Missing table: ${table}`);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Generate Prisma Client after schema change
+ */
+async function generateClient(): Promise<void> {
+  console.log('🔄 Generating Prisma Client...');
+  try {
+    await runCommand('npx', ['prisma', 'generate']);
+    console.log('✅ Prisma Client generated successfully.');
+  } catch (error) {
+    console.error('❌ Prisma Client generation failed:', error);
+    throw error;
+  }
+}
+
+/**
  * Sync database schema (smart, non-blocking)
  * Prisma db push:
  * - Creates missing tables
@@ -137,23 +192,14 @@ async function isDatabaseInitialized(): Promise<boolean> {
 async function syncSchema(): Promise<void> {
   console.log('🔄 Syncing database schema (async)...');
   try {
-    // Run Prisma db push (non-blocking)
-    await runCommand('npx', ['prisma', 'db', 'push', '--skip-generate']);
+    // Run Prisma db push (generate client to include new models)
+    await runCommand('npx', ['prisma', 'db', 'push']);
     console.log('✅ Database schema synced successfully.');
     console.log('💡 Only missing tables/fields were created (existing data preserved).');
   } catch (error) {
     console.error('❌ Schema sync failed:', error);
     throw error;
   }
-}
-
-/**
- * Generate Prisma Client
- * Note: Client is now generated at startup in index.ts before app import
- * This function is kept for compatibility and will skip if client exists
- */
-async function generateClient(): Promise<void> {
-  console.log('✅ Prisma Client ready.');
 }
 
 /**
@@ -173,7 +219,129 @@ async function runSeed(): Promise<void> {
 }
 
 /**
+ * Seed site config using raw SQL (avoids Prisma client cache issues after schema change)
+ */
+async function seedSiteConfigRaw(): Promise<void> {
+  console.log('🌱 Seeding site config (raw SQL)...');
+  
+  const configs = [
+    { key: 'blogName', value: 'INK.SPIRIT' },
+    { key: 'blogSubtitle', value: '数字编年史' },
+    { key: 'authorName', value: 'CYBER.RONIN' },
+    { key: 'authorTitle', value: 'Fullstack Alchemist' },
+    { key: 'authorAvatar', value: '' },
+    { key: 'authorBio', value: '在数字虚空中记录灵魂的回响' },
+    { key: 'email', value: 'ronin@cyber.ink' },
+    { key: 'github', value: 'github.com/cyber-ronin' },
+    { key: 'twitter', value: 'twitter.com/cyber_ronin' },
+    { key: 'bilibili', value: 'bilibili.com/user/123456' },
+    { key: 'wechat', value: '' },
+    { key: 'primaryColor', value: '#10b981' },
+    { key: 'secondaryColor', value: '#8b5cf6' },
+    { key: 'defaultTheme', value: 'dark' },
+    { key: 'pageCopy', value: JSON.stringify({
+      diaryTitle: 'DIARY.STREAM',
+      diarySubtitle: 'Private Thoughts',
+      diaryQuote: 'Writing is defragmentation of the soul.',
+      diaryStartLabel: '记录开始',
+      thoughtsTitle: 'THOUGHT STREAM',
+      thoughtsLabel: 'MICRO-BLOG',
+      thoughtsBgText: '念',
+      footerQuote: 'The code flows like wind, invisible yet mighty.',
+      announcementTitle: '公告',
+      announcementContent: '本站采用 React & Cyber-Ink 驱动。最新主题 "VOID" 已上线，包含全新的夜间模式和水墨渲染引擎。',
+      announcementLink: '/announcement',
+      announcementLinkText: '了解更多',
+      aboutContactTitle: '联系方式',
+      aboutContactCopyTip: '点击卡片复制链接或访问',
+    })},
+    { key: 'heroBackgrounds', value: JSON.stringify([
+      {
+        id: 'ink',
+        name: 'Ink Slash',
+        enabled: true,
+        contentZH: {
+          tag: '数字编年史(2025)',
+          titleStart: '以',
+          titleHighlight: '代码',
+          titleEnd: '书写',
+          quote: '"在数字虚空中记录灵魂的回响。"'
+        },
+        contentEN: {
+          tag: 'DIGITAL.CHRONICLES(2025)',
+          titleStart: 'WRITTEN IN',
+          titleHighlight: 'CODE',
+          titleEnd: '',
+          quote: '"Documenting the ghost in the shell, one line at a time."'
+        }
+      },
+      {
+        id: 'grid',
+        name: 'Cyber Grid',
+        enabled: true,
+        contentZH: {
+          tag: '系统重构中...',
+          titleStart: '矩阵',
+          titleHighlight: '重载',
+          titleEnd: '',
+          quote: '"系统即是现实，逻辑构建真理。"'
+        },
+        contentEN: {
+          tag: 'SYSTEM.REFACTORING...',
+          titleStart: 'MATRIX',
+          titleHighlight: 'RELOADED',
+          titleEnd: '',
+          quote: '"The system is the reality. Logic builds truth."'
+        }
+      },
+      {
+        id: 'nebula',
+        name: 'Void Nebula',
+        enabled: true,
+        contentZH: {
+          tag: '星海漫游指南',
+          titleStart: '凝视',
+          titleHighlight: '深渊',
+          titleEnd: '',
+          quote: '"在数据洪流中寻找秩序的星光。"'
+        },
+        contentEN: {
+          tag: 'GUIDE.TO.GALAXY',
+          titleStart: 'VOID',
+          titleHighlight: 'GAZING',
+          titleEnd: '',
+          quote: '"Staring into the abyss of data, finding order in chaos."'
+        }
+      }
+    ])},
+  ];
+
+  let insertedCount = 0;
+  for (const config of configs) {
+    try {
+      // Use INSERT ... ON CONFLICT DO NOTHING to skip duplicates
+      await prisma.$executeRaw`
+        INSERT INTO site_config (id, key, value, "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${config.key}, ${config.value}, NOW(), NOW())
+        ON CONFLICT (key) DO NOTHING
+      `;
+      insertedCount++;
+    } catch (err) {
+      console.log(`   ⚠️  Skipped ${config.key} (may already exist)`);
+    }
+  }
+  
+  console.log(`✅ Site config seeding completed (${insertedCount} entries).`);
+}
+
+
+
+/**
  * Initialize database with smart checking
+ * Features:
+ * - First-time setup (no tables)
+ * - Schema migration (new tables added)
+ * - Idempotent (safe to run multiple times)
  */
 export async function initializeDatabase(): Promise<void> {
   try {
@@ -189,43 +357,55 @@ export async function initializeDatabase(): Promise<void> {
       return;
     }
 
-    // Check if database is already initialized
-    const isInitialized = await isDatabaseInitialized();
-
-    if (isInitialized && !shouldReset) {
-      console.log('✅ Database already initialized.');
-      console.log('💡 To reset database, set RESET_DB=true in .env or run: npm run db:reset');
-      return;
-    }
-
-    // Force reset mode
+    // Force reset mode - nukes everything
     if (shouldReset) {
       console.log('⚠️  RESET_DB=true - Forcing database rebuild...\n');
-      await createDatabaseIfNotExists(); // Ensure database exists
-      await syncSchema(); // Will recreate tables
+      await createDatabaseIfNotExists();
+      await syncSchema();
       await generateClient();
       await runSeed();
       console.log('\n✨ Database force reset completed!\n');
       return;
     }
 
-    // Normal initialization (first time)
-    console.log('⚠️  Database not initialized. Starting initialization...\n');
+    // Check if database is already initialized (has user data)
+    const isInitialized = await isDatabaseInitialized();
+    
+    // Check if schema needs sync (missing tables like site_config)
+    const needsSchemaSync = await schemaNeedsSync();
 
-    // Step 1: Create database if it doesn't exist
-    await createDatabaseIfNotExists();
+    // Case 1: First-time initialization (no data, no tables)
+    if (!isInitialized && needsSchemaSync) {
+      console.log('⚠️  Database not initialized. Starting first-time setup...\n');
 
-    // Step 2: Sync schema (non-blocking, async)
-    await syncSchema();
+      await createDatabaseIfNotExists();
+      await syncSchema();
+      await generateClient();
+      await runSeed();
 
-    // Step 3: Generate Prisma Client
-    await generateClient();
+      console.log('\n✨ Database initialization completed successfully!\n');
+      console.log('💡 Next startup will skip full initialization.\n');
+      return;
+    }
 
-    // Step 4: Seed data
-    await runSeed();
+    // Case 2: Has data but missing new tables (schema migration)
+    if (isInitialized && needsSchemaSync) {
+      console.log('🔄 Existing database detected but schema needs update...\n');
 
-    console.log('\n✨ Database initialization completed successfully!\n');
-    console.log('💡 Next startup will skip initialization (unless RESET_DB=true).\n');
+      await syncSchema();
+      console.log('✅ Schema synced. New tables created.');
+
+      // Seed site_config using raw SQL (avoids Prisma client cache issues)
+      console.log('🌱 Seeding site config...');
+      await seedSiteConfigRaw();
+
+      console.log('\n✨ Database schema updated successfully!\n');
+      return;
+    }
+
+    // Case 3: Fully initialized
+    console.log('✅ Database already initialized and up to date.');
+    console.log('💡 To reset database, set RESET_DB=true in .env or run: npm run db:reset');
 
   } catch (error) {
     console.error('\n❌ Database initialization failed:', error);

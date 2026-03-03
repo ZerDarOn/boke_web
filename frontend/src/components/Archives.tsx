@@ -1,10 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BLOG_POSTS } from '../constants';
-import { ArrowRight, LayoutList, LayoutGrid } from 'lucide-react';
+import { postsApi } from '../lib/api';
+import { ArrowRight, LayoutList, LayoutGrid, Loader2 } from 'lucide-react';
+
+interface PostWithSlug {
+  id: string;
+  slug: string;
+  title: string;
+  date: string;
+  category: string;
+  excerpt: string;
+}
 
 const Archives: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [posts, setPosts] = useState<PostWithSlug[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 从 API 获取文章列表
+  useEffect(() => {
+    const fetchPosts = async () => {
+      setLoading(true);
+      try {
+        const result = await postsApi.getAll({ limit: 6 });
+        if (result.success && result.data) {
+          setPosts(result.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch posts for Archives:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  // 格式化日期显示
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('zh-CN', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      }).replace(/\//g, '.');
+    } catch {
+      return dateString;
+    }
+  };
 
   return (
     <section id="articles" className="py-12 w-full relative">
@@ -35,11 +79,20 @@ const Archives: React.FC = () => {
         </div>
       </div>
 
-      <div className={viewMode === 'list' ? "grid grid-cols-1 gap-12" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
-        {BLOG_POSTS.slice(0, 6).map((post) => (
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-neon" size={32} />
+        </div>
+      )}
+
+      {/* Posts Grid */}
+      {!loading && (
+        <div className={viewMode === 'list' ? "grid grid-cols-1 gap-12" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
+          {posts.slice(0, 6).map((post) => (
           <Link
             key={post.id}
-            to={`/posts/${post.id}`}
+            to={`/posts/${post.slug}`}
             className={`
                 group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
                 ${viewMode === 'list' ? 'flex flex-col md:flex-row gap-6 items-start p-6' : 'flex flex-col p-6 h-full'}
@@ -47,7 +100,7 @@ const Archives: React.FC = () => {
           >
             {/* Date Badge */}
             <div className={`flex-shrink-0 ${viewMode === 'list' ? 'md:w-28 pt-1' : 'mb-4'}`}>
-               <span className="font-mono text-sm text-gray-400 block mb-1">{post.date}</span>
+               <span className="font-mono text-sm text-gray-400 block mb-1">{formatDate(post.date)}</span>
                <span className="font-mono text-xs text-neon border border-neon px-2 py-0.5 inline-block bg-neon/5">
                  {post.category}
                </span>
@@ -70,7 +123,8 @@ const Archives: React.FC = () => {
             <div className="absolute top-0 right-0 w-12 h-12 bg-gray-50 dark:bg-white/5 opacity-0 group-hover:opacity-100 rounded-bl-3xl transition-opacity -z-10"></div>
           </Link>
         ))}
-      </div>
+        </div>
+      )}
       
       <div className="mt-16 text-center">
           <Link to="/posts" className="px-8 py-3 border border-ink dark:border-white/50 text-ink dark:text-white bg-transparent hover:bg-ink hover:text-white dark:hover:bg-white dark:hover:text-ink transition-all duration-300 font-mono tracking-widest text-sm inline-block">

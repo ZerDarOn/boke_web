@@ -14,6 +14,8 @@
     "db:init": "tsx init-db.ts",
     "db:health": "tsx init-db.ts health",
     "db:force-reset": "tsx init-db.ts reset",
+    "db:sync": "tsx init-db.ts schema",
+    "db:seed-only": "tsx init-db.ts seed",
     "init": "npm run db:generate && npm run db:migrate && npm run db:seed",
     "test": "jest"
   },

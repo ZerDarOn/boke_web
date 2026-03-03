@@ -1,22 +1,25 @@
 import React from 'react';
 import { DIARY_ENTRIES } from '../constants';
+import { usePageCopy } from '../hooks/useSiteConfig';
 
 const ShadowFragments: React.FC = () => {
+  const pageCopy = usePageCopy();
+
   return (
     <section id="thoughts" className="py-24 border-t border-ink/10 dark:border-white/10 relative overflow-hidden w-full">
       
       {/* Background Decor */}
       <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-         <span className="font-serif text-[10rem] leading-none select-none text-ink dark:text-white">念</span>
+         <span className="font-serif text-[10rem] leading-none select-none text-ink dark:text-white">{pageCopy.thoughtsBgText}</span>
       </div>
 
       <div className="w-full px-8">
         <div className="flex items-center justify-between mb-12">
           <h2 className="text-3xl font-sans font-bold text-ink dark:text-white">
-            THOUGHT STREAM
+            {pageCopy.thoughtsTitle}
           </h2>
           <span className="font-mono text-xs tracking-widest text-gray-500">
-             // MICRO-BLOG
+             // {pageCopy.thoughtsLabel}
           </span>
         </div>
 

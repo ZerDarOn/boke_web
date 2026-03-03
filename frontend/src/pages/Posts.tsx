@@ -7,6 +7,7 @@ import { api, Post as ApiPost } from '../lib/api';
 // 映射前端类型到后端类型
 const mapPostType = (post: ApiPost) => ({
   id: post.id,
+  slug: post.slug,
   title: post.title,
   date: post.date.split('T')[0], // 只取日期部分
   category: post.category,
@@ -247,7 +248,7 @@ export default function Posts() {
         {filteredPosts.map((post) => (
           <Link 
             key={post.id}
-            to={`/posts/${post.id}`}
+            to={`/posts/${post.slug}`}
             className={`
               group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
               ${viewMode === 'list' ? 'flex flex-col md:flex-row gap-6 items-start p-6' : 'flex flex-col p-6 h-full'}

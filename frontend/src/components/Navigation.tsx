@@ -19,6 +19,7 @@ interface NavigationProps {
   secondaryHue: number;
   setSecondaryHue: (hue: number) => void;
   resetColor: () => void;
+  blogName?: string;
 }
 
 // 菜单项到路由路径的映射
@@ -38,6 +39,7 @@ const viewToPath: Record<string, string> = {
 
 const Navigation: React.FC<NavigationProps> = ({ 
     toggleRightSidebar, isRightSidebarOpen,
+    blogName = 'INK.SPIRIT',
     theme, toggleTheme, lang, toggleLang, openSearch,
     primaryHue, setPrimaryHue, secondaryHue, setSecondaryHue, resetColor
 }) => {
@@ -142,7 +144,14 @@ const Navigation: React.FC<NavigationProps> = ({
             to="/"
             className="flex-shrink-0 flex items-center font-bold text-white tracking-widest text-lg md:text-xl md:mr-12 cursor-pointer group"
         >
-          <span className="text-neon group-hover:shadow-[0_0_15px_rgba(16,185,129,0.8)] transition-shadow duration-300">INK</span>.SPIRIT
+          {blogName.includes('.') ? (
+            <>
+              <span className="text-neon group-hover:shadow-[0_0_15px_rgba(16,185,129,0.8)] transition-shadow duration-300">{blogName.split('.')[0]}</span>
+              .{blogName.split('.').slice(1).join('.')}
+            </>
+          ) : (
+            <span className="text-neon group-hover:shadow-[0_0_15px_rgba(16,185,129,0.8)] transition-shadow duration-300">{blogName}</span>
+          )}
         </Link>
 
         {/* Center: Main Navigation */}

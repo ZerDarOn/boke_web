@@ -1,4 +1,4 @@
-import React, { useEffect, useContext } from 'react';
+import React, { useEffect, useContext, useState, useMemo } from 'react';
 import { ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HeroContext } from './Layout';
 
@@ -7,77 +7,121 @@ interface HeroProps {
   lang: 'EN' | 'ZH';
 }
 
+interface HeroContentItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+  contentZH: {
+    tag: string;
+    titleStart: string;
+    titleHighlight: string;
+    titleEnd: string;
+    quote: string;
+  };
+  contentEN: {
+    tag: string;
+    titleStart: string;
+    titleHighlight: string;
+    titleEnd: string;
+    quote: string;
+  };
+}
+
+const defaultHeroContent: HeroContentItem[] = [
+  {
+    id: 'ink',
+    name: 'Ink Slash',
+    enabled: true,
+    contentZH: {
+      tag: '数字编年史(2025)',
+      titleStart: '以',
+      titleHighlight: '代码',
+      titleEnd: '书写',
+      quote: '"在数字虚空中记录灵魂的回响。"'
+    },
+    contentEN: {
+      tag: 'DIGITAL.CHRONICLES(2025)',
+      titleStart: 'WRITTEN IN',
+      titleHighlight: 'CODE',
+      titleEnd: '',
+      quote: '"Documenting the ghost in the shell, one line at a time."'
+    }
+  },
+  {
+    id: 'grid',
+    name: 'Cyber Grid',
+    enabled: true,
+    contentZH: {
+      tag: '系统重构中...',
+      titleStart: '矩阵',
+      titleHighlight: '重载',
+      titleEnd: '',
+      quote: '"系统即是现实，逻辑构建真理。"'
+    },
+    contentEN: {
+      tag: 'SYSTEM.REFACTORING...',
+      titleStart: 'MATRIX',
+      titleHighlight: 'RELOADED',
+      titleEnd: '',
+      quote: '"The system is the reality. Logic builds truth."'
+    }
+  },
+  {
+    id: 'nebula',
+    name: 'Void Nebula',
+    enabled: true,
+    contentZH: {
+      tag: '星海漫游指南',
+      titleStart: '凝视',
+      titleHighlight: '深渊',
+      titleEnd: '',
+      quote: '"在数据洪流中寻找秩序的星光。"'
+    },
+    contentEN: {
+      tag: 'GUIDE.TO.GALAXY',
+      titleStart: 'VOID',
+      titleHighlight: 'GAZING',
+      titleEnd: '',
+      quote: '"Staring into the abyss of data, finding order in chaos."'
+    }
+  }
+];
+
 const Hero: React.FC<HeroProps> = ({ scrollY, lang }) => {
   // 使用 Context 获取/设置背景索引，实现跨页面同步
   const { bgIndex, setBgIndex } = useContext(HeroContext);
+  const [heroConfig, setHeroConfig] = useState<HeroContentItem[]>(defaultHeroContent);
 
-  const heroContent = [
-    {
-      id: 'ink',
-      name: 'Ink Slash',
-      content: {
-          ZH: {
-              tag: '数字编年史(2025)',
-              titleStart: '以',
-              titleHighlight: '代码',
-              titleEnd: '书写',
-              quote: '"在数字虚空中记录灵魂的回响。"'
-          },
-          EN: {
-              tag: 'DIGITAL.CHRONICLES(2025)',
-              titleStart: 'WRITTEN IN',
-              titleHighlight: 'CODE',
-              titleEnd: '',
-              quote: '"Documenting the ghost in the shell, one line at a time."'
-          }
-      }
-    },
-    {
-      id: 'grid',
-      name: 'Cyber Grid',
-      content: {
-          ZH: {
-              tag: '系统重构中...',
-              titleStart: '矩阵',
-              titleHighlight: '重载',
-              titleEnd: '',
-              quote: '"系统即是现实，逻辑构建真理。"'
-          },
-          EN: {
-              tag: 'SYSTEM.REFACTORING...',
-              titleStart: 'MATRIX',
-              titleHighlight: 'RELOADED',
-              titleEnd: '',
-              quote: '"The system is the reality. Logic builds truth."'
-          }
-      }
-    },
-    {
-      id: 'nebula',
-      name: 'Void Nebula',
-      content: {
-          ZH: {
-              tag: '星海漫游指南',
-              titleStart: '凝视',
-              titleHighlight: '深渊',
-              titleEnd: '',
-              quote: '"在数据洪流中寻找秩序的星光。"'
-          },
-          EN: {
-              tag: 'GUIDE.TO.GALAXY',
-              titleStart: 'VOID',
-              titleHighlight: 'GAZING',
-              titleEnd: '',
-              quote: '"Staring into the abyss of data, finding order in chaos."'
-          }
+  // 从 localStorage 读取 Hero 配置
+  useEffect(() => {
+    const saved = localStorage.getItem('site_config');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.heroBackgrounds && Array.isArray(parsed.heroBackgrounds)) {
+          setHeroConfig(parsed.heroBackgrounds);
+        }
+      } catch (e) {
+        console.error('Failed to parse hero config:', e);
       }
     }
-  ];
+  }, []);
 
-  const currentContent = heroContent[bgIndex].content[lang];
+  // 过滤出启用的背景
+  const enabledContent = useMemo(() => {
+    return heroConfig.filter(item => item.enabled !== false);
+  }, [heroConfig]);
 
-  const nextBg = () => setBgIndex((bgIndex + 1) % heroContent.length);
-  const prevBg = () => setBgIndex((bgIndex - 1 + heroContent.length) % heroContent.length);
+  // 如果没有启用的背景，使用默认值
+  const heroContent = enabledContent.length > 0 ? enabledContent : defaultHeroContent;
+
+  // 安全获取当前内容
+  const safeIndex = bgIndex % heroContent.length;
+  const currentItem = heroContent[safeIndex];
+  const currentContent = lang === 'ZH' ? currentItem.contentZH : currentItem.contentEN;
+
+  const nextBg = () => setBgIndex((prev) => (prev + 1) % heroContent.length);
+  const prevBg = () => setBgIndex((prev) => (prev - 1 + heroContent.length) % heroContent.length);
 
   // Auto-play Background Switch - 使用 ref 避免依赖问题
   useEffect(() => {

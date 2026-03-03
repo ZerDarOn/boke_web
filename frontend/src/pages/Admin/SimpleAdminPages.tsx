@@ -648,27 +648,7 @@ const AdminUsers: React.FC = () => (
   />
 );
 
-const AdminSettings: React.FC = () => (
-  <div className="space-y-6">
-    {/* Header */}
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-ink/20 to-purple-500/20 flex items-center justify-center">
-          <Settings size={24} className="text-ink dark:text-paper" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-ink dark:text-paper">系统设置</h1>
-          <p className="text-ink/70 dark:text-gray-400">配置系统全局参数和功能开关</p>
-        </div>
-      </div>
-    </div>
 
-    {/* Settings Content */}
-    <div className="bg-white dark:bg-black/30 rounded-xl p-6 border border-ink/10 dark:border-gray-700">
-      <p className="text-ink/70 dark:text-gray-400">系统设置功能正在开发中...</p>
-    </div>
-  </div>
-);
 
 export {
   AdminProjects,
@@ -679,5 +659,4 @@ export {
   AdminNetwork,
   AdminAnnouncements,
   AdminUsers,
-  AdminSettings,
 };

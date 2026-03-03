@@ -21,6 +21,7 @@ async function main() {
   await prisma.post.deleteMany();
   await prisma.activity.deleteMany();
   await prisma.siteStats.deleteMany();
+  await prisma.siteConfig.deleteMany();
   await prisma.user.deleteMany();
   console.log('✅ Data cleaned.\n');
 
@@ -903,6 +904,104 @@ Browser-based pixel art editor with real-time collaboration features.
   });
   console.log('✅ Created site stats\n');
 
+  // 创建默认站点配置
+  console.log('⚙️ Creating default site config...');
+  await prisma.siteConfig.createMany({
+    data: [
+      { key: 'blogName', value: 'INK.SPIRIT' },
+      { key: 'blogSubtitle', value: '数字编年史' },
+      { key: 'authorName', value: 'CYBER.RONIN' },
+      { key: 'authorTitle', value: 'Fullstack Alchemist' },
+      { key: 'authorAvatar', value: '' },
+      { key: 'authorBio', value: '在数字虚空中记录灵魂的回响' },
+      { key: 'email', value: 'ronin@cyber.ink' },
+      { key: 'github', value: 'github.com/cyber-ronin' },
+      { key: 'twitter', value: 'twitter.com/cyber_ronin' },
+      { key: 'bilibili', value: 'bilibili.com/user/123456' },
+      { key: 'wechat', value: '' },
+      { key: 'primaryColor', value: '#10b981' },
+      { key: 'secondaryColor', value: '#8b5cf6' },
+      { key: 'defaultTheme', value: 'dark' },
+      { key: 'pageCopy', value: JSON.stringify({
+        diaryTitle: 'DIARY.STREAM',
+        diarySubtitle: 'Private Thoughts',
+        diaryQuote: 'Writing is defragmentation of the soul.',
+        diaryStartLabel: '记录开始',
+        thoughtsTitle: 'THOUGHT STREAM',
+        thoughtsLabel: 'MICRO-BLOG',
+        thoughtsBgText: '念',
+        footerQuote: 'The code flows like wind, invisible yet mighty.',
+        announcementTitle: '公告',
+        announcementContent: '本站采用 React & Cyber-Ink 驱动。最新主题 "VOID" 已上线，包含全新的夜间模式和水墨渲染引擎。',
+        announcementLink: '/announcement',
+        announcementLinkText: '了解更多',
+        aboutContactTitle: '联系方式',
+        aboutContactCopyTip: '点击卡片复制链接或访问',
+      })},
+      { key: 'heroBackgrounds', value: JSON.stringify([
+        {
+          id: 'ink',
+          name: 'Ink Slash',
+          enabled: true,
+          contentZH: {
+            tag: '数字编年史(2025)',
+            titleStart: '以',
+            titleHighlight: '代码',
+            titleEnd: '书写',
+            quote: '"在数字虚空中记录灵魂的回响。"'
+          },
+          contentEN: {
+            tag: 'DIGITAL.CHRONICLES(2025)',
+            titleStart: 'WRITTEN IN',
+            titleHighlight: 'CODE',
+            titleEnd: '',
+            quote: '"Documenting the ghost in the shell, one line at a time."'
+          }
+        },
+        {
+          id: 'grid',
+          name: 'Cyber Grid',
+          enabled: true,
+          contentZH: {
+            tag: '系统重构中...',
+            titleStart: '矩阵',
+            titleHighlight: '重载',
+            titleEnd: '',
+            quote: '"系统即是现实，逻辑构建真理。"'
+          },
+          contentEN: {
+            tag: 'SYSTEM.REFACTORING...',
+            titleStart: 'MATRIX',
+            titleHighlight: 'RELOADED',
+            titleEnd: '',
+            quote: '"The system is the reality. Logic builds truth."'
+          }
+        },
+        {
+          id: 'nebula',
+          name: 'Void Nebula',
+          enabled: true,
+          contentZH: {
+            tag: '星海漫游指南',
+            titleStart: '凝视',
+            titleHighlight: '深渊',
+            titleEnd: '',
+            quote: '"在数据洪流中寻找秩序的星光。"'
+          },
+          contentEN: {
+            tag: 'GUIDE.TO.GALAXY',
+            titleStart: 'VOID',
+            titleHighlight: 'GAZING',
+            titleEnd: '',
+            quote: '"Staring into the abyss of data, finding order in chaos."'
+          }
+        }
+      ])},
+    ],
+    skipDuplicates: true,
+  });
+  console.log('✅ Created default site config\n');
+
   console.log('═══════════════════════════════════════');
   console.log('✨ Database initialization completed!');
   console.log('═══════════════════════════════════════');
@@ -928,4 +1027,118 @@ Browser-based pixel art editor with real-time collaboration features.
   console.log('');
 }
 
-export { main };
+/**
+ * Seed only site config (for schema migration on existing databases)
+ * This is safe to run multiple times - it skips duplicates
+ */
+async function seedSiteConfigOnly() {
+  console.log('⚙️  Creating default site config...\n');
+
+  // Create a new PrismaClient instance for this function
+  const { PrismaClient } = await import('@prisma/client');
+  const seedPrisma = new PrismaClient();
+
+  try {
+    // Create default site config (skip if already exists)
+    const result = await seedPrisma.siteConfig.createMany({
+      data: [
+        { key: 'blogName', value: 'INK.SPIRIT' },
+        { key: 'blogSubtitle', value: '数字编年史' },
+        { key: 'authorName', value: 'CYBER.RONIN' },
+        { key: 'authorTitle', value: 'Fullstack Alchemist' },
+        { key: 'authorAvatar', value: '' },
+        { key: 'authorBio', value: '在数字虚空中记录灵魂的回响' },
+        { key: 'email', value: 'ronin@cyber.ink' },
+        { key: 'github', value: 'github.com/cyber-ronin' },
+        { key: 'twitter', value: 'twitter.com/cyber_ronin' },
+        { key: 'bilibili', value: 'bilibili.com/user/123456' },
+        { key: 'wechat', value: '' },
+        { key: 'primaryColor', value: '#10b981' },
+        { key: 'secondaryColor', value: '#8b5cf6' },
+        { key: 'defaultTheme', value: 'dark' },
+        { key: 'pageCopy', value: JSON.stringify({
+          diaryTitle: 'DIARY.STREAM',
+          diarySubtitle: 'Private Thoughts',
+          diaryQuote: 'Writing is defragmentation of the soul.',
+          diaryStartLabel: '记录开始',
+          thoughtsTitle: 'THOUGHT STREAM',
+          thoughtsLabel: 'MICRO-BLOG',
+          thoughtsBgText: '念',
+          footerQuote: 'The code flows like wind, invisible yet mighty.',
+          announcementTitle: '公告',
+          announcementContent: '本站采用 React & Cyber-Ink 驱动。最新主题 "VOID" 已上线，包含全新的夜间模式和水墨渲染引擎。',
+          announcementLink: '/announcement',
+          announcementLinkText: '了解更多',
+          aboutContactTitle: '联系方式',
+          aboutContactCopyTip: '点击卡片复制链接或访问',
+        })},
+        { key: 'heroBackgrounds', value: JSON.stringify([
+          {
+            id: 'ink',
+            name: 'Ink Slash',
+            enabled: true,
+            contentZH: {
+              tag: '数字编年史(2025)',
+              titleStart: '以',
+              titleHighlight: '代码',
+              titleEnd: '书写',
+              quote: '"在数字虚空中记录灵魂的回响。"'
+            },
+            contentEN: {
+              tag: 'DIGITAL.CHRONICLES(2025)',
+              titleStart: 'WRITTEN IN',
+              titleHighlight: 'CODE',
+              titleEnd: '',
+              quote: '"Documenting the ghost in the shell, one line at a time."'
+            }
+          },
+          {
+            id: 'grid',
+            name: 'Cyber Grid',
+            enabled: true,
+            contentZH: {
+              tag: '系统重构中...',
+              titleStart: '矩阵',
+              titleHighlight: '重载',
+              titleEnd: '',
+              quote: '"系统即是现实，逻辑构建真理。"'
+            },
+            contentEN: {
+              tag: 'SYSTEM.REFACTORING...',
+              titleStart: 'MATRIX',
+              titleHighlight: 'RELOADED',
+              titleEnd: '',
+              quote: '"The system is the reality. Logic builds truth."'
+            }
+          },
+          {
+            id: 'nebula',
+            name: 'Void Nebula',
+            enabled: true,
+            contentZH: {
+              tag: '星海漫游指南',
+              titleStart: '凝视',
+              titleHighlight: '深渊',
+              titleEnd: '',
+              quote: '"在数据洪流中寻找秩序的星光。"'
+            },
+            contentEN: {
+              tag: 'GUIDE.TO.GALAXY',
+              titleStart: 'VOID',
+              titleHighlight: 'GAZING',
+              titleEnd: '',
+              quote: '"Staring into the abyss of data, finding order in chaos."'
+            }
+          }
+        ])},
+      ],
+      skipDuplicates: true,
+    });
+
+    console.log(`✅ Created/Updated ${result.count} site config entries`);
+  } finally {
+    await seedPrisma.$disconnect();
+  }
+}
+
+export { main, seedSiteConfigOnly };

@@ -23,10 +23,13 @@ import TableOfContents from '../components/TableOfContents';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
+import { postsApi } from '../lib/api';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const post = BLOG_POSTS.find(p => p.id === id);
+  const [post, setPost] = useState<any>(BLOG_POSTS.find(p => p.id === id));
+  const [allPosts, setAllPosts] = useState<any[]>(BLOG_POSTS);
+  const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = React.useState(0);
   const [showCopyAlert, setShowCopyAlert] = React.useState(false);
@@ -87,6 +90,87 @@ const PostDetail: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
+  // Fetch post from API
+  useEffect(() => {
+    const fetchPost = async () => {
+      setLoading(true);
+      try {
+        // Fetch all posts first (for prev/next navigation)
+        const allResult = await postsApi.getAll();
+        if (allResult.success && allResult.data) {
+          setAllPosts(allResult.data as any);
+        }
+
+        // Try to fetch current post from API
+        const result = await postsApi.getById(id!);
+        if (result.success && result.data) {
+          // Map API response to match BlogPost structure
+          const apiPost = {
+            id: result.data.id,
+            title: result.data.title,
+            date: new Date(result.data.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.'),
+            category: result.data.category,
+            excerpt: result.data.excerpt,
+            content: result.data.content,
+            tags: result.data.tags,
+            readingTime: result.data.readingTime,
+          };
+          setPost(apiPost as any);
+        } else {
+          // Fallback: use local data
+          const localPost = BLOG_POSTS.find(p => p.id === id);
+          if (localPost) {
+            setPost(localPost);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch post:', error);
+        // Fallback: use local data
+        const localPost = BLOG_POSTS.find(p => p.id === id);
+        if (localPost) {
+          setPost(localPost);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchPost();
+    }
+  }, [id]);
+
+  // 将 useMemo 移到条件渲染之前，确保 Hooks 顺序一致
+  const postsList = allPosts.length > 0 ? allPosts : BLOG_POSTS;
+  const currentIndex = postsList.findIndex((p: any) => p.id === post?.id);
+  const prevPost = currentIndex > 0 ? postsList[currentIndex - 1] : null;
+  const nextPost = currentIndex < postsList.length - 1 ? postsList[currentIndex + 1] : null;
+
+  const relatedPosts = React.useMemo(() => {
+    if (!post) return [];
+    
+    return postsList
+      .filter((p: any) => p.id !== post.id)
+      .map((p: any) => ({
+        ...p,
+        relevanceScore: p.tags?.filter((tag: string) => post.tags?.includes(tag)).length || 0
+      }))
+      .filter((p: any) => p.relevanceScore > 0)
+      .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
+      .slice(0, 3);
+  }, [post, postsList]);
+
+  if (loading) {
+    return (
+      <div className="min-h-[600px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-neon border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="font-mono text-gray-500">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!post) {
     return (
       <div className="min-h-[600px] flex items-center justify-center">
@@ -103,24 +187,6 @@ const PostDetail: React.FC = () => {
       </div>
     );
   }
-
-  const currentIndex = BLOG_POSTS.findIndex(p => p.id === id);
-  const prevPost = currentIndex > 0 ? BLOG_POSTS[currentIndex - 1] : null;
-  const nextPost = currentIndex < BLOG_POSTS.length - 1 ? BLOG_POSTS[currentIndex + 1] : null;
-
-   const relatedPosts = React.useMemo(() => {
-     if (!post) return [];
-     
-     return BLOG_POSTS
-       .filter(p => p.id !== id)
-       .map(p => ({
-         ...p,
-         relevanceScore: p.tags.filter(tag => post.tags.includes(tag)).length
-       }))
-       .filter(p => p.relevanceScore > 0)
-       .sort((a, b) => b.relevanceScore - a.relevanceScore)
-       .slice(0, 3);
-   }, [id, post]);
 
   return (
     <div className="animate-in fade-in duration-500 relative">
@@ -434,10 +500,10 @@ const PostDetail: React.FC = () => {
             相关文章
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {relatedPosts.map((relatedPost) => (
+            {relatedPosts.map((relatedPost: any) => (
               <Link
                 key={relatedPost.id}
-                to={`/posts/${relatedPost.id}`}
+                to={`/posts/${relatedPost.slug || relatedPost.id}`}
                 className="group relative bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-6 hover:border-neon hover:shadow-lg hover:shadow-neon/10 transition-all duration-300 overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-neon/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -462,8 +528,8 @@ const PostDetail: React.FC = () => {
 
       {/* 上一篇/下一篇导航 */}
       <PrevNextNavigation
-        prev={prevPost ? { id: prevPost.id, title: prevPost.title, href: `/posts/${prevPost.id}`, date: prevPost.date } : null}
-        next={nextPost ? { id: nextPost.id, title: nextPost.title, href: `/posts/${nextPost.id}`, date: nextPost.date } : null}
+        prev={prevPost ? { id: prevPost.id, title: prevPost.title, href: `/posts/${prevPost.slug || prevPost.id}`, date: prevPost.date } : null}
+        next={nextPost ? { id: nextPost.id, title: nextPost.title, href: `/posts/${nextPost.slug || nextPost.id}`, date: nextPost.date } : null}
       />
 
       {/* 评论区域 */}

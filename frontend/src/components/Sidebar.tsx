@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, Github, Twitter, Hash } from 'lucide-react';
 import { CATEGORIES, TAGS } from '../constants';
+import { useSiteConfig } from '../hooks/useSiteConfig';
 
 const BilibiliIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -13,6 +14,7 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const categoryParam = new URLSearchParams(location.search).get('category');
   const tagParam = new URLSearchParams(location.search).get('tag');
+  const config = useSiteConfig();
 
   return (
     <aside className="hidden lg:flex flex-col gap-6 w-64 flex-shrink-0 sticky top-24 h-fit z-20">
@@ -21,20 +23,24 @@ const Sidebar: React.FC = () => {
       <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 p-6 flex flex-col items-center text-center shadow-[4px_4px_0px_rgba(10,10,10,0.1)] dark:shadow-none hover:shadow-[6px_6px_0px_rgba(16,185,129,0.2)] transition-all duration-300 rounded-lg relative overflow-hidden group">
         <div className="w-20 h-20 rounded-full bg-ink dark:bg-black border-2 border-neon p-1 mb-3 relative">
             <div className="w-full h-full rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden">
-                <User className="text-gray-500 w-10 h-10" />
+                {config.authorAvatar ? (
+                  <img src={config.authorAvatar} alt={config.authorName} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="text-gray-500 w-10 h-10" />
+                )}
             </div>
             <div className="absolute bottom-0 right-0 w-4 h-4 bg-neon rounded-full border-2 border-white dark:border-black animate-pulse"></div>
         </div>
-        <h3 className="font-sans font-bold text-lg text-ink dark:text-white transition-colors">CYBER.RONIN</h3>
-        <p className="font-mono text-[10px] text-gray-500 dark:text-gray-400 mb-4 tracking-widest uppercase">Fullstack Alchemist</p>
+        <h3 className="font-sans font-bold text-lg text-ink dark:text-white transition-colors">{config.authorName}</h3>
+        <p className="font-mono text-[10px] text-gray-500 dark:text-gray-400 mb-4 tracking-widest uppercase">{config.authorTitle}</p>
         <div className="flex gap-4 text-ink dark:text-gray-300">
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-neon cursor-pointer transition-colors">
+            <a href={config.github} target="_blank" rel="noopener noreferrer" className="hover:text-neon cursor-pointer transition-colors">
               <Github size={16} />
             </a>
-            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-neon cursor-pointer transition-colors">
+            <a href={config.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-neon cursor-pointer transition-colors">
               <Twitter size={16} />
             </a>
-            <a href="https://bilibili.com" target="_blank" rel="noopener noreferrer" className="hover:text-neon cursor-pointer transition-colors">
+            <a href={config.bilibili} target="_blank" rel="noopener noreferrer" className="hover:text-neon cursor-pointer transition-colors">
               <BilibiliIcon />
             </a>
         </div>

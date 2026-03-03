@@ -2,10 +2,47 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Activity, Rss, ArrowRight, Copy, CheckCircle2, Clock, TrendingUp, ExternalLink } from 'lucide-react';
 import { LATEST_ACTIVITIES } from '../constants';
+import { usePageCopy } from '../hooks/useSiteConfig';
+import { api } from '../lib/api';
+
+interface Activity {
+  id: string;
+  project: string;
+  title: string;
+  tags: string[];
+  status: 'DONE' | 'IN_PROGRESS' | 'PLANNED';
+  date: string;
+}
 
 const RightSidebar: React.FC = () => {
   const [rssCopied, setRssCopied] = useState(false);
   const [rssUrl, setRssUrl] = useState('');
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const pageCopy = usePageCopy();
+
+  useEffect(() => {
+    setRssUrl(`${window.location.origin}/rss.xml`);
+    fetchActivities();
+  }, []);
+
+  const fetchActivities = async () => {
+    try {
+      const result = await api.settings.getByKey('activities');
+      if (result.success && result.data?.value) {
+        const parsedActivities = typeof result.data.value === 'string' 
+          ? JSON.parse(result.data.value) 
+          : result.data.value;
+        if (Array.isArray(parsedActivities)) {
+          setActivities(parsedActivities);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch activities:', error);
+    }
+    // Fallback to local data
+    setActivities(LATEST_ACTIVITIES as Activity[]);
+  };
 
   useEffect(() => {
     setRssUrl(`${window.location.origin}/rss.xml`);
@@ -33,17 +70,17 @@ const RightSidebar: React.FC = () => {
               <Bell size={16} className="text-neon" />
             </div>
             <span className="bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-              公告
+              {pageCopy.announcementTitle}
             </span>
           </h4>
           <p className="font-serif text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-            本站采用 React & Cyber-Ink 驱动。最新主题 "VOID" 已上线，包含全新的夜间模式和水墨渲染引擎。
+            {pageCopy.announcementContent}
           </p>
           <Link 
-            to="/announcement" 
+            to={pageCopy.announcementLink}
             className="w-full group flex items-center justify-center gap-2 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 hover:from-blue-100 dark:hover:from-blue-900/40 text-blue-600 dark:text-blue-400 font-mono text-xs py-2.5 rounded-lg transition-all duration-300 hover:shadow-md hover:shadow-blue-500/20"
           >
-            了解更多 <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+            {pageCopy.announcementLinkText} <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
       </div>
@@ -64,16 +101,16 @@ const RightSidebar: React.FC = () => {
             </span>
           </h4>
           
-          {LATEST_ACTIVITIES.length > 0 ? (
+          {activities.length > 0 ? (
             <div className="space-y-3 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-              {LATEST_ACTIVITIES.slice(0, 5).map((item, idx) => (
+              {activities.slice(0, 5).map((item, idx) => (
                 <Link
                   key={item.id}
                   to="/projects"
                   className="group relative pl-6 pb-3 block last:pb-0"
                 >
                   {/* 时间线 */}
-                  {idx !== LATEST_ACTIVITIES.slice(0, 5).length - 1 && (
+                  {idx !== activities.slice(0, 5).length - 1 && (
                     <div className="absolute left-[11px] top-6 h-full w-[1px] bg-gradient-to-b from-gray-200 via-gray-200 to-transparent dark:from-white/10 dark:via-white/10 dark:to-transparent"></div>
                   )}
                   

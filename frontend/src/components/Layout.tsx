@@ -7,6 +7,7 @@ import Hero from './Hero';
 import { Search, X } from 'lucide-react';
 import { BLOG_POSTS, PROJECTS, DIARY_ENTRIES, ANNOUNCEMENTS, ANIME_LIST, GALLERY_IMAGES } from '../constants';
 import { useLang } from '../contexts/LangContext';
+import { useSiteConfig } from '../hooks/useSiteConfig';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -37,6 +38,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [primaryHue, setPrimaryHue] = useState(150);
   const [secondaryHue, setSecondaryHue] = useState(260);
+  const config = useSiteConfig();
   
   // Hero 背景索引 - 全局状态，所有页面共享
   const [bgIndex, setBgIndex] = useState(0);
@@ -140,6 +142,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           secondaryHue={secondaryHue}
           setSecondaryHue={setSecondaryHue}
           resetColor={resetColor}
+          blogName={config.blogName}
         />
 
         {/* 搜索弹窗 */}
@@ -180,7 +183,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <h3 className="text-[10px] font-bold text-neon uppercase tracking-widest mb-2 px-2 border-l-2 border-neon/50">ARCHIVES ({filteredPosts.length})</h3>
                         <div className="grid gap-2">
                           {filteredPosts.map(post => (
-                            <Link key={post.id} to={`/posts/${post.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                            <Link key={post.id} to={`/posts/${post.slug}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
                               <span className="text-gray-300 group-hover:text-white font-sans">{post.title}</span>
                               <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{post.category}</span>
                             </Link>
@@ -294,10 +297,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <footer className="bg-ink text-white py-12 text-center relative overflow-hidden mt-12 dark:border-t dark:border-white/10">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neon to-transparent opacity-50"></div>
             <p className="font-mono text-xs text-gray-500 tracking-widest">
-              INK.SPIRIT © 2024 // ALL RIGHTS RESERVED
+              {config.blogName} © 2024 // ALL RIGHTS RESERVED
             </p>
             <p className="mt-2 font-serif text-gray-700 italic">
-              "The code flows like wind, invisible yet mighty."
+              "{config.pageCopy.footerQuote}"
             </p>
           </footer>
         </div>

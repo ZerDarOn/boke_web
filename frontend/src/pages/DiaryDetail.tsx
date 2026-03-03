@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { LONG_FORM_DIARIES } from '../constants';
+import type { Diary } from '../types';
 import ReactMarkdown from 'react-markdown';
 import {
   ArrowLeft,
@@ -12,10 +13,13 @@ import {
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
+import { diaryApi } from '../lib/api';
 
 const DiaryDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const diary = LONG_FORM_DIARIES.find(d => d.id === id);
+  const [diary, setDiary] = useState<Diary | null>(null);
+  const [allLongDiaries, setAllLongDiaries] = useState<Diary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showCopyAlert, setShowCopyAlert] = useState(false);
 
@@ -51,6 +55,58 @@ const DiaryDetail: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Fetch diary from API
+  useEffect(() => {
+    const fetchDiary = async () => {
+      setLoading(true);
+      try {
+        // Fetch all diaries first (for prev/next navigation)
+        const allResult = await diaryApi.getAll();
+        if (allResult.success && allResult.data) {
+          const longDiaries = allResult.data.filter(d => d.type === 'LONG');
+          setAllLongDiaries(longDiaries);
+        }
+
+        // Try to fetch current diary from API
+        const result = await diaryApi.getById(id!);
+        if (result.success && result.data) {
+          setDiary(result.data);
+        } else {
+          // Fallback: use local data
+          const localDiary = LONG_FORM_DIARIES.find(d => d.id === id);
+          if (localDiary) {
+            setDiary(localDiary as any);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch diary:', error);
+        // Fallback: use local data
+        const localDiary = LONG_FORM_DIARIES.find(d => d.id === id);
+        if (localDiary) {
+          setDiary(localDiary as any);
+        }
+        setAllLongDiaries(LONG_FORM_DIARIES as any);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchDiary();
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-[600px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-neon border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="font-mono text-gray-500">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!diary) {
     return (
       <div className="min-h-[600px] flex items-center justify-center">
@@ -68,9 +124,11 @@ const DiaryDetail: React.FC = () => {
     );
   }
 
-  const currentIndex = LONG_FORM_DIARIES.findIndex(d => d.id === id);
-  const prevDiary = currentIndex > 0 ? LONG_FORM_DIARIES[currentIndex - 1] : null;
-  const nextDiary = currentIndex < LONG_FORM_DIARIES.length - 1 ? LONG_FORM_DIARIES[currentIndex + 1] : null;
+  // Use API data for prev/next navigation, fallback to local data
+  const diaryList = allLongDiaries.length > 0 ? allLongDiaries : LONG_FORM_DIARIES as any;
+  const currentIndex = diaryList.findIndex((d: Diary) => d.id === diary?.id);
+  const prevDiary = currentIndex > 0 ? diaryList[currentIndex - 1] : null;
+  const nextDiary = currentIndex < diaryList.length - 1 ? diaryList[currentIndex + 1] : null;
 
   return (
     <div className="animate-in fade-in duration-500 relative">

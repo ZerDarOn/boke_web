@@ -24,6 +24,7 @@ import authRoutes from './routes/auth';
 import fileRoutes from './routes/files';
 import rssRoutes from './routes/rss';
 import aiRoutes from './routes/ai';
+import settingsRoutes from './routes/settings';
 
 const app = express();
 
@@ -101,6 +102,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use('/rss.xml', rssRoutes);
 
 // 404 handler
