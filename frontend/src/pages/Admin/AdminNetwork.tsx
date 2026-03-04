@@ -41,9 +41,9 @@ const AdminNetwork: React.FC = () => {
       const newNodeData = {
         name: data.label || 'New Node',
         role: data.role || 'Collaborator',
-        description: data.description || '',
-        x: data.x || 50,
-        y: data.y || 50,
+        description: data.description || 'No description yet',
+        x: data.x ?? 50,
+        y: data.y ?? 50,
         type: data.type || 'minor',
         connections: data.connections || [],
       };
@@ -63,11 +63,21 @@ const AdminNetwork: React.FC = () => {
     }
   };
 
-  const handleUpdateNode = async (id: string, updates: Partial<NetworkNode>) => {
+  const handleUpdateNode = async (id: string, updates: any) => {
     try {
       setError(null);
 
-      const result = await api.network.update(id, updates);
+      const nodeUpdates: Partial<NetworkNode> = {
+        name: updates.label,
+        x: updates.x,
+        y: updates.y,
+        type: updates.type,
+        role: updates.role,
+        description: updates.description,
+        connections: updates.connections,
+      };
+
+      const result = await api.network.update(id, nodeUpdates);
       if (result.success) {
         await loadNodes();
       } else {

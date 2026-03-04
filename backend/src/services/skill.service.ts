@@ -44,7 +44,13 @@ export class SkillService {
   }
 
   static async create(data: any) {
-    return prisma.skill.create({ data });
+    // 使用 upsert 避免重复创建同名技能
+    const { name, ...rest } = data;
+    return prisma.skill.upsert({
+      where: { name },
+      create: data,
+      update: rest,
+    });
   }
 
   static async update(id: string, data: any) {

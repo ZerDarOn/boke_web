@@ -143,11 +143,11 @@ export const timelineEventSchema = z.object({
 
 export const networkNodeSchema = z.object({
   name: z.string().min(1).max(200),
-  role: z.string().min(1).max(100),
-  description: z.string().min(1).max(500),
-  avatar: z.string().url().optional(),
-  x: z.number().optional(),
-  y: z.number().optional(),
+  role: z.string().min(1).max(100).default('Collaborator'),
+  description: z.string().max(500).default(''),
+  avatar: z.string().url().optional().or(z.literal('')),
+  x: z.number().default(0),
+  y: z.number().default(0),
   type: z.enum(['core', 'major', 'minor']).optional(),
   connections: z.array(z.string()).optional(),
 });

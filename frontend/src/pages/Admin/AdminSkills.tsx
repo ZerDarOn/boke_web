@@ -45,11 +45,13 @@ const AdminSkills: React.FC = () => {
     return skills.map(skill => ({
       id: skill.id,
       label: skill.name,
-      x: skill.nodeX || 50,
-      y: skill.nodeY || 50,
+      x: skill.nodeX ?? 50,
+      y: skill.nodeY ?? 50,
       connections: skill.connections || [],
       type: skill.nodeType || 'minor',
       level: skill.level || 1,
+      category: skill.category,
+      rank: skill.rank,
     }));
   };
 
@@ -87,7 +89,7 @@ const AdminSkills: React.FC = () => {
     }
   };
 
-  const handleUpdateNode = async (id: string, updates: Partial<SkillNode>) => {
+  const handleUpdateNode = async (id: string, updates: any) => {
     try {
       setError(null);
 
@@ -97,6 +99,8 @@ const AdminSkills: React.FC = () => {
         nodeY: updates.y,
         nodeType: updates.type,
         level: updates.level,
+        category: updates.category,
+        rank: updates.rank,
         connections: updates.connections,
       };
 

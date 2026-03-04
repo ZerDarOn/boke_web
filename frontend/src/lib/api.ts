@@ -71,6 +71,11 @@ async function apiRequest<T>(
       headers: mergedHeaders,
     });
 
+    // Handle 204 No Content (common for DELETE operations)
+    if (response.status === 204) {
+      return { success: true };
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
