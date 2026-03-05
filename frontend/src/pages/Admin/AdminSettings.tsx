@@ -4,6 +4,7 @@ import {
   Settings, Save, Globe, User, Mail, Image, Type, 
   Layout, Link, Loader2, X, Check, RefreshCw, FileText 
 } from 'lucide-react';
+import ImageUpload from '../../components/ImageUpload';
 
 interface SiteConfig {
   // 博客基本信息
@@ -405,17 +406,48 @@ const AdminSettings: React.FC = () => {
                 </div>
               </div>
 
+              {/* 头像上传 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  头像链接
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  作者头像
                 </label>
-                <input
-                  type="text"
-                  value={config.authorAvatar}
-                  onChange={(e) => updateConfig('authorAvatar', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="https://..."
-                />
+                <div className="flex items-start gap-6">
+                  {/* 头像预览 - 带绿色边框和状态点 */}
+                  <div className="relative">
+                    <div 
+                      className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-4 border-emerald-500 shadow-lg"
+                    >
+                      {config.authorAvatar ? (
+                        <img
+                          src={config.authorAvatar}
+                          alt="作者头像"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <User size={40} />
+                        </div>
+                      )}
+                    </div>
+                    {/* 在线状态指示器 */}
+                    <div className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 border-3 border-white dark:border-gray-800 rounded-full" />
+                  </div>
+                  
+                  {/* 上传组件 */}
+                  <div className="flex-1">
+                    <ImageUpload
+                      value={config.authorAvatar}
+                      onChange={(url) => updateConfig('authorAvatar', url)}
+                      type="author"
+                      size={80}
+                      label=""
+                      placeholder="点击上传头像"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      推荐尺寸：200x200 像素，支持 JPG、PNG 格式
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div>

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -27,11 +28,16 @@ async function main() {
 
   // 创建用户
   console.log('👤 Creating users...');
+  
+  // 生成真正的 bcrypt hash
+  const defaultPassword = 'admin123';
+  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+  
   const adminUser = await prisma.user.create({
     data: {
       username: 'cyber.ronin',
       email: 'ronin@cyber.ink',
-      password: '$2a$10$rXqZzZzZzZzZzZzZzZzO.1', // bcrypt hash for "admin123"
+      password: hashedPassword,
       displayName: 'Cyber.Ronin',
       bio: 'Full-stack developer exploring the boundaries of code and consciousness.',
       location: 'Tokyo, Japan',

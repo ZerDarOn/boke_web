@@ -75,6 +75,10 @@ const AdminNetwork: React.FC = () => {
         role: updates.role,
         description: updates.description,
         connections: updates.connections,
+        // 按钮配置
+        buttonEnabled: updates.buttonEnabled,
+        buttonLabel: updates.buttonLabel,
+        buttonLink: updates.buttonLink,
       };
 
       const result = await api.network.update(id, nodeUpdates);

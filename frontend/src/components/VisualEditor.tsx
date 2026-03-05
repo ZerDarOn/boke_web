@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api, NetworkNode, Skill } from '../lib/api';
-import { X, Plus, Save, RotateCw, Link, Info, Trash2, Edit, MousePointer, Grid, Maximize2, Check, ChevronDown, Settings } from 'lucide-react';
+import { X, Plus, Save, RotateCw, Link, Info, Trash2, Edit, MousePointer, Grid, Maximize2, Check, ChevronDown, Settings, Image as ImageIcon } from 'lucide-react';
+import ImageUpload from './ImageUpload';
 
 interface VisualEditorProps<T> {
   type: 'network' | 'skills';
@@ -190,6 +191,13 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
         category: (editingNode as any).category,
         rank: (editingNode as any).rank,
         connections: (editingNode as any).connections,
+        // 图片
+        avatar: (editingNode as any).avatar,
+        image: (editingNode as any).image,
+        // 按钮配置
+        buttonEnabled: (editingNode as any).buttonEnabled,
+        buttonLabel: (editingNode as any).buttonLabel,
+        buttonLink: (editingNode as any).buttonLink,
       });
       setSelectedNode(editingNode);
       alert('保存成功！');
@@ -537,6 +545,20 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
             </div>
           ) : editingNode ? (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* 图片上传 */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  <ImageIcon size={14} />
+                  {type === 'network' ? '头像' : '图标'}
+                </h4>
+                <ImageUpload
+                  value={type === 'network' ? (editingNode as any).avatar : (editingNode as any).image}
+                  onChange={(url) => handleEditingNodeChange(type === 'network' ? 'avatar' : 'image', url)}
+                  type={type}
+                  size={80}
+                />
+              </div>
+
               {/* 基本信息 */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">基本信息</h4>
@@ -647,6 +669,65 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
                         <option value="Expert">专家 (Expert)</option>
                         <option value="Master">大师 (Master)</option>
                       </select>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* 按钮配置 */}
+              <div className="space-y-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  <Link size={14} />
+                  按钮配置
+                </h4>
+                <p className="text-xs text-gray-400">配置节点详情页底部的按钮，可用于跳转到外部链接</p>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEditingNodeChange('buttonEnabled', true)}
+                    className={`flex-1 py-2 text-xs rounded-lg transition-colors ${
+                      (editingNode as any).buttonEnabled
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    显示按钮
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEditingNodeChange('buttonEnabled', false)}
+                    className={`flex-1 py-2 text-xs rounded-lg transition-colors ${
+                      !(editingNode as any).buttonEnabled
+                        ? 'bg-gray-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    隐藏按钮
+                  </button>
+                </div>
+                
+                {(editingNode as any).buttonEnabled && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">按钮文字</label>
+                      <input
+                        type="text"
+                        value={(editingNode as any).buttonLabel || ''}
+                        onChange={(e) => handleEditingNodeChange('buttonLabel', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        placeholder="Initialise Protocol"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">跳转链接</label>
+                      <input
+                        type="text"
+                        value={(editingNode as any).buttonLink || ''}
+                        onChange={(e) => handleEditingNodeChange('buttonLink', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        placeholder="https://..."
+                      />
                     </div>
                   </>
                 )}

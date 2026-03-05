@@ -114,6 +114,14 @@ model Skill {
   nodeType      NodeType?
   connections   String[]
 
+  // 图片
+  image         String?
+
+  // 按钮配置
+  buttonEnabled Boolean   @default(false)
+  buttonLabel   String?
+  buttonLink    String?
+
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -314,6 +322,11 @@ model NetworkNode {
 
   connections String[]
 
+  // 按钮配置
+  buttonEnabled Boolean   @default(false)
+  buttonLabel   String?
+  buttonLink    String?
+
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -425,4 +438,19 @@ model SiteConfig {
   updatedAt DateTime @updatedAt
   
   @@map("site_config")
+}
+
+// 宇宙图布局（全部模式专用坐标）
+model UniverseLayout {
+  id        String   @id @default(cuid())
+  nodeId    String   @unique  // skill_id 或 person_id
+  nodeType  String             // 'skill' 或 'person'
+  x         Float    @default(50)
+  y         Float    @default(50)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([nodeType])
+  @@map("universe_layouts")
 }

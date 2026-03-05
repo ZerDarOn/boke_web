@@ -9,18 +9,22 @@
     "start": "node dist/index.js",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
+    "db:push": "prisma db push --skip-generate",
     "db:seed": "npx prisma db seed",
-    "db:reset": "prisma migrate reset --force && npm run db:seed",
+    "db:reset": "prisma db push --force-reset --skip-generate && npm run db:generate && npm run db:seed",
+    "db:fix": "tsx scripts/sync-db.ts",
     "db:init": "tsx init-db.ts",
     "db:health": "tsx init-db.ts health",
     "db:force-reset": "tsx init-db.ts reset",
     "db:sync": "tsx init-db.ts schema",
     "db:seed-only": "tsx init-db.ts seed",
+    "db:sync-schema": "npm run db:generate && npm run db:push",
     "init": "npm run db:generate && npm run db:migrate && npm run db:seed",
     "test": "jest"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "schema": "prisma/schema.prisma"
   },
   "keywords": [
     "blog",
@@ -30,7 +34,7 @@
   "author": "CYBER.RONIN",
   "license": "MIT",
   "dependencies": {
-    "@prisma/client": "^5.6.0",
+    "@prisma/client": "^5.22.0",
     "@types/pg": "^8.16.0",
     "axios": "^1.6.7",
     "bcryptjs": "^2.4.3",
@@ -42,7 +46,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.18.0",
-    "prisma": "^5.6.0",
+    "prisma": "^5.22.0",
     "sharp": "^0.32.6",
     "uuid": "^9.0.1",
     "zod": "^3.22.4"

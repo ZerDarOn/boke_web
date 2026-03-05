@@ -130,6 +130,12 @@ export const skillSchema = z.object({
   nodeY: z.number().optional(),
   nodeType: z.enum(['core', 'major', 'minor']).optional(),
   connections: z.array(z.string()).optional(),
+  // 图片
+  image: z.string().max(500).optional(),
+  // 按钮配置
+  buttonEnabled: z.boolean().optional(),
+  buttonLabel: z.string().max(100).optional(),
+  buttonLink: z.string().max(500).optional(),
 });
 
 export const timelineEventSchema = z.object({
@@ -150,6 +156,10 @@ export const networkNodeSchema = z.object({
   y: z.number().default(0),
   type: z.enum(['core', 'major', 'minor']).optional(),
   connections: z.array(z.string()).optional(),
+  // 按钮配置
+  buttonEnabled: z.boolean().optional(),
+  buttonLabel: z.string().max(100).optional(),
+  buttonLink: z.string().max(500).optional(),
 });
 
 export const commentSchema = z.object({

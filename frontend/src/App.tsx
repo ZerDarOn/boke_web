@@ -38,6 +38,8 @@ import AdminGallery from './pages/Admin/AdminGallery';
 import { AdminProjects, AdminDiary, AdminTimeline, AdminAnnouncements, AdminUsers } from './pages/Admin/SimpleAdminPages';
 import AdminNetwork from './pages/Admin/AdminNetwork';
 import AdminSkills from './pages/Admin/AdminSkills';
+import AdminUniverse from './pages/Admin/AdminUniverse';
+import AdminUniverseVisual from './pages/Admin/AdminUniverseVisual';
 import AdminFiles from './pages/Admin/AdminFiles';
 
 // 路由切换滚动逻辑
@@ -162,6 +164,8 @@ const App: React.FC = () => {
             <Route path="gallery" element={<AdminGallery />} />
             <Route path="diary" element={<AdminDiary />} />
             <Route path="short-diary" element={<AdminShortDiary />} />
+            <Route path="universe" element={<AdminUniverse />} />
+            <Route path="universe-visual" element={<AdminUniverseVisual />} />
             <Route path="skills" element={<AdminSkills />} />
             <Route path="timeline" element={<AdminTimeline />} />
             <Route path="network" element={<AdminNetwork />} />

@@ -190,16 +190,17 @@ const AdminDashboard: React.FC = () => {
                 let iconBg;
                 
                 // 根据项目名称动态选择图标
-                if (activity.project.toLowerCase().includes('文章') || activity.project.toLowerCase().includes('post')) {
+                const projectName = (activity.project || '').toLowerCase();
+                if (projectName.includes('文章') || projectName.includes('post')) {
                   icon = <FileText size={24} className="text-blue-600" />;
                   iconBg = 'bg-blue-100 dark:bg-blue-900/30';
-                } else if (activity.project.toLowerCase().includes('项目') || activity.project.toLowerCase().includes('project')) {
+                } else if (projectName.includes('项目') || projectName.includes('project')) {
                   icon = <Rocket size={24} className="text-purple-600" />;
                   iconBg = 'bg-purple-100 dark:bg-purple-900/30';
-                } else if (activity.project.toLowerCase().includes('动漫') || activity.project.toLowerCase().includes('anime')) {
+                } else if (projectName.includes('动漫') || projectName.includes('anime')) {
                   icon = <Tv size={24} className="text-pink-600" />;
                   iconBg = 'bg-pink-100 dark:bg-pink-900/30';
-                } else if (activity.project.toLowerCase().includes('照片') || activity.project.toLowerCase().includes('gallery')) {
+                } else if (projectName.includes('照片') || projectName.includes('gallery')) {
                   icon = <Camera size={24} className="text-green-600" />;
                   iconBg = 'bg-green-100 dark:bg-green-900/30';
                 } else {

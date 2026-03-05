@@ -129,6 +129,8 @@ const AdminLayout: React.FC = () => {
     { icon: '📷', label: '相册管理', path: '/admin/gallery' },
     { icon: '📔', label: '长日记管理', path: '/admin/diary' },
     { icon: '💭', label: '短日记管理', path: '/admin/short-diary' },
+    { icon: '🌌', label: '宇宙图管理', path: '/admin/universe' },
+    { icon: '🎯', label: '宇宙图可视化', path: '/admin/universe-visual' },
     { icon: '⚔️', label: '技能管理', path: '/admin/skills' },
     { icon: '📅', label: '时间线管理', path: '/admin/timeline' },
     { icon: '🕸️', label: '网络管理', path: '/admin/network' },
@@ -173,29 +175,29 @@ const AdminLayout: React.FC = () => {
       <NeonCursor />
       
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-gray-900 border-r border-gray-700">
-        <div className="p-6">
-          <h2 className="text-xl font-bold mb-6 text-white">
+      <aside className="fixed left-0 top-0 h-full w-64 bg-gray-900 border-r border-gray-700 flex flex-col">
+        <div className="p-6 flex-shrink-0">
+          <h2 className="text-xl font-bold text-white">
             🎛 管理后台
           </h2>
-          <nav className="space-y-1">
-            {menuItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer ${
-                  activeMenu === item.path
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                <span className="mr-3 text-xl">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
-              </button>
-            ))}
-          </nav>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-700 bg-gray-900">
+        <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-1 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+          {menuItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer ${
+                activeMenu === item.path
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              }`}
+            >
+              <span className="mr-3 text-xl">{item.icon}</span>
+              <span className="font-medium">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="flex-shrink-0 p-4 border-t border-gray-700 bg-gray-900">
           <button
             onClick={() => navigate('/')}
             className="w-full text-center py-2 px-4 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors cursor-pointer"

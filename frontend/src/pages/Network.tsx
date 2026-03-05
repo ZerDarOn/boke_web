@@ -1,5 +1,5 @@
 import React from 'react';
-import RelationshipNetwork from '../components/RelationshipNetwork';
+import UniverseMap from '../components/UniverseMap';
 
 const Network: React.FC = () => {
   return (
@@ -8,7 +8,7 @@ const Network: React.FC = () => {
         / SOCIAL.NETWORK_MAP
         <div className="h-[2px] flex-1 bg-ink/10 dark:bg-paper/20"></div>
       </h2>
-      <RelationshipNetwork />
+      <UniverseMap />
     </div>
   );
 };
