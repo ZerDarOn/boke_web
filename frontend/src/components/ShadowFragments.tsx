@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { diaryApi, Diary } from '../lib/api';
 import { usePageCopy } from '../hooks/useSiteConfig';
 import { Loader2 } from 'lucide-react';
-import { DIARY_ENTRIES } from '../constants';
 
 const ShadowFragments: React.FC = () => {
   const pageCopy = usePageCopy();
@@ -15,34 +14,11 @@ const ShadowFragments: React.FC = () => {
       setLoading(true);
       try {
         const result = await diaryApi.getAll({ limit: 5, type: 'SHORT' });
-        if (result.success && result.data && result.data.length > 0) {
+        if (result.success && result.data) {
           setEntries(result.data);
-        } else {
-          // 回退到本地数据
-          setEntries(DIARY_ENTRIES.slice(0, 5).map(e => ({
-            id: e.id,
-            type: 'SHORT',
-            content: e.content,
-            stamp: e.stamp,
-            date: e.date,
-            tags: [],
-            createdAt: '',
-            updatedAt: ''
-          })) as Diary[]);
         }
       } catch (err) {
         console.error('Failed to fetch diaries:', err);
-        // 回退到本地数据
-        setEntries(DIARY_ENTRIES.slice(0, 5).map(e => ({
-          id: e.id,
-          type: 'SHORT',
-          content: e.content,
-          stamp: e.stamp,
-          date: e.date,
-          tags: [],
-          createdAt: '',
-          updatedAt: ''
-        })) as Diary[]);
       } finally {
         setLoading(false);
       }
@@ -89,8 +65,15 @@ const ShadowFragments: React.FC = () => {
           </div>
         )}
 
+        {/* Empty State */}
+        {!loading && entries.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+            <p className="text-lg font-serif">暂无内容</p>
+          </div>
+        )}
+
         {/* Horizontal Scroll Container for Vertical Cards */}
-        {!loading && (
+        {!loading && entries.length > 0 && (
           <div className="flex overflow-x-auto pb-12 gap-10 scrollbar-hide snap-x snap-mandatory px-4 py-4">
             {entries.slice(0, 5).map((entry, index) => (
               <div

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { projectsApi, Project } from '../lib/api';
-import { PROJECTS } from '../constants';
 import { Terminal, Cpu, Layers, ExternalLink, Loader2 } from 'lucide-react';
 
 const Arsenal: React.FC = () => {
@@ -13,24 +12,11 @@ const Arsenal: React.FC = () => {
       setLoading(true);
       try {
         const result = await projectsApi.getAll({ featured: true, limit: 6 });
-        if (result.success && result.data && result.data.length > 0) {
+        if (result.success && result.data) {
           setProjects(result.data);
-        } else {
-          // 回退到本地数据
-          setProjects(PROJECTS.filter(p => p.featured).map(p => ({
-            ...p,
-            createdAt: '',
-            updatedAt: ''
-          })) as Project[]);
         }
       } catch (err) {
         console.error('Failed to fetch projects:', err);
-        // 回退到本地数据
-        setProjects(PROJECTS.filter(p => p.featured).map(p => ({
-          ...p,
-          createdAt: '',
-          updatedAt: ''
-        })) as Project[]);
       } finally {
         setLoading(false);
       }
@@ -72,8 +58,15 @@ const Arsenal: React.FC = () => {
         </div>
       )}
 
+      {/* Empty State */}
+      {!loading && projects.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+          <p className="text-lg font-serif">暂无内容</p>
+        </div>
+      )}
+
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {!loading && projects.map((project, index) => (
+        {!loading && projects.length > 0 && projects.map((project, index) => (
           <div 
             key={project.id} 
             className="group bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 p-6 flex flex-col h-full hover:border-neon transition-colors duration-300 relative overflow-hidden"
