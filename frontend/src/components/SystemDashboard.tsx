@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Activity, Camera, Book, ArrowUpRight, MessageSquare, Heart, Star, PieChart, Loader2 } from 'lucide-react';
+import { Database, Activity, Camera, Book, ArrowUpRight, MessageSquare, Heart, Star, PieChart, Loader2, Terminal, Lock } from 'lucide-react';
 import { api } from '../lib/api';
+import { maintenanceApi } from '../lib/maintenance';
 import type { DashboardStats, Post, Project, ContentDistribution } from '../lib/api';
 import { useLang } from '../contexts/LangContext';
 
@@ -8,47 +9,62 @@ const SystemDashboard: React.FC = () => {
   const { t } = useLang();
   
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
   
   // Stats data
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [popularContent, setPopularContent] = useState<{ posts: Post[]; projects: Project[] } | null>(null);
   const [contentDistribution, setContentDistribution] = useState<ContentDistribution[] | null>(null);
   
+  // Fetch data function
+  const fetchData = async () => {
+    try {
+      const [statsResult, popularResult, distributionResult] = await Promise.all([
+        api.dashboard.getStats(),
+        api.dashboard.getPopular(),
+        api.dashboard.getContentDistribution()
+      ]);
+      
+      if (statsResult.success && statsResult.data) {
+        setStats(statsResult.data);
+      }
+      if (popularResult.success && popularResult.data) {
+        setPopularContent(popularResult.data);
+      }
+      if (distributionResult.success && distributionResult.data) {
+        const colors = ['bg-neon', 'bg-pink-400', 'bg-amber-500', 'bg-purple-500', 'bg-blue-500', 'bg-green-500'];
+        const distributionWithColors = distributionResult.data.map((item, idx) => ({
+          ...item,
+          color: colors[idx % colors.length]
+        }));
+        setContentDistribution(distributionWithColors);
+      }
+    } catch (err) {
+      setError('Failed to fetch dashboard data');
+    }
+  };
+  
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       setError(null);
-      
+      await fetchData();
+      setLoading(false);
+    };
+    
+    const checkMaintenanceMode = async () => {
       try {
-        const [statsResult, popularResult, distributionResult] = await Promise.all([
-          api.dashboard.getStats(),
-          api.dashboard.getPopular(),
-          api.dashboard.getContentDistribution()
-        ]);
-        
-        if (statsResult.success && statsResult.data) {
-          setStats(statsResult.data);
-        }
-        if (popularResult.success && popularResult.data) {
-          setPopularContent(popularResult.data);
-        }
-        if (distributionResult.success && distributionResult.data) {
-          const colors = ['bg-neon', 'bg-pink-400', 'bg-amber-500', 'bg-purple-500', 'bg-blue-500', 'bg-green-500'];
-          const distributionWithColors = distributionResult.data.map((item, idx) => ({
-            ...item,
-            color: colors[idx % colors.length]
-          }));
-          setContentDistribution(distributionWithColors);
-        }
+        const response = await maintenanceApi.getStatus();
+        setMaintenanceMode(response.enabled);
       } catch (err) {
-        setError('Failed to fetch dashboard data');
-      } finally {
-        setLoading(false);
+        console.error('Failed to check maintenance mode:', err);
       }
     };
     
     fetchDashboardData();
+    checkMaintenanceMode();
   }, []);
   return (
     <div className="w-full p-2 md:p-6">
@@ -324,18 +340,32 @@ const SystemDashboard: React.FC = () => {
               </div>
           </div>
 
-         {/* Module 8: Maintenance (Row 6 - Half) */}
-        <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-ink dark:bg-white/10 text-white p-8 flex flex-col justify-center items-center text-center relative overflow-hidden rounded-lg">
-             {/* Abstract Background */}
-             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent"></div>
-             <h3 className="text-2xl font-black font-sans relative z-10 mb-2">{t.MAINTENANCE_MODE}</h3>
-             <p className="text-xs font-mono text-gray-400 relative z-10 mb-6 max-w-xs">
-                 {t.MAINTENANCE_DESC}
-             </p>
-             <button className="relative z-10 px-6 py-2 border border-white/20 text-xs font-mono hover:bg-white hover:text-ink transition-colors uppercase">
-                 {t.VIEW_LOG}
-             </button>
-        </div>
+          {/* Module 8: Maintenance (Row 6 - Half) */}
+         <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-ink dark:bg-white/10 text-white p-8 flex flex-col justify-center items-center text-center relative overflow-hidden rounded-lg">
+              {/* Abstract Background */}
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent"></div>
+              <div className="relative z-10 flex items-center gap-3 mb-4">
+                <Lock className={maintenanceMode ? 'text-neon' : 'text-gray-400'} size={32} />
+                <div className="text-left">
+                  <h3 className="text-xl font-black font-sans mb-1">
+                    {t.MAINTENANCE_MODE}
+                  </h3>
+                  <p className={`text-xs font-mono ${maintenanceMode ? 'text-neon' : 'text-gray-400'}`}>
+                    {maintenanceMode ? 'SYSTEM ONLINE' : 'SYSTEM OFFLINE'}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs font-mono text-gray-400 relative z-10 mb-6 max-w-xs">
+                  {t.MAINTENANCE_DESC}
+              </p>
+              <button 
+                onClick={() => window.location.href = '/maintenance'}
+                className="relative z-10 px-6 py-2 border border-white/20 text-xs font-mono hover:bg-white hover:text-ink transition-colors uppercase flex items-center gap-2"
+              >
+                  <Terminal size={14} />
+                  {t.VIEW_LOG}
+              </button>
+         </div>
 
       </div>
       )}

@@ -819,7 +819,17 @@ export interface DashboardStats {
     photos: number;
     diaries: number;
   };
-  commentDistribution: { label: string; count: number; color: string }[];
+  commentDistribution: { 
+    label: string; 
+    count: number; 
+    percentage: number; 
+    color: string 
+  }[];
+  trafficTrend?: Array<{
+    date: string; 
+    pageViews: number; 
+    uniqueVisitors: number 
+  }>;
 }
 
 export interface ContentDistribution {

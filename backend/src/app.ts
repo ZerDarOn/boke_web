@@ -26,6 +26,7 @@ import fileRoutes from './routes/files';
 import rssRoutes from './routes/rss';
 import aiRoutes from './routes/ai';
 import settingsRoutes from './routes/settings';
+import maintenanceRoutes from './routes/maintenance';
 
 const app = express();
 
@@ -63,7 +64,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-maintenance-token'],
 }));
 
 // Body parsing
@@ -105,6 +106,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 app.use('/rss.xml', rssRoutes);
 
 // 404 handler

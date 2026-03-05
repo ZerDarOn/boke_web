@@ -41,6 +41,7 @@ import AdminSkills from './pages/Admin/AdminSkills';
 import AdminUniverse from './pages/Admin/AdminUniverse';
 import AdminUniverseVisual from './pages/Admin/AdminUniverseVisual';
 import AdminFiles from './pages/Admin/AdminFiles';
+import MaintenancePanel from './components/MaintenancePanel';
 
 // 路由切换滚动逻辑
 const ScrollToTop: React.FC = () => {
@@ -151,8 +152,11 @@ const App: React.FC = () => {
             <Route path="gallery/:id" element={<GalleryDetail />} />
           </Route>
 
-          {/* Admin Login */}
-          <Route path="/admin/login" element={<AdminLogin />} />
+           {/* Maintenance */}
+           <Route path="/maintenance" element={<MaintenancePanel />} />
+
+           {/* Admin Login */}
+           <Route path="/admin/login" element={<AdminLogin />} />
 
           {/* Admin Pages */}
           <Route path="/admin" element={<AdminLayout />}>

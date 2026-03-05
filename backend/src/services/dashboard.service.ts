@@ -3,14 +3,23 @@ import { DashboardStats } from '../types';
 
 export class DashboardService {
   static async getStats(): Promise<DashboardStats> {
-    const [postCount, diaryCount, photoCount, animeCount, totalLikes, totalViews, firstPost] = await Promise.all([
+    const [postCount, diaryCount, photoCount, animeCount, totalLikes, totalViews, firstPost, siteStatsAgg, animeFavorites, recentSiteStats] = await Promise.all([
       prisma.post.count({ where: { isPublished: true } }),
       prisma.diary.count(),
       prisma.galleryImage.count(),
       prisma.anime.count(),
       prisma.post.aggregate({ _sum: { likeCount: true } }),
       prisma.post.aggregate({ _sum: { viewCount: true } }),
-      prisma.post.findFirst({ orderBy: { createdAt: 'asc' }, select: { createdAt: true } })
+      prisma.post.findFirst({ orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
+      prisma.siteStats.aggregate({
+        _sum: { pageViews: true, uniqueVisitors: true }
+      }),
+      prisma.anime.aggregate({ _count: { _all: true } }),
+      prisma.siteStats.findMany({
+        orderBy: { date: 'desc' },
+        take: 7,
+        select: { date: true, pageViews: true, uniqueVisitors: true }
+      })
     ]);
 
     const uptime = firstPost ? this.calculateUptime(firstPost.createdAt) : '0d 00h 00m';
@@ -23,26 +32,59 @@ export class DashboardService {
 
     const totalCommentsCount = postCommentsCount + galleryCommentsCount + animeCommentsCount;
 
+    // 从 SiteStats 获取真实的访问数据，如果没有则使用文章浏览量作为 fallback
+    const totalRequests = (siteStatsAgg._sum.pageViews ?? 0) || (totalViews._sum.viewCount ?? 0);
+    const uniqueVisitors = (siteStatsAgg._sum.uniqueVisitors ?? 0) || Math.floor((totalViews._sum.viewCount ?? 0) * 0.3);
+    
+    // 从 anime 表统计 favorites
+    const animeData = await prisma.anime.findMany({ select: { favorite: true } });
+    const totalFavorites = animeData.filter(a => a.favorite).length;
+
+    // 计算评论分布百分比
+    const totalComments = postCommentsCount + galleryCommentsCount + animeCommentsCount;
     const commentDistribution = [
-      { label: 'Post Comments', count: postCommentsCount, color: 'bg-neon' },
-      { label: 'Anime Comments', count: animeCommentsCount, color: 'bg-pink-400' },
-      { label: 'Gallery Comments', count: galleryCommentsCount, color: 'bg-amber-500' },
+      { 
+        label: 'Post Comments', 
+        count: postCommentsCount, 
+        percentage: totalComments ? (postCommentsCount / totalComments) * 100 : 0,
+        color: 'bg-neon' 
+      },
+      { 
+        label: 'Anime Comments', 
+        count: animeCommentsCount, 
+        percentage: totalComments ? (animeCommentsCount / totalComments) * 100 : 0,
+        color: 'bg-pink-400' 
+      },
+      { 
+        label: 'Gallery Comments', 
+        count: galleryCommentsCount, 
+        percentage: totalComments ? (galleryCommentsCount / totalComments) * 100 : 0,
+        color: 'bg-amber-500' 
+      },
     ];
+
+    // 计算访问趋势（最近7天）
+    const trafficTrend = recentSiteStats.map(stat => ({
+      date: stat.date.toISOString().split('T')[0],
+      pageViews: stat.pageViews,
+      uniqueVisitors: stat.uniqueVisitors
+    })).reverse();
 
     return {
       uptime,
-      totalRequests: totalViews._sum.viewCount ?? 0,
-      uniqueVisitors: Math.floor((totalViews._sum.viewCount ?? 0) * 0.3),
+      totalRequests,
+      uniqueVisitors,
       contentStats: {
         totalContent,
         totalLikes: totalLikes._sum.likeCount ?? 0,
-        totalFavorites: 0,
+        totalFavorites,
         totalComments: totalCommentsCount,
         articles: postCount,
         photos: photoCount,
         diaries: diaryCount,
       },
       commentDistribution,
+      trafficTrend,
     };
   }
 
