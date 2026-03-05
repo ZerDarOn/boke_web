@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 文章访问级别
+enum AccessLevel {
+  PUBLIC    // 公开，所有人可见
+  PRIVATE   // 私密，仅管理员可见
+  PASSWORD  // 密码保护，输入密码后可见
+}
+
 // 文章
 model Post {
   id          String   @id @default(cuid())
@@ -25,6 +32,10 @@ model Post {
   isPublished Boolean  @default(true)
   isFeatured  Boolean  @default(false)
 
+  // 访问控制
+  accessLevel AccessLevel @default(PUBLIC)
+  password    String?       // 密码保护时使用
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -36,6 +47,7 @@ model Post {
   @@index([date])
   @@index([isPublished])
   @@index([authorId])
+  @@index([accessLevel])
   @@map("posts")
 }
 

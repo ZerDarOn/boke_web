@@ -37,6 +37,8 @@ export const postSchema = z.object({
   readingTime: z.string().optional(),
   isPublished: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
+  accessLevel: z.enum(['PUBLIC', 'PRIVATE', 'PASSWORD']).optional(),
+  password: z.string().max(100).optional(),
 });
 
 export const projectSchema = z.object({

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { BLOG_POSTS } from '../constants';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -16,24 +15,30 @@ import {
   Copy,
   Check,
   Share2,
-  Link2
+  Link2,
+  Lock,
+  AlertCircle
 } from 'lucide-react';
 import SimpleComments from '../components/GiscusComments';
 import TableOfContents from '../components/TableOfContents';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
-import { postsApi } from '../lib/api';
+import { postsApi, Post } from '../lib/api';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [post, setPost] = useState<any>(BLOG_POSTS.find(p => p.id === id || p.slug === id));
-  const [allPosts, setAllPosts] = useState<any[]>(BLOG_POSTS);
+  const [post, setPost] = useState<Post | null>(null);
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = React.useState(0);
   const [showCopyAlert, setShowCopyAlert] = React.useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [needPassword, setNeedPassword] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [verifying, setVerifying] = useState(false);
 
   const copyToClipboard = (code: string, language: string) => {
     navigator.clipboard.writeText(code);
@@ -94,42 +99,28 @@ const PostDetail: React.FC = () => {
   useEffect(() => {
     const fetchPost = async () => {
       setLoading(true);
+      setNeedPassword(false);
+      setPasswordError('');
       try {
         // Fetch all posts first (for prev/next navigation)
         const allResult = await postsApi.getAll();
         if (allResult.success && allResult.data) {
-          setAllPosts(allResult.data as any);
+          setAllPosts(allResult.data);
         }
 
         // Try to fetch current post from API
         const result = await postsApi.getById(id!);
         if (result.success && result.data) {
-          // Map API response to match BlogPost structure
-          const apiPost = {
-            id: result.data.id,
-            title: result.data.title,
-            date: new Date(result.data.date).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.'),
-            category: result.data.category,
-            excerpt: result.data.excerpt,
-            content: result.data.content,
-            tags: result.data.tags,
-            readingTime: result.data.readingTime,
-          };
-          setPost(apiPost as any);
-        } else {
-          // Fallback: use local data (match by id or slug)
-          const localPost = BLOG_POSTS.find(p => p.id === id || p.slug === id);
-          if (localPost) {
-            setPost(localPost);
+          // Check if password is required
+          if ((result.data as any).needPassword) {
+            setPost(result.data);
+            setNeedPassword(true);
+          } else {
+            setPost(result.data);
           }
         }
       } catch (error) {
         console.error('Failed to fetch post:', error);
-        // Fallback: use local data (match by id or slug)
-        const localPost = BLOG_POSTS.find(p => p.id === id || p.slug === id);
-        if (localPost) {
-          setPost(localPost);
-        }
       } finally {
         setLoading(false);
       }
@@ -140,10 +131,37 @@ const PostDetail: React.FC = () => {
     }
   }, [id]);
 
+  // Verify password
+  const handleVerifyPassword = async () => {
+    if (!post || !password) return;
+
+    setVerifying(true);
+    setPasswordError('');
+
+    try {
+      const result = await postsApi.verifyPassword(post.id, password);
+      if (result.success && result.data?.success) {
+        // Refetch the post to get full content
+        const postResult = await postsApi.getById(id!);
+        if (postResult.success && postResult.data) {
+          setPost(postResult.data);
+          setNeedPassword(false);
+          setPassword('');
+        }
+      } else {
+        setPasswordError('密码错误');
+      }
+    } catch (error) {
+      setPasswordError('验证失败，请重试');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   // 将 useMemo 移到条件渲染之前，确保 Hooks 顺序一致
-  const postsList = allPosts.length > 0 ? allPosts : BLOG_POSTS;
-  // 使用 slug 或 id 匹配当前文章（兼容 API 和本地数据）
-  const currentIndex = postsList.findIndex((p: any) => 
+  const postsList = allPosts.length > 0 ? allPosts : [];
+  // 使用 slug 或 id 匹配当前文章
+  const currentIndex = postsList.findIndex((p) =>
     p.slug === post?.slug || p.id === post?.id
   );
   const prevPost = currentIndex > 0 ? postsList[currentIndex - 1] : null;
@@ -151,10 +169,10 @@ const PostDetail: React.FC = () => {
 
   const relatedPosts = React.useMemo(() => {
     if (!post) return [];
-    
+
     return postsList
-      .filter((p: any) => p.slug !== post.slug && p.id !== post.id)
-      .map((p: any) => ({
+      .filter((p) => p.slug !== post.slug && p.id !== post.id)
+      .map((p) => ({
         ...p,
         relevanceScore: p.tags?.filter((tag: string) => post.tags?.includes(tag)).length || 0
       }))
@@ -180,12 +198,70 @@ const PostDetail: React.FC = () => {
         <div className="text-center">
           <h1 className="text-6xl font-black text-ink dark:text-white mb-4">404</h1>
           <p className="font-mono text-gray-500 mb-6">文章不存在</p>
-          <Link 
+          <Link
             to="/posts"
             className="px-6 py-2 bg-neon text-white font-mono text-sm rounded hover:bg-neon/80 transition-colors"
           >
             返回文章列表
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Password protection UI
+  if (needPassword) {
+    return (
+      <div className="min-h-[600px] flex items-center justify-center">
+        <div className="text-center max-w-md w-full px-6">
+          <div className="mb-6">
+            <Lock size={64} className="mx-auto text-amber-500 mb-4" />
+            <h1 className="text-2xl font-bold text-ink dark:text-white mb-2">此文章需要密码访问</h1>
+            <p className="text-gray-500 dark:text-gray-400">{post.title}</p>
+          </div>
+
+          <div className="space-y-4">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setPasswordError('');
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+              placeholder="请输入访问密码"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-ink dark:text-white focus:outline-none focus:ring-2 focus:ring-neon focus:border-transparent"
+            />
+
+            {passwordError && (
+              <div className="flex items-center gap-2 text-red-500 text-sm">
+                <AlertCircle size={16} />
+                {passwordError}
+              </div>
+            )}
+
+            <button
+              onClick={handleVerifyPassword}
+              disabled={verifying || !password}
+              className="w-full px-6 py-3 bg-neon text-white font-mono rounded-lg hover:bg-neon/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {verifying ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  验证中...
+                </>
+              ) : (
+                '验证密码'
+              )}
+            </button>
+
+            <Link
+              to="/posts"
+              className="block text-gray-500 hover:text-neon dark:hover:text-neon transition-colors text-sm"
+            >
+              返回文章列表
+            </Link>
+          </div>
         </div>
       </div>
     );

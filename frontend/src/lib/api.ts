@@ -171,6 +171,8 @@ export const authApi = {
 
 // ==================== Blog Posts ====================
 
+export type AccessLevel = 'PUBLIC' | 'PRIVATE' | 'PASSWORD';
+
 export interface Post {
   id: string;
   title: string;
@@ -185,6 +187,9 @@ export interface Post {
   likeCount: number;
   isPublished: boolean;
   isFeatured: boolean;
+  accessLevel?: AccessLevel;
+  password?: string;
+  needPassword?: boolean;  // 前端使用，表示需要密码
   createdAt: string;
   updatedAt: string;
 }
@@ -198,6 +203,8 @@ export interface CreatePostData {
   category: string;
   tags: string[];
   readingTime: string;
+  accessLevel?: AccessLevel;
+  password?: string;
 }
 
 export const postsApi = {
@@ -250,6 +257,14 @@ export const postsApi = {
   like: async (id: string) => {
     return apiRequest<{ likeCount: number }>(`/api/posts/${id}/like`, {
       method: 'POST',
+    });
+  },
+
+  // POST /api/posts/:id/verify - 验证文章密码
+  verifyPassword: async (id: string, password: string) => {
+    return apiRequest<{ success: boolean }>(`/api/posts/${id}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
     });
   },
 

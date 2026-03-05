@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../lib/api';
-import { Search, Plus, Edit, Trash2, FileText, Clock, Eye, Heart, Loader2, X, Save, Image } from 'lucide-react';
+import { api, AccessLevel } from '../../lib/api';
+import { Search, Plus, Edit, Trash2, FileText, Clock, Eye, Heart, Loader2, X, Save, Image, Lock, Globe, Key } from 'lucide-react';
 
 // 简单的 Markdown 编辑器组件
 const SimpleMarkdownEditor: React.FC<{
@@ -36,6 +36,8 @@ interface Post {
   likeCount: number;
   date: string;
   excerpt?: string;
+  accessLevel?: AccessLevel;
+  password?: string;
 }
 
 const AdminPosts: React.FC = () => {
@@ -104,6 +106,8 @@ const AdminPosts: React.FC = () => {
       content: '',
       category: '',
       isPublished: false,
+      accessLevel: 'PUBLIC',
+      password: '',
     });
     setIsModalOpen(true);
   };
@@ -457,6 +461,81 @@ const AdminPosts: React.FC = () => {
                      立即发布
                    </label>
                  </div>
+
+                {/* 访问权限设置 */}
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    访问权限
+                  </label>
+                  <div className="space-y-3">
+                    <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                      <input
+                        type="radio"
+                        name="accessLevel"
+                        value="PUBLIC"
+                        checked={formData.accessLevel === 'PUBLIC' || !formData.accessLevel}
+                        onChange={() => handleInputChange('accessLevel', 'PUBLIC')}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Globe size={16} className="text-green-500" />
+                          <span className="font-medium text-gray-900">公开</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">所有人都可以查看此文章</p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                      <input
+                        type="radio"
+                        name="accessLevel"
+                        value="PASSWORD"
+                        checked={formData.accessLevel === 'PASSWORD'}
+                        onChange={() => handleInputChange('accessLevel', 'PASSWORD')}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Key size={16} className="text-amber-500" />
+                          <span className="font-medium text-gray-900">密码保护</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">访问者需要输入密码才能查看</p>
+                      </div>
+                    </label>
+
+                    {formData.accessLevel === 'PASSWORD' && (
+                      <div className="ml-7">
+                        <input
+                          type="text"
+                          value={formData.password || ''}
+                          onChange={(e) => handleInputChange('password', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          placeholder="请输入访问密码"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">请妥善保管密码，访客需要此密码才能查看文章</p>
+                      </div>
+                    )}
+
+                    <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                      <input
+                        type="radio"
+                        name="accessLevel"
+                        value="PRIVATE"
+                        checked={formData.accessLevel === 'PRIVATE'}
+                        onChange={() => handleInputChange('accessLevel', 'PRIVATE')}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Lock size={16} className="text-red-500" />
+                          <span className="font-medium text-gray-900">私密</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">仅管理员可以在后台查看</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
                </div>
              </form>
 
@@ -538,10 +617,23 @@ const AdminPosts: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2 py-1 bg-ink/10 dark:bg-black/20 rounded-md text-ink dark:text-paper">
                       {post.category}
                     </span>
+                    {/* 访问权限标识 */}
+                    {post.accessLevel === 'PASSWORD' && (
+                      <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 rounded-md text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <Key size={12} />
+                        密码保护
+                      </span>
+                    )}
+                    {post.accessLevel === 'PRIVATE' && (
+                      <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 rounded-md text-red-600 dark:text-red-400 flex items-center gap-1">
+                        <Lock size={12} />
+                        私密
+                      </span>
+                    )}
                   </div>
                 </div>
 

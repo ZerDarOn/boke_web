@@ -1,9 +1,9 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, AccessLevel } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { PaginationParams } from '../types';
 
 export class PostService {
-  // 获取文章列表
+  // 获取文章列表（公开 + 密码保护，排除私密）
   static async findMany(params: {
     pagination: PaginationParams;
     category?: string;
@@ -14,6 +14,7 @@ export class PostService {
 
     const where: Prisma.PostWhereInput = {
       isPublished: true,
+      accessLevel: { not: 'PRIVATE' }, // 排除私密文章
       ...(category && { category }),
       ...(tag && { tags: { has: tag } }),
       ...(search && {
@@ -42,6 +43,7 @@ export class PostService {
           readingTime: true,
           viewCount: true,
           likeCount: true,
+          accessLevel: true,
         },
       }),
       prisma.post.count({ where }),
@@ -72,6 +74,20 @@ export class PostService {
         },
       },
     });
+  }
+
+  // 验证文章访问密码
+  static async verifyPassword(postId: string, password: string): Promise<boolean> {
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { password: true, accessLevel: true },
+    });
+
+    if (!post || post.accessLevel !== 'PASSWORD') {
+      return false;
+    }
+
+    return post.password === password;
   }
 
   // 创建文章

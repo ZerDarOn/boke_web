@@ -2,8 +2,14 @@ import { Router } from 'express';
 import { PostController } from '../controllers/post.controller';
 import { validateBody } from '../middleware/validate.middleware';
 import { postSchema } from '../schemas';
+import { z } from 'zod';
 
 const router = Router();
+
+// 密码验证 schema
+const passwordSchema = z.object({
+  password: z.string().min(1),
+});
 
 // GET /api/posts - 文章列表
 router.get('/', PostController.getAll);
@@ -28,6 +34,9 @@ router.post('/:id/view', PostController.incrementView);
 
 // POST /api/posts/:id/like - 点赞
 router.post('/:id/like', PostController.incrementLike);
+
+// POST /api/posts/:id/verify - 验证文章密码
+router.post('/:id/verify', validateBody(passwordSchema), PostController.verifyPassword);
 
 // POST /api/posts - 创建文章 (Admin)
 router.post('/', validateBody(postSchema), PostController.create);

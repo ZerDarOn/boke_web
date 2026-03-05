@@ -31,7 +31,7 @@ export class PostController {
       const { id } = req.params;
       // 先尝试用 ID 查询
       let post = await PostService.findById(id);
-      
+
       // 如果找不到，尝试用 slug 查询
       if (!post) {
         post = await PostService.findBySlug(id);
@@ -41,9 +41,60 @@ export class PostController {
         return response.notFound(res, 'Post not found');
       }
 
+      // 检查访问权限
+      if (post.accessLevel === 'PRIVATE') {
+        return response.forbidden(res, 'This post is private');
+      }
+
+      // 如果是密码保护的文章，检查是否已验证
+      if (post.accessLevel === 'PASSWORD') {
+        const verified = req.session?.verifiedPosts?.[post.id];
+        if (!verified) {
+          // 返回部分信息，不包含内容
+          return response.success(res, {
+            id: post.id,
+            title: post.title,
+            slug: post.slug,
+            excerpt: post.excerpt,
+            date: post.date,
+            category: post.category,
+            tags: post.tags,
+            accessLevel: post.accessLevel,
+            needPassword: true,
+          });
+        }
+      }
+
       response.success(res, post);
     } catch (error: any) {
       response.error(res, error.message || 'Failed to fetch post');
+    }
+  }
+
+  // POST /api/posts/:id/verify - 验证文章密码
+  static async verifyPassword(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { password } = req.body;
+
+      const isValid = await PostService.verifyPassword(id, password);
+
+      if (isValid) {
+        // 在 session 中记录已验证
+        if (!req.session) {
+          (req as any).session = {};
+        }
+        if (!(req.session as any).verifiedPosts) {
+          (req.session as any).verifiedPosts = {};
+        }
+        (req.session as any).verifiedPosts[id] = true;
+
+        response.success(res, { success: true, message: 'Password verified' });
+      } else {
+        response.unauthorized(res, 'Invalid password');
+      }
+    } catch (error: any) {
+      response.error(res, error.message || 'Failed to verify password');
     }
   }
 
