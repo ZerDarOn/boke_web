@@ -35,7 +35,7 @@ import AdminSettings from './pages/Admin/AdminSettings';
 import AdminShortDiary from './pages/Admin/AdminShortDiary';
 import AdminActivities from './pages/Admin/AdminActivities';
 import AdminGallery from './pages/Admin/AdminGallery';
-import { AdminProjects, AdminDiary, AdminTimeline, AdminAnnouncements, AdminUsers } from './pages/Admin/SimpleAdminPages';
+import { AdminProjects, AdminDiary, AdminTimeline, AdminAnnouncements, AdminUsers, AdminCurrentStatus, AdminHistory } from './pages/Admin/SimpleAdminPages';
 import AdminNetwork from './pages/Admin/AdminNetwork';
 import AdminSkills from './pages/Admin/AdminSkills';
 import AdminUniverse from './pages/Admin/AdminUniverse';
@@ -172,6 +172,8 @@ const App: React.FC = () => {
             <Route path="universe-visual" element={<AdminUniverseVisual />} />
             <Route path="skills" element={<AdminSkills />} />
             <Route path="timeline" element={<AdminTimeline />} />
+            <Route path="current-status" element={<AdminCurrentStatus />} />
+            <Route path="history" element={<AdminHistory />} />
             <Route path="network" element={<AdminNetwork />} />
             <Route path="files" element={<AdminFiles />} />
             <Route path="announcements" element={<AdminAnnouncements />} />

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ANNOUNCEMENTS } from '../constants';
 import type { Announcement } from '../types';
 import {
   Info,
@@ -12,7 +11,8 @@ import {
   Clock,
   FileText,
   Wrench,
-  Zap
+  Zap,
+  Home
 } from 'lucide-react';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
@@ -25,10 +25,13 @@ const AnnouncementDetail: React.FC = () => {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+   useEffect(() => {
     const fetchAnnouncement = async () => {
       setLoading(true);
+      setError(null);
+
       try {
         // 获取所有公告（用于上一篇/下一篇导航）
         const allResult = await announcementsApi.getAll();
@@ -36,25 +39,16 @@ const AnnouncementDetail: React.FC = () => {
           setAllAnnouncements(allResult.data);
         }
 
-        // 尝试从 API 获取当前公告
+        // 从 API 获取当前公告
         const result = await announcementsApi.getById(id!);
         if (result.success && result.data) {
           setAnnouncement(result.data);
         } else {
-          // Fallback: 从本地 constants 查找
-          const localAnnouncement = ANNOUNCEMENTS.find(a => a.id === id);
-          if (localAnnouncement) {
-            setAnnouncement(localAnnouncement);
-          }
+          setError(result.error || '公告不存在');
         }
-      } catch (error) {
-        console.error('Failed to fetch announcement:', error);
-        // Fallback: 从本地 constants 查找
-        const localAnnouncement = ANNOUNCEMENTS.find(a => a.id === id);
-        if (localAnnouncement) {
-          setAnnouncement(localAnnouncement);
-        }
-        setAllAnnouncements(ANNOUNCEMENTS);
+      } catch (err: any) {
+        console.error('Failed to fetch announcement:', err);
+        setError('获取公告失败，请重试');
       } finally {
         setLoading(false);
       }
@@ -122,15 +116,40 @@ const AnnouncementDetail: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-[600px] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <AlertCircle size={48} className="text-red-500 mx-auto" />
+          <p className="font-mono text-red-500 text-lg">{error}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-neon text-white font-mono text-sm rounded hover:bg-neon/80 transition-colors"
+            >
+              重试
+            </button>
+            <Link
+              to="/announcement"
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-ink dark:text-white font-mono text-sm rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              返回公告列表
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!announcement) {
     return (
       <div className="min-h-[600px] flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-6xl font-black text-ink dark:text-white mb-4">404</h1>
-          <p className="font-mono text-gray-500 mb-6">公告不存在</p>
-          <Link 
+        <div className="text-center space-y-4">
+          <h1 className="text-6xl font-black text-ink dark:text-white">404</h1>
+          <p className="font-mono text-gray-500">公告不存在</p>
+          <Link
             to="/announcement"
-            className="px-6 py-2 bg-neon text-white font-mono text-sm rounded hover:bg-neon/80 transition-colors"
+            className="px-6 py-2 bg-neon text-white font-mono text-sm rounded hover:bg-neon/80 transition-colors inline-block"
           >
             返回公告列表
           </Link>
@@ -140,11 +159,10 @@ const AnnouncementDetail: React.FC = () => {
   }
 
   const typeConfig = getTypeConfig(announcement.type);
-  // 使用 API 数据获取上一篇/下一篇（用于导航），回退到本地数据
-  const announcementsList = allAnnouncements.length > 0 ? allAnnouncements : ANNOUNCEMENTS;
-  const currentIndex = announcementsList.findIndex((a: Announcement) => a.id === announcement.id);
-  const prevAnnouncement = currentIndex > 0 ? announcementsList[currentIndex - 1] : null;
-  const nextAnnouncement = currentIndex < announcementsList.length - 1 ? announcementsList[currentIndex + 1] : null;
+  // 使用 API 数据获取上一篇/下一篇
+  const currentIndex = allAnnouncements.findIndex((a: Announcement) => a.id === announcement.id);
+  const prevAnnouncement = currentIndex > 0 ? allAnnouncements[currentIndex - 1] : null;
+  const nextAnnouncement = currentIndex < allAnnouncements.length - 1 ? allAnnouncements[currentIndex + 1] : null;
 
   return (
     <div className="animate-in fade-in duration-500">

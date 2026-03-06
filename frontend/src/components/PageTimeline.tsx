@@ -1,32 +1,127 @@
 import React, { useState, useEffect } from 'react';
-import { Disc, Radio, MapPin, Briefcase, Trophy, Flag, GitCommit, LayoutList, FileText, Loader2 } from 'lucide-react';
-import { api, TimelineEvent } from '../lib/api';
+import { Disc, Radio, MapPin, Briefcase, Trophy, Flag, GitCommit, LayoutList, FileText, Loader2, Code, Star, Globe, Zap, Heart } from 'lucide-react';
+import { api, TimelineEvent, CurrentStatus, HistoryItem } from '../lib/api';
+
+// 图标映射
+const iconMap: Record<string, React.ElementType> = {
+  FileText,
+  Briefcase,
+  Code,
+  Star,
+  Trophy,
+  Globe,
+  Zap,
+  Heart,
+};
+
+// 默认当前状态 (用于 API 失败时)
+const defaultCurrentStatus: CurrentStatus = {
+  id: 'default',
+  title: 'BUILDING THE FUTURE',
+  currentFocus: 'Learning Next.js & Rust',
+  location: 'Neo-City, Sector 7',
+  vibe: '💻 Coding / ☕ Coffee',
+  emoji: '💻',
+  isActive: true,
+  createdAt: '',
+  updatedAt: '',
+};
+
+// 默认历史数据 (用于 API 失败时)
+const defaultHistoryItems: HistoryItem[] = [
+  {
+    id: '1',
+    date: '2023年6月',
+    title: '个人博客项目',
+    role: '全栈开发',
+    description: '从零开始搭建个人博客系统，包括前端页面设计、后端API开发、数据库设计和部署上线',
+    duration: '9个月2天',
+    location: '远程',
+    tags: ['项目经历', 'MongoDB', 'Node.js', 'Vercel', 'Tailwind CSS', 'React'],
+    color: '#a855f7',
+    icon: 'FileText',
+    order: 0,
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  },
+  {
+    id: '2',
+    date: '2023年3月',
+    title: '机器学习项目',
+    role: '数据分析与建模',
+    description: '参与客户数据分析项目，负责数据清洗、特征工程和模型构建',
+    duration: '5个月8天',
+    location: '上海',
+    tags: ['项目经历', 'Python', 'Pandas', '数据可视化', 'Scikit-learn', 'TensorFlow'],
+    color: '#3b82f6',
+    icon: 'Briefcase',
+    order: 1,
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  },
+  {
+    id: '3',
+    date: '2022年3月',
+    title: 'Python 数据分析',
+    role: '入门学习',
+    description: '系统学习 Python 数据分析生态，掌握 NumPy, Pandas 等核心库的使用。',
+    duration: '持续进行',
+    location: '自学',
+    tags: ['项目经历', 'Python', 'Data'],
+    color: '#a855f7',
+    icon: 'FileText',
+    order: 2,
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  },
+];
 
 const PageTimeline: React.FC = () => {
   const [viewMode, setViewMode] = useState<'timeline' | 'history'>('timeline');
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [currentStatus, setCurrentStatus] = useState<CurrentStatus>(defaultCurrentStatus);
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>(defaultHistoryItems);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    const fetchTimeline = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const result = await api.timeline.getAll();
-        if (result.success && result.data) {
-          setEvents(result.data);
-        } else {
-          setError(result.error || 'Failed to fetch timeline');
+        // 并行获取所有数据
+        const [timelineResult, statusResult, historyResult] = await Promise.all([
+          api.timeline.getAll(),
+          api.currentStatus.getActive(),
+          api.history.getAll({ active: true }),
+        ]);
+
+        // 更新时间线事件
+        if (timelineResult.success && timelineResult.data) {
+          setEvents(timelineResult.data);
+        }
+
+        // 更新当前状态 (失败时使用默认值)
+        if (statusResult.success && statusResult.data) {
+          setCurrentStatus(statusResult.data);
+        }
+
+        // 更新历史项目 (失败时使用默认值)
+        if (historyResult.success && historyResult.data && historyResult.data.length > 0) {
+          setHistoryItems(historyResult.data);
         }
       } catch (err) {
-        setError('Failed to fetch timeline');
+        console.error('Failed to fetch timeline data:', err);
+        // 出错时使用默认值，不显示错误
       } finally {
         setLoading(false);
       }
     };
     
-    fetchTimeline();
+    fetchData();
   }, []);
 
   return (
@@ -81,18 +176,18 @@ const PageTimeline: React.FC = () => {
                                 <h3 className="font-mono text-xs text-neon tracking-[0.2em] uppercase">Current Status</h3>
                             </div>
                             <h2 className="text-3xl font-black font-sans mb-4">
-                                BUILDING THE FUTURE
+                                {currentStatus.title}
                             </h2>
                             
                             <div className="flex flex-col gap-2 font-mono text-xs text-gray-400">
                                 <div className="flex items-center gap-2">
-                                    <Briefcase size={12} /> CURRENT_FOCUS: Learning Next.js & Rust
+                                    <Briefcase size={12} /> CURRENT_FOCUS: {currentStatus.currentFocus}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <MapPin size={12} /> LOCATION: Neo-City, Sector 7
+                                    <MapPin size={12} /> LOCATION: {currentStatus.location}
                                 </div>
                                 <div className="flex items-center gap-2 text-neon">
-                                    <Disc size={12} /> VIBE: 💻 Coding / ☕ Coffee
+                                    <Disc size={12} /> VIBE: {currentStatus.vibe}
                                 </div>
                             </div>
                         </div>
@@ -165,98 +260,66 @@ const PageTimeline: React.FC = () => {
                    </div>
                  )}
          </>
-         ) : (
-             /* History View Mode (Image 3 Style) */
-             <div className="w-full max-w-4xl pt-12">
-                 <div className="flex items-center gap-3 border-l-4 border-[#f97316] pl-6 mb-16">
-                     <h2 className="text-4xl font-black font-sans text-ink dark:text-white">历史</h2>
-                 </div>
- 
-                 <div className="relative pl-8 md:pl-16 border-l border-gray-200 dark:border-gray-800 space-y-12">
-                     {/* Mocked History Data based on Image 3 structure for demo */}
-                     {[
-                         { 
-                             date: '2023年6月', 
-                             title: '个人博客项目', 
-                             role: '全栈开发',
-                             desc: '从零开始搭建个人博客系统，包括前端页面设计、后端API开发、数据库设计和部署上线',
-                             duration: '9个月2天',
-                             loc: '远程',
-                             tags: ['项目经历', 'MongoDB', 'Node.js', 'Vercel', 'Tailwind CSS', 'React'],
-                             color: '#a855f7', // Purple
-                             icon: FileText
-                         },
-                         { 
-                             date: '2023年3月', 
-                             title: '机器学习项目', 
-                             role: '数据分析与建模',
-                             desc: '参与客户数据分析项目，负责数据清洗、特征工程和模型构建',
-                             duration: '5个月8天',
-                             loc: '上海',
-                             tags: ['项目经历', 'Python', 'Pandas', '数据可视化', 'Scikit-learn', 'TensorFlow'],
-                             color: '#3b82f6', // Blue
-                             icon: Briefcase
-                         },
-                         { 
-                             date: '2022年3月', 
-                             title: 'Python 数据分析', 
-                             role: '入门学习',
-                             desc: '系统学习 Python 数据分析生态，掌握 NumPy, Pandas 等核心库的使用。',
-                             duration: '持续进行',
-                             loc: '自学',
-                             tags: ['项目经历', 'Python', 'Data'],
-                             color: '#a855f7', // Purple
-                             icon: FileText
-                         }
-                     ].map((item, idx) => (
-                         <div key={idx} className="relative group">
-                             {/* Node on Line */}
-                             <div className="absolute -left-[45px] md:-left-[77px] top-0">
-                                 <div 
-                                     className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110"
-                                     style={{ backgroundColor: item.color }}
-                                 >
-                                     <item.icon size={18} />
-                                 </div>
-                             </div>
- 
-                             {/* Card */}
-                             <div className="bg-[#1a1919] border border-white/5 p-6 rounded-2xl hover:border-white/20 transition-all duration-300">
-                                 <div className="flex justify-between items-start mb-2">
-                                     <span className="text-gray-400 font-mono text-sm">{item.date}</span>
-                                     <span className="px-3 py-1 rounded-full text-xs bg-white/10 text-gray-300 border border-white/5">项目经历</span>
-                                 </div>
- 
-                                 <h3 className="text-2xl font-bold text-white mb-1">{item.title}</h3>
-                                 <p className="text-gray-400 text-sm mb-6">{item.role}</p>
- 
-                                 <p className="text-gray-300 mb-6 leading-relaxed font-serif">
-                                     {item.desc}
-                                 </p>
- 
-                                 <div className="flex items-center gap-4 text-xs text-gray-500 font-mono mb-6">
-                                     <span>持续时间: {item.duration}</span>
-                                     <span className="flex items-center gap-1">
-                                         <MapPin size={10} className="text-[#f43f5e]" /> {item.loc}
-                                     </span>
-                                 </div>
- 
-                                 <div className="flex flex-wrap gap-2">
-                                     {item.tags.map(tag => (
-                                         <span 
-                                             key={tag} 
-                                             className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#2d3748] text-[#93c5fd] hover:bg-[#3b82f6] hover:text-white transition-colors"
-                                         >
-                                             {tag}
-                                         </span>
-                                     ))}
-                                 </div>
-                             </div>
-                         </div>
-                     ))}
-                 </div>
-             </div>
-         )}
+        ) : (
+            /* History View Mode - 从 API 获取数据 */
+            <div className="w-full max-w-4xl pt-12">
+                <div className="flex items-center gap-3 border-l-4 border-[#f97316] pl-6 mb-16">
+                    <h2 className="text-4xl font-black font-sans text-ink dark:text-white">历史</h2>
+                </div>
+
+                <div className="relative pl-8 md:pl-16 border-l border-gray-200 dark:border-gray-800 space-y-12">
+                    {historyItems.map((item, idx) => {
+                        const IconComponent = iconMap[item.icon] || FileText;
+                        return (
+                            <div key={item.id} className="relative group">
+                                {/* Node on Line */}
+                                <div className="absolute -left-[45px] md:-left-[77px] top-0">
+                                    <div 
+                                        className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110"
+                                        style={{ backgroundColor: item.color || '#a855f7' }}
+                                    >
+                                        <IconComponent size={18} />
+                                    </div>
+                                </div>
+
+                                {/* Card */}
+                                <div className="bg-[#1a1919] border border-white/5 p-6 rounded-2xl hover:border-white/20 transition-all duration-300">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className="text-gray-400 font-mono text-sm">{item.date}</span>
+                                        <span className="px-3 py-1 rounded-full text-xs bg-white/10 text-gray-300 border border-white/5">项目经历</span>
+                                    </div>
+
+                                    <h3 className="text-2xl font-bold text-white mb-1">{item.title}</h3>
+                                    <p className="text-gray-400 text-sm mb-6">{item.role}</p>
+
+                                    <p className="text-gray-300 mb-6 leading-relaxed font-serif">
+                                        {item.description}
+                                    </p>
+
+                                    <div className="flex items-center gap-4 text-xs text-gray-500 font-mono mb-6">
+                                        <span>持续时间: {item.duration}</span>
+                                        <span className="flex items-center gap-1">
+                                            <MapPin size={10} className="text-[#f43f5e]" /> {item.location}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                        {item.tags?.map((tag, tagIdx) => (
+                                            <span 
+                                                key={tagIdx} 
+                                                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#2d3748] text-[#93c5fd] hover:bg-[#3b82f6] hover:text-white transition-colors"
+                                            >
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
   
           {/* End Cap */}
           {viewMode === 'timeline' && events.length > 0 && (

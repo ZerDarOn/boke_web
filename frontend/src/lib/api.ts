@@ -702,6 +702,132 @@ export const timelineApi = {
   },
 };
 
+// ==================== Current Status ====================
+
+export interface CurrentStatus {
+  id: string;
+  title: string;
+  currentFocus: string;
+  location: string;
+  vibe: string;
+  emoji: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const currentStatusApi = {
+  // GET /api/current-status - 获取所有状态
+  getAll: async () => {
+    return apiRequest<CurrentStatus[]>(`/api/current-status`);
+  },
+
+  // GET /api/current-status/active - 获取当前激活的状态
+  getActive: async () => {
+    return apiRequest<CurrentStatus>(`/api/current-status/active`);
+  },
+
+  // GET /api/current-status/:id - 获取单个状态
+  getById: async (id: string) => {
+    return apiRequest<CurrentStatus>(`/api/current-status/${id}`);
+  },
+
+  // POST /api/current-status - 创建状态
+  create: async (data: Partial<CurrentStatus>) => {
+    return apiRequest<CurrentStatus>(`/api/current-status`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/current-status/:id - 更新状态
+  update: async (id: string, data: Partial<CurrentStatus>) => {
+    return apiRequest<CurrentStatus>(`/api/current-status/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/current-status/:id - 删除状态
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/current-status/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // POST /api/current-status/:id/activate - 激活状态
+  activate: async (id: string) => {
+    return apiRequest<CurrentStatus>(`/api/current-status/${id}/activate`, {
+      method: 'POST',
+    });
+  },
+};
+
+// ==================== History Items ====================
+
+export interface HistoryItem {
+  id: string;
+  date: string;
+  title: string;
+  role: string;
+  description: string;
+  duration: string;
+  location: string;
+  tags: string[];
+  color: string;
+  icon: 'FileText' | 'Briefcase' | 'Code' | 'Star' | 'Trophy' | 'Globe' | 'Zap' | 'Heart';
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const historyApi = {
+  // GET /api/history - 获取所有历史项目
+  getAll: async (params?: { active?: boolean }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.active !== undefined) queryParams.append('active', params.active.toString());
+
+    return apiRequest<HistoryItem[]>(`/api/history?${queryParams}`);
+  },
+
+  // GET /api/history/:id - 获取单个历史项目
+  getById: async (id: string) => {
+    return apiRequest<HistoryItem>(`/api/history/${id}`);
+  },
+
+  // POST /api/history - 创建历史项目
+  create: async (data: Partial<HistoryItem>) => {
+    return apiRequest<HistoryItem>(`/api/history`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // PUT /api/history/:id - 更新历史项目
+  update: async (id: string, data: Partial<HistoryItem>) => {
+    return apiRequest<HistoryItem>(`/api/history/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // DELETE /api/history/:id - 删除历史项目
+  delete: async (id: string) => {
+    return apiRequest<void>(`/api/history/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // PUT /api/history/:id/reorder - 重新排序
+  reorder: async (id: string, order: number) => {
+    return apiRequest<HistoryItem>(`/api/history/${id}/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({ order }),
+    });
+  },
+};
+
 // ==================== Network ====================
 
 export interface NetworkNode {
@@ -1203,6 +1329,8 @@ export const api = {
   gallery: galleryApi,
   skills: skillsApi,
   timeline: timelineApi,
+  currentStatus: currentStatusApi,
+  history: historyApi,
   network: networkApi,
   universe: universeApi,
   dashboard: dashboardApi,
@@ -1213,3 +1341,6 @@ export const api = {
   settings: settingsApi,
   files: filesApi,
 };
+
+// 导出 API 基础 URL 函数供其他模块使用
+export { getApiBaseUrl };

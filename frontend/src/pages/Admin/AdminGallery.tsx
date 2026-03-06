@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api, GalleryImage, Album } from '../../lib/api';
-import { 
-  Search, Plus, Edit, Trash2, Loader2, X, Save, 
-  Camera, Folder, Image as ImageIcon, ArrowLeft, 
+import { uploadImage } from '../../lib/upload';
+import {
+  Search, Plus, Edit, Trash2, Loader2, X, Save,
+  Camera, Folder, Image as ImageIcon, ArrowLeft,
   Grid, List, Eye, Calendar, MapPin
 } from 'lucide-react';
 
@@ -16,19 +17,20 @@ const AdminGallery: React.FC = () => {
   // 相册数据
   const [albums, setAlbums] = useState<Album[]>([]);
   const [albumsLoading, setAlbumsLoading] = useState(true);
-  
+
   // 照片数据
   const [photos, setPhotos] = useState<GalleryImage[]>([]);
   const [photosLoading, setPhotosLoading] = useState(false);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
-  
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
   const [editingPhoto, setEditingPhoto] = useState<GalleryImage | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   const [albumForm, setAlbumForm] = useState<Partial<Album>>({
     title: '',
@@ -247,7 +249,7 @@ const AdminGallery: React.FC = () => {
   };
 
   // 图片上传处理
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isAlbumCover = false) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isAlbumCover = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -256,21 +258,33 @@ const AdminGallery: React.FC = () => {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('图片大小不能超过 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('图片大小不能超过 10MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imageUrl = event.target?.result as string;
+    try {
+      setUploadingImage(true);
+
+      // 上传到服务器
+      const imageUrl = await uploadImage(file, 'gallery');
+
       if (isAlbumCover) {
         setAlbumForm(prev => ({ ...prev, cover: imageUrl }));
       } else {
         setPhotoForm(prev => ({ ...prev, src: imageUrl }));
       }
-    };
-    reader.readAsDataURL(file);
+
+      console.log('✅ 图片上传成功:', imageUrl);
+    } catch (error) {
+      console.error('❌ 图片上传失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '图片上传失败';
+      alert(errorMessage);
+    } finally {
+      setUploadingImage(false);
+      // 清空 input 以便重复选择同一文件
+      e.target.value = '';
+    }
   };
 
   const filteredAlbums = albums.filter(album =>
@@ -542,12 +556,17 @@ const AdminGallery: React.FC = () => {
                     placeholder="图片 URL"
                   />
                   <label className="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <Camera size={18} className="text-gray-600 dark:text-gray-400" />
+                    {uploadingImage ? (
+                      <Loader2 size={18} className="text-blue-600 animate-spin" />
+                    ) : (
+                      <Camera size={18} className="text-gray-600 dark:text-gray-400" />
+                    )}
                     <input
                       type="file"
                       accept="image/*"
                       onChange={(e) => handleImageUpload(e, true)}
                       className="hidden"
+                      disabled={uploadingImage}
                     />
                   </label>
                 </div>
@@ -625,12 +644,17 @@ const AdminGallery: React.FC = () => {
                     required
                   />
                   <label className="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <Camera size={18} className="text-gray-600 dark:text-gray-400" />
+                    {uploadingImage ? (
+                      <Loader2 size={18} className="text-blue-600 animate-spin" />
+                    ) : (
+                      <Camera size={18} className="text-gray-600 dark:text-gray-400" />
+                    )}
                     <input
                       type="file"
                       accept="image/*"
                       onChange={(e) => handleImageUpload(e, false)}
                       className="hidden"
+                      disabled={uploadingImage}
                     />
                   </label>
                 </div>

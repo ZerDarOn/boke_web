@@ -133,6 +133,8 @@ const AdminLayout: React.FC = () => {
     { icon: '🎯', label: '宇宙图可视化', path: '/admin/universe-visual' },
     { icon: '⚔️', label: '技能管理', path: '/admin/skills' },
     { icon: '📅', label: '时间线管理', path: '/admin/timeline' },
+    { icon: '📡', label: '当前状态管理', path: '/admin/current-status' },
+    { icon: '📚', label: '历史项目管理', path: '/admin/history' },
     { icon: '🕸️', label: '网络管理', path: '/admin/network' },
     { icon: '📢', label: '公告管理', path: '/admin/announcements' },
     { icon: '👥', label: '用户管理', path: '/admin/users' },

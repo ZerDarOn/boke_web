@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, AccessLevel } from '../../lib/api';
+import { uploadImage } from '../../lib/upload';
 import { Search, Plus, Edit, Trash2, FileText, Clock, Eye, Heart, Loader2, X, Save, Image, Lock, Globe, Key } from 'lucide-react';
 
 // 简单的 Markdown 编辑器组件
@@ -52,6 +53,7 @@ const AdminPosts: React.FC = () => {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [formData, setFormData] = useState<Partial<Post>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     fetchPosts();
@@ -122,32 +124,32 @@ const AdminPosts: React.FC = () => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  // 处理图片上传到图床（使用DataURL作为临时方案）
+  // 处理图片上传到服务器
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 检查文件类型
-    if (!file.type.startsWith('image/')) {
-      alert('请选择图片文件');
-      return;
-    }
+    try {
+      setUploadingImage(true);
 
-    // 检查文件大小 (最大 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('图片大小不能超过 5MB');
-      return;
-    }
+      // 上传到服务器
+      const imageUrl = await uploadImage(file, 'posts');
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imageUrl = event.target?.result as string;
-      // 在当前光标位置插入Markdown图片语法
+      // 在当前光标位置插入 Markdown 图片语法
       const imageMarkdown = `\n![${file.name}](${imageUrl})\n`;
       const currentContent = formData.content || '';
       handleInputChange('content', currentContent + imageMarkdown);
-    };
-    reader.readAsDataURL(file);
+
+      console.log('✅ 图片上传成功:', imageUrl);
+    } catch (error) {
+      console.error('❌ 图片上传失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '图片上传失败';
+      alert(errorMessage);
+    } finally {
+      setUploadingImage(false);
+      // 清空 input 以便重复选择同一文件
+      e.target.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -420,23 +422,33 @@ const AdminPosts: React.FC = () => {
                   />
                 </div>
 
-                {/* 图片上传 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    插入图片
-                  </label>
-                  <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors w-fit">
-                    <Image size={18} className="text-gray-600" />
-                    <span className="text-sm text-gray-700">选择图片上传</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                  <p className="text-xs text-gray-500 mt-1">支持 JPG/PNG/GIF，最大 5MB</p>
-                </div>
+                 {/* 图片上传 */}
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                     插入图片
+                   </label>
+                   <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors w-fit">
+                     {uploadingImage ? (
+                       <>
+                         <Loader2 size={18} className="text-blue-600 animate-spin" />
+                         <span className="text-sm text-blue-600">上传中...</span>
+                       </>
+                    ) : (
+                      <>
+                        <Image size={18} className="text-gray-600" />
+                        <span className="text-sm text-gray-700">选择图片上传</span>
+                      </>
+                    )}
+                     <input
+                       type="file"
+                       accept="image/*"
+                       onChange={handleImageUpload}
+                       className="hidden"
+                       disabled={uploadingImage}
+                     />
+                   </label>
+                   <p className="text-xs text-gray-500 mt-1">支持 JPG/PNG/GIF/WebP，最大 10MB，图片将上传到服务器</p>
+                 </div>
 
                  <div>
                    <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -4,8 +4,7 @@ import Navigation from './Navigation';
 import Sidebar from './Sidebar';
 import RightSidebar from './RightSidebar';
 import Hero from './Hero';
-import { Search, X, Loader2 } from 'lucide-react';
-import { BLOG_POSTS, PROJECTS, DIARY_ENTRIES, ANNOUNCEMENTS, ANIME_LIST, GALLERY_IMAGES } from '../constants';
+import { Search, X, Loader2, AlertCircle } from 'lucide-react';
 import { useLang } from '../contexts/LangContext';
 import { useSiteConfig } from '../hooks/useSiteConfig';
 import { api } from '../lib/api';
@@ -57,6 +56,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   });
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // API 搜索逻辑 - 带防抖
@@ -69,6 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     setIsSearching(true);
     setHasSearched(true);
+    setSearchError(null);
 
     try {
       // 并行请求所有搜索
@@ -113,37 +114,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         anime: filteredAnime,
         gallery: filteredGallery,
       });
-    } catch (error) {
+     } catch (error) {
       console.error('Search error:', error);
-      // 如果 API 失败，回退到本地数据
-      const q = query.toLowerCase();
-      setSearchResults({
-        posts: BLOG_POSTS.filter(p =>
-          p.title.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
-          p.tags.some(tag => tag.toLowerCase().includes(q))
-        ).slice(0, 5),
-        projects: PROJECTS.filter(p =>
-          p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.tech.some(tech => tech.toLowerCase().includes(q))
-        ).slice(0, 5),
-        diaries: DIARY_ENTRIES.filter(d =>
-          d.content.toLowerCase().includes(q)
-        ).slice(0, 5),
-        announcements: ANNOUNCEMENTS.filter(a =>
-          a.title.toLowerCase().includes(q) ||
-          a.content.toLowerCase().includes(q)
-        ).slice(0, 5),
-        anime: ANIME_LIST.filter(a =>
-          a.title.toLowerCase().includes(q) ||
-          a.studio?.toLowerCase().includes(q)
-        ).slice(0, 5),
-        gallery: GALLERY_IMAGES.filter(g =>
-          g.title.toLowerCase().includes(q) ||
-          g.tags?.some(tag => tag.toLowerCase().includes(q))
-        ).slice(0, 5),
-      });
+      setSearchError('搜索失败，请重试');
     } finally {
       setIsSearching(false);
     }
@@ -268,9 +241,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-neon to-transparent opacity-50"></div>
               </div>
 
-              {/* 搜索结果 */}
-              <div className="min-h-[200px] max-h-[60vh] overflow-y-auto p-4 custom-scrollbar">
-                {!searchQuery ? (
+               {/* 搜索结果 */}
+               <div className="min-h-[200px] max-h-[60vh] overflow-y-auto p-4 custom-scrollbar">
+                 {searchError ? (
+                   <div className="h-40 flex flex-col items-center justify-center text-red-400 space-y-3">
+                     <AlertCircle size={32} />
+                     <p className="font-mono text-sm tracking-widest">SEARCH.ERROR</p>
+                     <p className="text-xs">{searchError}</p>
+                     <button
+                       onClick={() => { setSearchError(null); performSearch(searchQuery); }}
+                       className="text-xs text-neon hover:text-neon/80 underline"
+                     >
+                       重试
+                     </button>
+                   </div>
+                 ) : !searchQuery ? (
                   <div className="h-40 flex flex-col items-center justify-center text-gray-600 space-y-2">
                     <p className="font-mono text-sm tracking-widest text-neon/50">SYSTEM.READY</p>
                     <p className="text-xs">Type to query neural network...</p>
@@ -362,15 +347,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     )}
                     {hasSearched && !isSearching && 
                      searchResults.posts.length === 0 && 
-                     searchResults.projects.length === 0 && 
-                     searchResults.announcements.length === 0 && 
-                     searchResults.diaries.length === 0 && 
-                     searchResults.anime.length === 0 && 
-                     searchResults.gallery.length === 0 && (
-                      <div className="text-center text-gray-500 py-8 font-mono text-xs">
-                        // ERROR: NO_MATCH_FOUND
-                      </div>
-                    )}
+                      searchResults.projects.length === 0 &&
+                      searchResults.announcements.length === 0 &&
+                      searchResults.diaries.length === 0 &&
+                      searchResults.anime.length === 0 &&
+                      searchResults.gallery.length === 0 && (
+                       <div className="text-center text-gray-500 py-8 font-mono text-xs space-y-2">
+                         <p className="text-neon">NO.RESULTS.FOUND</p>
+                         <p className="text-gray-600">Try different keywords</p>
+                       </div>
+                     )}
                   </div>
                 )}
               </div>

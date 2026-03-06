@@ -21,12 +21,15 @@ import universeRoutes from './routes/universe';
 import dashboardRoutes from './routes/dashboard';
 import searchRoutes from './routes/search';
 import uploadRoutes from './routes/upload';
+import minioRoutes from './routes/minio';
 import authRoutes from './routes/auth';
 import fileRoutes from './routes/files';
 import rssRoutes from './routes/rss';
 import aiRoutes from './routes/ai';
 import settingsRoutes from './routes/settings';
 import maintenanceRoutes from './routes/maintenance';
+import currentStatusRoutes from './routes/current-status';
+import historyRoutes from './routes/history';
 
 const app = express();
 
@@ -102,11 +105,14 @@ app.use('/api/universe', universeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/minio', minioRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/current-status', currentStatusRoutes);
+app.use('/api/history', historyRoutes);
 app.use('/rss.xml', rssRoutes);
 
 // 404 handler

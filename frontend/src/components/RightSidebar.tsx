@@ -18,11 +18,69 @@ const RightSidebar: React.FC = () => {
   const [rssCopied, setRssCopied] = useState(false);
   const [rssUrl, setRssUrl] = useState('');
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
   const pageCopy = usePageCopy();
 
+  // 从 API 获取活动数据
   useEffect(() => {
-    setRssUrl(`${window.location.origin}/rss.xml`);
-    fetchActivities();
+    const fetchData = async () => {
+      setRssUrl(`${window.location.origin}/rss.xml`);
+
+      try {
+        setLoading(true);
+
+        // 尝试从 settings 获取活动数据
+        const result = await api.settings.getByKey('activities');
+
+        if (result.success && result.data?.value) {
+          const parsedActivities = typeof result.data.value === 'string'
+            ? JSON.parse(result.data.value)
+            : result.data.value;
+
+          // 验证数据格式
+          if (Array.isArray(parsedActivities) && parsedActivities.length > 0) {
+            const validActivities = parsedActivities.filter((item: any) =>
+              item && item.id && (item.project || item.title)
+            );
+
+            if (validActivities.length > 0) {
+              setActivities(validActivities);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+
+        // 如果 API 失败或数据无效，使用时间线 API
+        const timelineResult = await api.timeline.getAll({ limit: 5 });
+
+        if (timelineResult.success && timelineResult.data) {
+          const timelineActivities: Activity[] = timelineResult.data.map((item: any) => ({
+            id: item.id,
+            project: 'Timeline',
+            title: item.title,
+            tags: [],
+            status: 'DONE' as const,
+            date: item.date || new Date(item.createdAt).toISOString(),
+          }));
+
+          setActivities(timelineActivities);
+          setLoading(false);
+          return;
+        }
+
+        // 如果都失败了，设置为空数组
+        setActivities([]);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch activities:', error);
+        // 出错时使用 fallback 数据
+        setActivities(LATEST_ACTIVITIES as Activity[]);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const fetchActivities = async () => {
@@ -111,7 +169,13 @@ const RightSidebar: React.FC = () => {
             </span>
           </h4>
           
-          {activities.length > 0 ? (
+          {/* 内容显示 */}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Clock className="w-4 h-4 animate-spin text-neon" />
+              <span className="text-xs text-gray-400 ml-2">加载中...</span>
+            </div>
+          ) : activities.length > 0 ? (
             <div className="space-y-3 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
               {activities.slice(0, 5).map((item, idx) => (
                 <Link

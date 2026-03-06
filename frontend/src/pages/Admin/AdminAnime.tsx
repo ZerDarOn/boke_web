@@ -180,10 +180,18 @@ const AdminAnime: React.FC = () => {
       setUploading(true);
 
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('image', file);
+
+      // 获取认证 token
+      const token = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       const response = await fetch(`${getApiBaseUrl()}/api/upload/image/anime`, {
         method: 'POST',
+        headers,
         body: formData,
       });
 
@@ -192,9 +200,9 @@ const AdminAnime: React.FC = () => {
       }
 
       const result = await response.json();
-      if (result.success && result.data?.url) {
-        handleInputChange('cover', result.data.url);
-        setCoverPreview(result.data.url);
+      if (result.success && result.data?.originalUrl) {
+        handleInputChange('cover', result.data.originalUrl);
+        setCoverPreview(result.data.originalUrl);
       } else {
         throw new Error(result.error || '上传失败');
       }

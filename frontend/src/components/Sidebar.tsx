@@ -1,8 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Github, Twitter, Hash } from 'lucide-react';
-import { CATEGORIES, TAGS } from '../constants';
+import { User, Github, Twitter, Hash, Loader2 } from 'lucide-react';
+import { api } from '../lib/api';
 import { useSiteConfig } from '../hooks/useSiteConfig';
+
+// 分类和标签的类型定义
+interface Category {
+  name: string;
+  count: number;
+  icon?: string;
+}
+
+interface Tag {
+  name: string;
+  count: number;
+}
+
+// 分类图标映射
+const CATEGORY_ICONS: Record<string, string> = {
+  'ALL': '📚',
+  'PHILOSOPHY': '☯️',
+  'ENGINEERING': '⚙️',
+  'LIFESTYLE': '🍵',
+  'LIFE': '🏠',
+  'TECH': '⚡',
+  'BACKEND.OPS': '🔧',
+  'DESIGN.ARTS': '🎨',
+  'FRONTEND.CORE': '💻',
+  'DEFAULT': '📁',
+};
+
+// 获取分类图标
+const getCategoryIcon = (categoryName: string): string => {
+  return CATEGORY_ICONS[categoryName] || CATEGORY_ICONS['DEFAULT'];
+};
 
 const BilibiliIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -15,6 +46,69 @@ const Sidebar: React.FC = () => {
   const categoryParam = new URLSearchParams(location.search).get('category');
   const tagParam = new URLSearchParams(location.search).get('tag');
   const config = useSiteConfig();
+
+  // 状态管理
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 从 API 获取分类和标签
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // 并行请求分类和标签
+        const [categoriesRes, tagsRes] = await Promise.all([
+          api.posts.getCategories(),
+          api.posts.getTags(),
+        ]);
+
+        // 处理分类数据
+        if (categoriesRes.success && categoriesRes.data) {
+          const categoryList = categoriesRes.data.map(cat => ({
+            name: cat.name,
+            count: cat.count || 0,
+            icon: getCategoryIcon(cat.name),
+          }));
+
+          // 添加 "ALL" 分类作为第一项
+          const totalCount = categoryList.reduce((sum, cat) => sum + cat.count, 0);
+          const allCategory: Category = {
+            name: 'ALL',
+            count: totalCount,
+            icon: CATEGORY_ICONS['ALL'],
+          };
+
+          setCategories([allCategory, ...categoryList]);
+        } else {
+          console.error('获取分类失败:', categoriesRes.error);
+          setError('获取分类失败');
+        }
+
+        // 处理标签数据
+        if (tagsRes.success && tagsRes.data) {
+          const tagList = tagsRes.data.map(tag => ({
+            name: tag.name,
+            count: tag.count || 0,
+          }));
+          setTags(tagList);
+        } else {
+          console.error('获取标签失败:', tagsRes.error);
+          setError('获取标签失败');
+        }
+      } catch (err) {
+        console.error('获取数据失败:', err);
+        setError('加载数据失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <aside className="hidden lg:flex flex-col gap-6 w-64 flex-shrink-0 sticky top-24 h-fit z-20">
@@ -52,19 +146,31 @@ const Sidebar: React.FC = () => {
             <Hash size={14} className="text-neon" />
             CATEGORIES
         </h4>
-        <ul className="space-y-2">
-            {CATEGORIES.map((cat) => (
-                <li key={cat.name} className={`flex justify-between items-center group p-1 hover:bg-gray-50 dark:hover:bg-white/5 rounded transition-colors ${categoryParam === cat.name || (cat.name === 'ALL' && !categoryParam) ? 'bg-neon/5' : ''}`}>
-                    <Link to={cat.name === 'ALL' ? '/posts' : `/posts?category=${cat.name}`} className="flex items-center gap-2 font-mono text-xs text-gray-600 dark:text-gray-400 group-hover:text-ink dark:group-hover:text-white flex-1">
-                        <span className="opacity-50 grayscale group-hover:grayscale-0 transition-all">{cat.icon}</span>
-                        {cat.name}
-                    </Link>
-                    <span className="font-mono text-[10px] bg-gray-100 dark:bg-white/10 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded group-hover:bg-neon group-hover:text-white transition-colors">
-                        {cat.count}
-                    </span>
-                </li>
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-xs">加载中...</span>
+          </div>
+        ) : error ? (
+          <div className="text-xs text-red-500 dark:text-red-400">{error}</div>
+        ) : categories.length === 0 ? (
+          <div className="text-xs text-gray-500 dark:text-gray-400">暂无分类</div>
+        ) : (
+          <ul className="space-y-2">
+            {categories.map((cat) => (
+              <li key={cat.name} className={`flex justify-between items-center group p-1 hover:bg-gray-50 dark:hover:bg-white/5 rounded transition-colors ${categoryParam === cat.name || (cat.name === 'ALL' && !categoryParam) ? 'bg-neon/5' : ''}`}>
+                <Link to={cat.name === 'ALL' ? '/posts' : `/posts?category=${cat.name}`} className="flex items-center gap-2 font-mono text-xs text-gray-600 dark:text-gray-400 group-hover:text-ink dark:group-hover:text-white flex-1">
+                  <span className="opacity-50 grayscale group-hover:grayscale-0 transition-all">{cat.icon}</span>
+                  {cat.name}
+                </Link>
+                <span className="font-mono text-[10px] bg-gray-100 dark:bg-white/10 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded group-hover:bg-neon group-hover:text-white transition-colors">
+                  {cat.count}
+                </span>
+              </li>
             ))}
-        </ul>
+          </ul>
+        )}
       </div>
 
       {/* 3. Tags */}
@@ -73,17 +179,29 @@ const Sidebar: React.FC = () => {
             <Hash size={14} className="text-neon" />
             TAGS
         </h4>
-        <div className="flex flex-wrap gap-2">
-            {TAGS.map((tag) => (
-                <Link 
-                    key={tag} 
-                    to={`/posts?tag=${tag}`}
-                    className={`font-mono text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-2 py-1 rounded hover:border-neon hover:text-neon transition-all ${tagParam === tag ? 'bg-neon text-white border-neon' : ''}`}
-                >
-                    #{tag}
-                </Link>
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-xs">加载中...</span>
+          </div>
+        ) : error ? (
+          <div className="text-xs text-red-500 dark:text-red-400">{error}</div>
+        ) : tags.length === 0 ? (
+          <div className="text-xs text-gray-500 dark:text-gray-400">暂无标签</div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <Link
+                key={tag.name}
+                to={`/posts?tag=${tag.name}`}
+                className={`font-mono text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-2 py-1 rounded hover:border-neon hover:text-neon transition-all ${tagParam === tag.name ? 'bg-neon text-white border-neon' : ''}`}
+              >
+                #{tag.name}
+              </Link>
             ))}
-        </div>
+          </div>
+        )}
       </div>
     </aside>
   );

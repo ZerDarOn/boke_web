@@ -173,6 +173,44 @@ enum EventType {
   LIFE
 }
 
+// 当前状态 (Current Status 卡片)
+model CurrentStatus {
+  id           String   @id @default(cuid())
+  title        String   // "BUILDING THE FUTURE"
+  currentFocus String   // "Learning Next.js & Rust"
+  location     String   // "Neo-City, Sector 7"
+  vibe         String   // "💻 Coding / ☕ Coffee"
+  emoji        String   // "💻"
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("current_status")
+}
+
+// 历史项目 (History View 卡片)
+model HistoryItem {
+  id          String   @id @default(cuid())
+  date        String   // "2023年6月"
+  title       String   // "个人博客项目"
+  role        String   // "全栈开发"
+  description String   // 项目描述
+  duration    String   // "9个月2天"
+  location    String   // "远程"
+  tags        String[] // ["项目经历", "MongoDB", ...]
+  color       String   // "#a855f7"
+  icon        String   // "FileText", "Briefcase", "Code", "Star"
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([order])
+  @@index([isActive])
+  @@map("history_items")
+}
+
 // 动漫
 model Anime {
   id           String      @id @default(cuid())

@@ -149,6 +149,29 @@ export const timelineEventSchema = z.object({
   projectId: z.string().optional(),
 });
 
+export const currentStatusSchema = z.object({
+  title: z.string().min(1).max(200),
+  currentFocus: z.string().min(1).max(200),
+  location: z.string().min(1).max(100),
+  vibe: z.string().min(1).max(200),
+  emoji: z.string().min(1).max(10).optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const historyItemSchema = z.object({
+  date: z.string().min(1).max(50),
+  title: z.string().min(1).max(200),
+  role: z.string().min(1).max(100),
+  description: z.string().min(1).max(2000),
+  duration: z.string().min(1).max(100),
+  location: z.string().min(1).max(100),
+  tags: z.array(z.string()).optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  icon: z.enum(['FileText', 'Briefcase', 'Code', 'Star', 'Trophy', 'Globe', 'Zap', 'Heart']).optional(),
+  order: z.number().int().min(0).optional(),
+  isActive: z.boolean().optional(),
+});
+
 export const networkNodeSchema = z.object({
   name: z.string().min(1).max(200),
   role: z.string().min(1).max(100).default('Collaborator'),
@@ -209,6 +232,8 @@ export type GalleryImageInput = z.infer<typeof galleryImageSchema>;
 export type AlbumInput = z.infer<typeof albumSchema>;
 export type SkillInput = z.infer<typeof skillSchema>;
 export type TimelineEventInput = z.infer<typeof timelineEventSchema>;
+export type CurrentStatusInput = z.infer<typeof currentStatusSchema>;
+export type HistoryItemInput = z.infer<typeof historyItemSchema>;
 export type NetworkNodeInput = z.infer<typeof networkNodeSchema>;
 export type CommentInput = z.infer<typeof commentSchema>;
 export type PhotoCommentInput = z.infer<typeof photoCommentSchema>;

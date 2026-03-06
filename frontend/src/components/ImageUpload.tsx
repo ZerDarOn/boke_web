@@ -66,16 +66,24 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       
       // 创建 FormData 上传
       const formData = new FormData();
-      formData.append('file', blob, 'avatar.png');
+      formData.append('image', blob, 'avatar.png');
 
       // 上传到服务器
       const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const uploadTypeMap = { network: 'avatars', skill: 'skills', author: 'avatars' };
       const uploadType = uploadTypeMap[type];
+
+      // 获取认证 token
+      const token = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const uploadRes = await fetch(`${apiBaseUrl}/api/upload/image/${uploadType}`, {
         method: 'POST',
+        headers,
         body: formData,
-        credentials: 'include',
       });
 
       const result = await uploadRes.json();

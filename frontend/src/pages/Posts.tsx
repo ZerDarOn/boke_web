@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CATEGORIES, TRANSLATIONS } from '../constants';
+import { TRANSLATIONS } from '../constants';
 import { ArrowRight, LayoutList, LayoutGrid, Filter, X, Loader2 } from 'lucide-react';
 import { api, Post as ApiPost } from '../lib/api';
+
+// 分类类型定义
+interface Category {
+  name: string;
+  count: number;
+}
 
 // 映射前端类型到后端类型
 const mapPostType = (post: ApiPost) => ({
@@ -27,6 +33,10 @@ export default function Posts() {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 从 API 获取的分类列表
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   
   const categoryParam = searchParams.get('category');
   const tagParam = searchParams.get('tag');
@@ -71,21 +81,42 @@ export default function Posts() {
   
   // 从 API 获取标签列表
   const [allTags, setAllTags] = useState<string[]>([]);
-  
+
+  // 从 API 获取分类和标签
   useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        const result = await api.posts.getTags();
-        if (result.success && result.data) {
-          // 提取 name，因为 API 返回的是 {name, count} 对象数组
-          setAllTags(result.data.map((tag: any) => tag.name));
+    const fetchData = async () => {
+      // 获取标签
+      const fetchTags = async () => {
+        try {
+          const result = await api.posts.getTags();
+          if (result.success && result.data) {
+            setAllTags(result.data.map((tag: any) => tag.name));
+          }
+        } catch (err) {
+          console.error('Failed to fetch tags');
         }
-      } catch (err) {
-        console.error('Failed to fetch tags');
-      }
+      };
+
+      // 获取分类
+      const fetchCategories = async () => {
+        setLoadingCategories(true);
+        try {
+          const result = await api.posts.getCategories();
+          if (result.success && result.data) {
+            setCategories(result.data);
+          }
+        } catch (err) {
+          console.error('Failed to fetch categories');
+        } finally {
+          setLoadingCategories(false);
+        }
+      };
+
+      fetchTags();
+      fetchCategories();
     };
-    
-    fetchTags();
+
+    fetchData();
   }, []);
 
   const lang: 'EN' | 'ZH' = 'ZH';
@@ -169,19 +200,39 @@ export default function Posts() {
              >
                全部
              </Link>
-              {CATEGORIES.map(category => (
-                <Link
-                  key={`category-${category.name}`}
-                  to={`/posts?category=${category.name}`}
-                  className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
-                    selectedCategory === category.name
-                      ? 'bg-neon text-white'
-                      : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
-                  }`}
-                >
-                  {category.name}
-                </Link>
-              ))}
+               {loadingCategories ? (
+                 <div className="flex items-center gap-2">
+                   <Loader2 className="w-3 h-3 animate-spin" />
+                   <span className="text-xs text-gray-500">加载中...</span>
+                 </div>
+               ) : (
+                 <>
+                   <Link
+                     key="category-all"
+                     to={selectedTag ? `/posts?tag=${selectedTag}` : '/posts'}
+                     className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
+                       !selectedCategory
+                         ? 'bg-neon text-white'
+                         : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
+                     }`}
+                   >
+                     全部
+                   </Link>
+                   {categories.map(category => (
+                     <Link
+                       key={`category-${category.name}`}
+                       to={`/posts?category=${category.name}${selectedTag ? `&tag=${selectedTag}` : ''}`}
+                       className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
+                         selectedCategory === category.name
+                           ? 'bg-neon text-white'
+                           : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
+                       }`}
+                     >
+                       {category.name}
+                     </Link>
+                   ))}
+                 </>
+               )}
            </div>
         </div>
 

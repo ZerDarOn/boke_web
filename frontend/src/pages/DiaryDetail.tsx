@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { LONG_FORM_DIARIES } from '../constants';
 import type { Diary } from '../types';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -8,7 +7,9 @@ import {
   MapPin,
   Heart,
   Share2,
-  Link2
+  Link2,
+  AlertCircle,
+  Home
 } from 'lucide-react';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
@@ -20,6 +21,7 @@ const DiaryDetail: React.FC = () => {
   const [diary, setDiary] = useState<Diary | null>(null);
   const [allLongDiaries, setAllLongDiaries] = useState<Diary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showCopyAlert, setShowCopyAlert] = useState(false);
 
@@ -59,6 +61,8 @@ const DiaryDetail: React.FC = () => {
   useEffect(() => {
     const fetchDiary = async () => {
       setLoading(true);
+      setError(null);
+
       try {
         // Fetch all diaries first (for prev/next navigation)
         const allResult = await diaryApi.getAll();
@@ -67,25 +71,16 @@ const DiaryDetail: React.FC = () => {
           setAllLongDiaries(longDiaries);
         }
 
-        // Try to fetch current diary from API
+        // Fetch current diary from API
         const result = await diaryApi.getById(id!);
         if (result.success && result.data) {
           setDiary(result.data);
         } else {
-          // Fallback: use local data
-          const localDiary = LONG_FORM_DIARIES.find(d => d.id === id);
-          if (localDiary) {
-            setDiary(localDiary as any);
-          }
+          setError(result.error || '日记不存在');
         }
-      } catch (error) {
-        console.error('Failed to fetch diary:', error);
-        // Fallback: use local data
-        const localDiary = LONG_FORM_DIARIES.find(d => d.id === id);
-        if (localDiary) {
-          setDiary(localDiary as any);
-        }
-        setAllLongDiaries(LONG_FORM_DIARIES as any);
+      } catch (err: any) {
+        console.error('Failed to fetch diary:', err);
+        setError('获取日记失败，请重试');
       } finally {
         setLoading(false);
       }
@@ -107,15 +102,40 @@ const DiaryDetail: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-[600px] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <AlertCircle size={48} className="text-red-500 mx-auto" />
+          <p className="font-mono text-red-500 text-lg">{error}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-neon text-white font-mono text-sm rounded hover:bg-neon/80 transition-colors"
+            >
+              重试
+            </button>
+            <Link
+              to="/diary"
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-ink dark:text-white font-mono text-sm rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              返回日记列表
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!diary) {
     return (
       <div className="min-h-[600px] flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-6xl font-black text-ink dark:text-white mb-4">404</h1>
-          <p className="font-mono text-gray-500 mb-6">日记不存在</p>
+        <div className="text-center space-y-4">
+          <h1 className="text-6xl font-black text-ink dark:text-white">404</h1>
+          <p className="font-mono text-gray-500">日记不存在</p>
           <Link
             to="/diary"
-            className="px-6 py-2 bg-neon text-white font-mono text-sm rounded hover:bg-neon/80 transition-colors"
+            className="px-6 py-2 bg-neon text-white font-mono text-sm rounded hover:bg-neon/80 transition-colors inline-block"
           >
             返回日记列表
           </Link>
@@ -124,11 +144,10 @@ const DiaryDetail: React.FC = () => {
     );
   }
 
-  // Use API data for prev/next navigation, fallback to local data
-  const diaryList = allLongDiaries.length > 0 ? allLongDiaries : LONG_FORM_DIARIES as any;
-  const currentIndex = diaryList.findIndex((d: Diary) => d.id === diary?.id);
-  const prevDiary = currentIndex > 0 ? diaryList[currentIndex - 1] : null;
-  const nextDiary = currentIndex < diaryList.length - 1 ? diaryList[currentIndex + 1] : null;
+  // Use API data for prev/next navigation
+  const currentIndex = allLongDiaries.findIndex((d: Diary) => d.id === diary?.id);
+  const prevDiary = currentIndex > 0 ? allLongDiaries[currentIndex - 1] : null;
+  const nextDiary = currentIndex < allLongDiaries.length - 1 ? allLongDiaries[currentIndex + 1] : null;
 
   return (
     <div className="animate-in fade-in duration-500 relative">
