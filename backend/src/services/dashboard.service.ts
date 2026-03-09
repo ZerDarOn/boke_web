@@ -1,20 +1,21 @@
 import prisma from '../lib/prisma';
 import { DashboardStats } from '../types';
 
+// 记录服务器启动时间
+const SERVER_START_TIME = new Date();
+
 export class DashboardService {
   static async getStats(): Promise<DashboardStats> {
-    const [postCount, diaryCount, photoCount, animeCount, totalLikes, totalViews, firstPost, siteStatsAgg, animeFavorites, recentSiteStats] = await Promise.all([
+    const [postCount, diaryCount, photoCount, animeCount, totalLikes, totalViews, siteStatsAgg, recentSiteStats] = await Promise.all([
       prisma.post.count({ where: { isPublished: true } }),
       prisma.diary.count(),
       prisma.galleryImage.count(),
       prisma.anime.count(),
       prisma.post.aggregate({ _sum: { likeCount: true } }),
       prisma.post.aggregate({ _sum: { viewCount: true } }),
-      prisma.post.findFirst({ orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
       prisma.siteStats.aggregate({
         _sum: { pageViews: true, uniqueVisitors: true }
       }),
-      prisma.anime.aggregate({ _count: { _all: true } }),
       prisma.siteStats.findMany({
         orderBy: { date: 'desc' },
         take: 7,
@@ -22,7 +23,8 @@ export class DashboardService {
       })
     ]);
 
-    const uptime = firstPost ? this.calculateUptime(firstPost.createdAt) : '0d 00h 00m';
+    // 使用服务器启动时间计算运行时间
+    const uptime = this.calculateUptime(SERVER_START_TIME);
 
     const totalContent = postCount + diaryCount + photoCount + animeCount;
 

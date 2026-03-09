@@ -83,8 +83,49 @@ async function checkConnection(prisma: PrismaClient): Promise<boolean> {
     await prisma.$queryRaw`SELECT 1`;
     console.log('✅ 数据库连接成功');
     return true;
-  } catch (error) {
-    console.error('❌ 数据库连接失败:', error);
+  } catch (error: any) {
+    const message = error.message || String(error);
+
+    // 密码认证失败
+    if (message.includes('password authentication failed')) {
+      console.error(`
+❌ 数据库密码认证失败
+
+💡 请检查以下内容：
+   1. PostgreSQL 的 postgres 用户密码是否正确
+   2. 检查 backend/.env 文件中的 DATABASE_URL
+   3. 格式：postgresql://postgres:<密码>@localhost:5432/ink_spirit
+
+📝 如果忘记密码，可以：
+   - 运行：npx tsx scripts/find-password.ts 查找常见密码
+   - 使用 pgAdmin 工具重置密码
+`);
+    } else if (message.includes('does not exist')) {
+      console.error(`
+❌ 数据库不存在
+
+💡 请创建数据库：
+   - 运行：npx tsx scripts/create-db-final.ts
+   - 或手动：CREATE DATABASE ink_spirit;
+`);
+    } else if (message.includes('ECONNREFUSED') || message.includes('connect ECONNREFUSED')) {
+      console.error(`
+❌ 无法连接到数据库服务器
+
+💡 请检查：
+   1. PostgreSQL 服务是否启动
+   2. 端口 5432 是否正确
+   3. 防火墙是否阻止连接
+
+🔧 启动 PostgreSQL：
+   - Windows: services.msc -> PostgreSQL
+   - macOS: brew services start postgresql
+   - Linux: sudo systemctl start postgresql
+`);
+    } else {
+      console.error(`❌ 数据库连接失败: ${message}`);
+    }
+
     return false;
   }
 }

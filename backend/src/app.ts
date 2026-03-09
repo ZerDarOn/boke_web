@@ -30,6 +30,7 @@ import settingsRoutes from './routes/settings';
 import maintenanceRoutes from './routes/maintenance';
 import currentStatusRoutes from './routes/current-status';
 import historyRoutes from './routes/history';
+import contentRoutes from './routes/content';
 
 const app = express();
 
@@ -48,6 +49,19 @@ app.use(helmet({
 // CORS - 允许 localhost 和本地 IP 地址访问
 const allowedOrigins = config.FRONTEND_URLS;
 
+// 将通配符模式转换为正则表达式
+const originPatterns = allowedOrigins.map(allowed => {
+  // 检查是否是通配符模式（包含 * 但不是正则）
+  if (allowed.includes('*')) {
+    // 转义特殊字符，然后替换 * 为匹配任意字符的正则
+    const pattern = allowed
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')  // 转义正则特殊字符（除了 *）
+      .replace(/\*/g, '.*');  // * 匹配任意字符
+    return new RegExp(`^${pattern}$`);
+  }
+  return allowed;  // 精确匹配的字符串
+});
+
 console.log('🔍 CORS 允许的来源列表:');
 allowedOrigins.forEach(origin => console.log(`  - ${origin}`));
 
@@ -58,10 +72,18 @@ app.use(cors({
       return;
     }
 
-    if (allowedOrigins.includes(origin)) {
+    // 检查是否匹配任一允许的来源（支持通配符）
+    const isAllowed = originPatterns.some(pattern => {
+      if (pattern instanceof RegExp) {
+        return pattern.test(origin);
+      }
+      return pattern === origin;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked for origin: ${origin}`);
+      console.warn(`🚫 CORS blocked for origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -113,6 +135,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/current-status', currentStatusRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/content', contentRoutes);
 app.use('/rss.xml', rssRoutes);
 
 // 404 handler

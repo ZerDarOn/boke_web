@@ -136,11 +136,12 @@ const AdminLayout: React.FC = () => {
     { icon: '📡', label: '当前状态管理', path: '/admin/current-status' },
     { icon: '📚', label: '历史项目管理', path: '/admin/history' },
     { icon: '🕸️', label: '网络管理', path: '/admin/network' },
-    { icon: '📢', label: '公告管理', path: '/admin/announcements' },
-    { icon: '👥', label: '用户管理', path: '/admin/users' },
-    { icon: '⚡', label: '最新动态', path: '/admin/activities' },
-    { icon: '⚙️', label: '系统设置', path: '/admin/settings' },
-  ];
+     { icon: '📢', label: '公告管理', path: '/admin/announcements' },
+     { icon: '👥', label: '用户管理', path: '/admin/users' },
+     { icon: '⚡', label: '最新动态', path: '/admin/activities' },
+     { icon: '📝', label: '内容初始化', path: '/admin/import' },
+     { icon: '⚙️', label: '系统设置', path: '/admin/settings' },
+   ];
 
   // 根据当前路由动态设置激活菜单
   const getActiveMenu = () => {

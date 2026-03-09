@@ -35,6 +35,7 @@ import AdminSettings from './pages/Admin/AdminSettings';
 import AdminShortDiary from './pages/Admin/AdminShortDiary';
 import AdminActivities from './pages/Admin/AdminActivities';
 import AdminGallery from './pages/Admin/AdminGallery';
+import ContentImport from './pages/Admin/ContentImport';
 import { AdminProjects, AdminDiary, AdminTimeline, AdminAnnouncements, AdminUsers, AdminCurrentStatus, AdminHistory } from './pages/Admin/SimpleAdminPages';
 import AdminNetwork from './pages/Admin/AdminNetwork';
 import AdminSkills from './pages/Admin/AdminSkills';
@@ -176,11 +177,12 @@ const App: React.FC = () => {
             <Route path="history" element={<AdminHistory />} />
             <Route path="network" element={<AdminNetwork />} />
             <Route path="files" element={<AdminFiles />} />
-            <Route path="announcements" element={<AdminAnnouncements />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="activities" element={<AdminActivities />} />
-            <Route path="settings" element={<AdminSettings />} />
-          </Route>
+             <Route path="announcements" element={<AdminAnnouncements />} />
+             <Route path="users" element={<AdminUsers />} />
+             <Route path="activities" element={<AdminActivities />} />
+             <Route path="settings" element={<AdminSettings />} />
+             <Route path="import" element={<ContentImport />} />
+           </Route>
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
