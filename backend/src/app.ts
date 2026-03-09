@@ -8,29 +8,30 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logger.middleware';
 
 // Import routes
-import postRoutes from './routes/posts';
-import projectRoutes from './routes/projects';
-import announcementRoutes from './routes/announcements';
-import animeRoutes from './routes/anime';
-import diaryRoutes from './routes/diary';
-import galleryRoutes from './routes/gallery';
-import skillRoutes from './routes/skills';
-import timelineRoutes from './routes/timeline';
-import networkRoutes from './routes/network';
-import universeRoutes from './routes/universe';
-import dashboardRoutes from './routes/dashboard';
-import searchRoutes from './routes/search';
-import uploadRoutes from './routes/upload';
-import minioRoutes from './routes/minio';
-import authRoutes from './routes/auth';
-import fileRoutes from './routes/files';
-import rssRoutes from './routes/rss';
-import aiRoutes from './routes/ai';
-import settingsRoutes from './routes/settings';
-import maintenanceRoutes from './routes/maintenance';
-import currentStatusRoutes from './routes/current-status';
-import historyRoutes from './routes/history';
-import contentRoutes from './routes/content';
+const postRoutes = require('./routes/posts').default;
+const projectRoutes = require('./routes/projects').default;
+const announcementRoutes = require('./routes/announcements').default;
+const animeRoutes = require('./routes/anime').default;
+const diaryRoutes = require('./routes/diary').default;
+const galleryRoutes = require('./routes/gallery').default;
+const skillRoutes = require('./routes/skills').default;
+const timelineRoutes = require('./routes/timeline').default;
+const networkRoutes = require('./routes/network').default;
+const universeRoutes = require('./routes/universe').default;
+const dashboardRoutes = require('./routes/dashboard').default;
+const searchRoutes = require('./routes/search').default;
+const uploadRoutes = require('./routes/upload').default;
+const minioRoutes = require('./routes/minio').default;
+const authRoutes = require('./routes/auth').default;
+const fileRoutes = require('./routes/files').default;
+const rssRoutes = require('./routes/rss').default;
+const aiRoutes = require('./routes/ai').default;
+const settingsRoutes = require('./routes/settings').default;
+const maintenanceRoutes = require('./routes/maintenance').default;
+const currentStatusRoutes = require('./routes/current-status').default;
+const historyRoutes = require('./routes/history').default;
+const contentRoutes = require('./routes/content').default;
+const exportRoutes = require('./routes/export').default;
 
 const app = express();
 
@@ -136,6 +137,7 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/current-status', currentStatusRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/export', exportRoutes);
 app.use('/rss.xml', rssRoutes);
 
 // 404 handler

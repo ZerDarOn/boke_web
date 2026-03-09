@@ -36,6 +36,7 @@ const ContentImport: React.FC = () => {
   });
   const [conflictResolution, setConflictResolution] = useState<'overwrite' | 'skip'>('skip');
   const [showDetails, setShowDetails] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const onDropSingle = useCallback(async (acceptedFiles: File[]) => {
@@ -382,12 +383,14 @@ const ContentImport: React.FC = () => {
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop: (acceptedFiles) => {
-      if (acceptedFiles.length === 1 && acceptedFiles[0].name.endsWith('.zip')) {
-        onDropZip(acceptedFiles);
-      } else if (acceptedFiles.length === 1) {
-        onDropSingle(acceptedFiles);
-      } else {
-        onDropBatch(acceptedFiles);
+      if (!showPreview) {
+        if (acceptedFiles.length === 1 && acceptedFiles[0].name.endsWith('.zip')) {
+          onDropZip(acceptedFiles);
+        } else if (acceptedFiles.length === 1) {
+          onDropSingle(acceptedFiles);
+        } else {
+          onDropBatch(acceptedFiles);
+        }
       }
     },
     accept: {
@@ -419,7 +422,135 @@ const ContentImport: React.FC = () => {
   const handleReset = () => {
     setResults({ success: 0, failed: 0, skipped: 0 });
     setShowDetails(false);
+    setShowPreview(false);
+    setPreviewFiles([]);
     setSelectedFile(null);
+  };
+
+  /**
+   * 预览文件内容
+   */
+  const handlePreview = async (files: File[]) => {
+    if (!files || files.length === 0) return;
+
+    setImporting(true);
+    setPreviewFiles([]);
+
+    const previews: FilePreview[] = await Promise.all(
+      files.map(async (file) => {
+        try {
+          const content = await file.text();
+          
+          // 提取 Front Matter
+          const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+          let frontMatter = null;
+          let body = content;
+
+          if (frontMatterMatch) {
+            try {
+              const yamlContent = frontMatterMatch[1];
+              // 简单解析 YAML（实际应该使用 js-yaml）
+              frontMatter = yamlContent.split('\n').reduce((acc: any, line) => {
+                const match = line.match(/^(\w+):\s*(.*)$/);
+                if (match) {
+                  const [_, key, value] = match;
+                  let parsedValue = value.trim();
+                  
+                  // 处理数组
+                  if (parsedValue.startsWith('[') && parsedValue.endsWith(']')) {
+                    parsedValue = parsedValue.slice(1, -1).split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                  }
+                  // 处理布尔值
+                  else if (parsedValue === 'true') {
+                    parsedValue = true;
+                  } else if (parsedValue === 'false') {
+                    parsedValue = false;
+                  }
+                  // 处理字符串
+                  else if (parsedValue.startsWith('"') && parsedValue.endsWith('"')) {
+                    parsedValue = parsedValue.slice(1, -1);
+                  }
+                  
+                  acc[key] = parsedValue;
+                }
+                return acc;
+              }, {});
+
+              body = content.replace(frontMatterMatch[0], '');
+            } catch {
+              // 解析失败，返回整个内容
+            }
+          }
+
+          return {
+            file,
+            content,
+            frontMatter,
+            error: null
+          };
+        } catch (error: any) {
+          return {
+            file,
+            content: '',
+            frontMatter: null,
+            error: error.message || '解析失败'
+          };
+        }
+      })
+    );
+
+    setPreviewFiles(previews);
+    setShowPreview(true);
+    setImporting(false);
+  };
+
+  /**
+   * 从预览中导入选中的文件
+   */
+  const handleImportFromPreview = async () => {
+    const selectedPreviews = previewFiles.filter((_, index) => selectedIndices.has(index));
+    
+    if (selectedPreviews.length === 0) {
+      alert('请至少选择一个文件');
+      return;
+    }
+
+    setImportingFiles(new Set(selectedPreviews.map(p => p.file.name)));
+    setShowPreview(false);
+
+    // 调用相应的导入函数
+    if (selectedPreviews.length === 1) {
+      await onDropSingle([selectedPreviews[0].file]);
+    } else if (selectedPreviews.length <= 10) {
+      await onDropBatch(selectedPreviews.map(p => p.file));
+    } else {
+      await onDropFolder(selectedPreviews.map(p => p.file));
+    }
+
+    setImportingFiles(new Set());
+  };
+
+  /**
+   * 切换文件选择状态
+   */
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
+  const toggleSelect = (index: number) => {
+    const newSelected = new Set(selectedIndices);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedIndices(newSelected);
+  };
+
+  const selectAll = () => {
+    if (selectedIndices.size === previewFiles.length) {
+      setSelectedIndices(new Set());
+    } else {
+      setSelectedIndices(new Set(previewFiles.map((_, i) => i)));
+    }
   };
 
   return (
@@ -478,94 +609,249 @@ const ContentImport: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex gap-3 justify-center">
-            <label className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
-              <FileText size={18} />
-              <span>选择单个文件</span>
-              <input
-                type="file"
-                accept=".md"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    if (file.size > 1 * 1024 * 1024) {
-                      alert('文件大小不能超过 1MB');
+            <div className="flex gap-3 justify-center">
+              <label className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+                <FileText size={18} />
+                <span>选择单个文件</span>
+                <input
+                  type="file"
+                  accept=".md"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 1 * 1024 * 1024) {
+                        alert('文件大小不能超过 1MB');
+                        return;
+                      }
+                      onDropSingle([file]);
+                    }
+                  }}
+                  disabled={importing}
+                  className="hidden"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors cursor-pointer">
+                <FileText size={18} />
+                <span>选择多个文件（最多 10 个）</span>
+                <input
+                  type="file"
+                  multiple
+                  accept=".md"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 10) {
+                      alert('一次最多上传 10 个文件');
                       return;
                     }
-                    onDropSingle([file]);
-                  }
-                }}
-                disabled={importing}
-                className="hidden"
-              />
-            </label>
-
-            <label className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors cursor-pointer">
-              <FileText size={18} />
-              <span>选择多个文件（最多 10 个）</span>
-              <input
-                type="file"
-                multiple
-                accept=".md"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  if (files.length > 10) {
-                    alert('一次最多上传 10 个文件');
-                    return;
-                  }
-                  const oversized = files.filter(f => f.size > 1 * 1024 * 1024);
-                  if (oversized.length > 0) {
-                    alert('有文件大小超过 1MB');
-                    return;
-                  }
-                  onDropBatch(files);
-                }}
-                disabled={importing}
-                className="hidden"
-              />
-            </label>
-
-            <label className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer">
-              <Folder size={18} />
-              <span>选择文件夹</span>
-              <input
-                type="file"
-                webkitdirectory
-                directory
-                disabled={importing}
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  if (files.length > 0) {
-                    onDropFolder(files);
-                  }
-                }}
-                className="hidden"
-              />
-            </label>
-
-            <label className="flex items-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors cursor-pointer">
-              <Package size={18} />
-              <span>选择 ZIP</span>
-              <input
-                type="file"
-                accept=".zip"
-                disabled={importing}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    if (file.size > 10 * 1024 * 1024) {
-                      alert('ZIP 文件大小不能超过 10MB');
+                    const oversized = files.filter(f => f.size > 1 * 1024 * 1024);
+                    if (oversized.length > 0) {
+                      alert('有文件大小超过 1MB');
                       return;
                     }
-                    onDropZip([file]);
-                  }
-                }}
-                className="hidden"
-              />
-            </label>
-          </div>
+                    onDropBatch(files);
+                  }}
+                  disabled={importing}
+                  className="hidden"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer">
+                <Folder size={18} />
+                <span>选择文件夹</span>
+                <input
+                  type="file"
+                  webkitdirectory
+                  directory
+                  disabled={importing}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) {
+                      onDropFolder(files);
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors cursor-pointer">
+                <Package size={18} />
+                <span>选择 ZIP</span>
+                <input
+                  type="file"
+                  accept=".zip"
+                  disabled={importing}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 10 * 1024 * 1024) {
+                        alert('ZIP 文件大小不能超过 10MB');
+                        return;
+                      }
+                      onDropZip([file]);
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
         </div>
       </div>
+
+      {/* 预览界面 */}
+      {showPreview && (
+        <div className="bg-white dark:bg-black/30 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-ink dark:text-paper flex items-center gap-2">
+              <FileText size={18} />
+              文件预览
+            </h3>
+            <button
+              onClick={() => setShowPreview(false)}
+              className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* 操作栏 */}
+          <div className="flex items-center gap-3 mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <button
+              onClick={selectAll}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            >
+              {selectedIndices.size === previewFiles.length ? '取消全选' : '全选'}
+            </button>
+            <span className="text-gray-600 dark:text-gray-400 text-sm">
+              已选择 {selectedIndices.size} 个文件
+            </span>
+            <button
+              onClick={handleImportFromPreview}
+              disabled={selectedIndices.size === 0 || importing}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {importing ? '导入中...' : '导入选中文件'}
+            </button>
+            <button
+              onClick={() => setShowPreview(false)}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+            >
+              取消
+            </button>
+          </div>
+
+          {/* 文件列表 */}
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {previewFiles.map((preview, index) => {
+              const isSelected = selectedIndices.has(index);
+              const isImporting = importingFiles.has(preview.file.name);
+
+              return (
+                <div
+                  key={index}
+                  onClick={() => !isImporting && toggleSelect(index)}
+                  className={`
+                    p-4 rounded-lg border cursor-pointer transition-all
+                    ${isSelected ? 'border-neon bg-neon/5' : 'border-gray-200 dark:border-gray-700 hover:border-neon/50'}
+                    ${isImporting ? 'opacity-50 pointer-events-none' : ''}
+                  `}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* 复选框 */}
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => !isImporting && toggleSelect(index)}
+                      className="mt-1 w-4 h-4"
+                      disabled={isImporting}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+
+                    {/* 文件信息 */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText size={16} className="text-gray-500" />
+                        <span className="font-medium text-ink dark:text-paper">{preview.file.name}</span>
+                        {preview.frontMatter?.type && (
+                          <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+                            {preview.frontMatter.type}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        {(preview.file.size / 1024).toFixed(1)} KB
+                      </div>
+
+                      {/* Front Matter 预览 */}
+                      {preview.frontMatter ? (
+                        <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {preview.frontMatter.title && (
+                              <div>
+                                <span className="text-gray-500">标题:</span>
+                                <span className="ml-2 font-medium text-ink dark:text-paper truncate">
+                                  {preview.frontMatter.title}
+                                </span>
+                              </div>
+                            )}
+                            {preview.frontMatter.category && (
+                              <div>
+                                <span className="text-gray-500">分类:</span>
+                                <span className="ml-2 font-medium text-ink dark:text-paper">
+                                  {preview.frontMatter.category}
+                                </span>
+                              </div>
+                            )}
+                            {preview.frontMatter.tags && preview.frontMatter.tags.length > 0 && (
+                              <div>
+                                <span className="text-gray-500">标签:</span>
+                                <div className="ml-2 flex flex-wrap gap-1">
+                                  {preview.frontMatter.tags.map((tag: string) => (
+                                    <span key={tag} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {preview.frontMatter.date && (
+                              <div>
+                                <span className="text-gray-500">日期:</span>
+                                <span className="ml-2 font-medium text-ink dark:text-paper">
+                                  {new Date(preview.frontMatter.date).toLocaleDateString('zh-CN')}
+                                </span>
+                              </div>
+                            )}
+                            {preview.frontMatter.excerpt && (
+                              <div className="col-span-2">
+                                <span className="text-gray-500">摘要:</span>
+                                <p className="ml-2 text-ink dark:text-paper mt-1 line-clamp-2">
+                                  {preview.frontMatter.excerpt}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : preview.error ? (
+                        <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-300 text-sm">
+                          <AlertCircle size={16} className="inline mr-2" />
+                          {preview.error}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {previewFiles.length === 0 && (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              未找到 Markdown 文件
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 导入选项 */}
       <div className="bg-white dark:bg-black/30 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
