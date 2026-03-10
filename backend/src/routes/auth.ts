@@ -12,6 +12,8 @@ import {
   updatePasswordSchema,
   updateUserSchema,
 } from '../schemas';
+import { loginTracker } from '../lib/login-tracker';
+import { validatePassword, getPasswordStrengthDescription } from '../lib/password-validator';
 
 const router = Router();
 
@@ -19,6 +21,20 @@ const router = Router();
 router.post('/register', validateBody(registerSchema), async (req, res) => {
   try {
     const { username, email, password, displayName } = req.body;
+
+    // 验证密码强度
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return error(
+        res,
+        `密码强度不足：${passwordValidation.errors.join('，')}`,
+        400,
+        {
+          strength: passwordValidation.strength,
+          errors: passwordValidation.errors,
+        }
+      );
+    }
 
     // 检查用户名是否已存在
     const existingUser = await prisma.user.findFirst({
@@ -71,6 +87,10 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
       user,
       token,
       refreshToken,
+      passwordStrength: {
+        level: passwordValidation.strength,
+        description: getPasswordStrengthDescription(passwordValidation.strength),
+      },
     }, '注册成功', undefined, 201);
   } catch (err: any) {
     console.error('注册错误:', err);
@@ -82,6 +102,19 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
 router.post('/login', validateBody(loginSchema), async (req, res) => {
   try {
     const { username, password } = req.body;
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+
+    // 检查是否被锁定
+    const lockCheck = loginTracker.checkLock(username);
+    if (lockCheck.locked) {
+      const remainingMinutes = Math.ceil(lockCheck.remainingTime / 60000);
+      return error(
+        res,
+        `账户已锁定，请 ${remainingMinutes} 分钟后再试`,
+        423,
+        { lockUntil: lockCheck.lockUntil, remainingTime: lockCheck.remainingTime }
+      );
+    }
 
     // 查找用户（支持用户名或邮箱登录）
     const user = await prisma.user.findFirst({
@@ -91,14 +124,40 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
     });
 
     if (!user) {
-      return error(res, '用户名或密码错误', 401);
+      // 记录失败尝试
+      const failureResult = loginTracker.recordFailure(username);
+      return error(
+        res,
+        failureResult.locked
+          ? `登录失败次数过多，请15分钟后再试`
+          : `用户名或密码错误，剩余尝试次数：${failureResult.remainingAttempts}`,
+        401,
+        { remainingAttempts: failureResult.remainingAttempts }
+      );
+    }
+
+    // 检查账户是否被禁用
+    if (!user.isActive) {
+      return error(res, '账户已被禁用', 403);
     }
 
     // 验证密码
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return error(res, '用户名或密码错误', 401);
+      // 记录失败尝试
+      const failureResult = loginTracker.recordFailure(username);
+      return error(
+        res,
+        failureResult.locked
+          ? `登录失败次数过多，请15分钟后再试`
+          : `用户名或密码错误，剩余尝试次数：${failureResult.remainingAttempts}`,
+        401,
+        { remainingAttempts: failureResult.remainingAttempts }
+      );
     }
+
+    // 登录成功，清除失败记录
+    loginTracker.recordSuccess(username);
 
     // 更新最后登录时间
     await prisma.user.update({

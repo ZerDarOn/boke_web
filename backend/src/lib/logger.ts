@@ -21,17 +21,25 @@ export interface LogEntry {
 }
 
 /**
- * Write log to file
+ * Write log to file (synchronous for critical errors)
  */
-function writeLog(filename: string, entry: LogEntry): void {
+function writeLog(filename: string, entry: LogEntry, sync: boolean = false): void {
   const logFile = path.join(LOG_DIR, filename);
   const logLine = JSON.stringify(entry) + '\n';
-  
-  fs.appendFile(logFile, logLine, (err) => {
-    if (err) {
-      console.error('Failed to write log:', err);
+
+  if (sync) {
+    try {
+      fs.appendFileSync(logFile, logLine);
+    } catch (err) {
+      console.error('Failed to write log (sync):', err);
     }
-  });
+  } else {
+    fs.appendFile(logFile, logLine, (err) => {
+      if (err) {
+        console.error('Failed to write log:', err);
+      }
+    });
+  }
 }
 
 /**
@@ -64,17 +72,49 @@ export function log(level: LogLevel, category: string, message: string, data?: a
 }
 
 /**
- * Log error with stack trace
+ * Log error with stack trace (synchronous)
  */
 export function logError(category: string, error: Error | string, data?: any): void {
   const errorMessage = error instanceof Error ? error.message : error;
   const stack = error instanceof Error ? error.stack : undefined;
-  
-  log('error', category, errorMessage, {
+
+  const entry: LogEntry = {
+    timestamp: new Date().toISOString(),
+    level: 'error',
+    category,
+    message: errorMessage,
     ...(data && { data }),
     ...(stack && { stack })
-  });
+  };
+
+  const colors = {
+    info: '\x1b[36m',
+    warn: '\x1b[33m',
+    error: '\x1b[31m',
+    debug: '\x1b[35m'
+  };
+  const reset = '\x1b[0m';
+  const prefix = `${colors.error}[ERROR]${reset} [${category}]`;
+
+  console.log(`${prefix} ${message}`, data || '');
+  if (stack && process.env.NODE_ENV === 'development') {
+    console.log(stack);
+  }
+
+  // Write to file synchronously for errors
+  const filename = `${category.toLowerCase()}.log`;
+  writeLog(filename, entry, true);
 }
+
+/**
+ * Error logger with convenience methods
+ */
+export const errorLogger = {
+  error: (message: string, error?: Error | string, data?: any) => logError('App', error || message, data),
+  warn: (message: string, data?: any) => log('warn', 'App', message, data),
+  info: (message: string, data?: any) => log('info', 'App', message, data),
+  debug: (message: string, data?: any) => log('debug', 'App', message, data),
+};
 
 /**
  * Read logs from file
@@ -175,6 +215,15 @@ export const apiLog = {
   info: (message: string, data?: any) => log('info', 'API', message, data),
   warn: (message: string, data?: any) => log('warn', 'API', message, data),
   error: (message: string, error?: Error | string, data?: any) => logError('API', error || message, data)
+};
+
+/**
+ * Error logs (for tracking errors specifically)
+ */
+export const errorTrackerLog = {
+  error: (message: string, error?: Error | string, data?: any) => logError('Error', error || message, data),
+  warn: (message: string, data?: any) => log('warn', 'Error', message, data),
+  info: (message: string, data?: any) => log('info', 'Error', message, data),
 };
 
 /**

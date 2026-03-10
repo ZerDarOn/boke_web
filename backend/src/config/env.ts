@@ -32,4 +32,19 @@ export const config = {
     AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
     INIT_DB: process.env.INIT_DB || 'true',  // Enable auto-initialization by default
     RESET_DB: process.env.RESET_DB || 'false',  // Force rebuild database
+    
+    // Security settings
+    CSRF_SECRET: process.env.CSRF_SECRET || 'default-csrf-secret-change-me',
+    SESSION_SECRET: process.env.SESSION_SECRET || 'default-session-secret-change-me',
+    RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),  // 15 minutes
+    RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+    LOGIN_MAX_ATTEMPTS: parseInt(process.env.LOGIN_MAX_ATTEMPTS || '5'),
+    LOGIN_LOCK_DURATION: parseInt(process.env.LOGIN_LOCK_DURATION || '900000'),  // 15 minutes
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ? 
+      process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) :
+      [
+        process.env.FRONTEND_URL || 'http://localhost:3000',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+      ],
 };

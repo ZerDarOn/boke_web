@@ -6,6 +6,14 @@ import path from 'path';
 import { config } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logger.middleware';
+import {
+  generalRateLimit,
+  authRateLimit,
+  registerRateLimit,
+  uploadRateLimit,
+  formRateLimit,
+} from './middleware/rate-limit.middleware';
+import { sanitizeInput, addXSSProtectionHeaders } from './lib/sanitizer';
 
 // Import routes
 const postRoutes = require('./routes/posts').default;
@@ -32,6 +40,7 @@ const currentStatusRoutes = require('./routes/current-status').default;
 const historyRoutes = require('./routes/history').default;
 const contentRoutes = require('./routes/content').default;
 const exportRoutes = require('./routes/export').default;
+const errorRoutes = require('./routes/error').default;
 const fileService = require('./services/file.service').default;
 
 const app = express();
@@ -41,16 +50,63 @@ fileService.initialize().catch(err => {
   console.error('Failed to initialize file service:', err);
 });
 
-// Security middleware
+// Security middleware - 加强的安全头配置
 app.use(helmet({
+  // Content Security Policy - 防止 XSS
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https:"],
-      imgSrc: ["'self'", "data:", "https:"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https:", "wss:"],
+      fontSrc: ["'self'", "data:", "https:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'", "data:", "https:"],
+      frameSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+      baseUri: ["'self'"],
+      upgradeInsecureRequests: [],
     },
   },
+  // 防止点击劫持
+  frameguard: {
+    action: 'deny',
+  },
+  // 防止 MIME 类型嗅探
+  noSniff: true,
+  // 防止 XSS 攻击（旧版浏览器）
+  xssFilter: true,
+  // 禁用 IE 的兼容性视图
+  ieNoOpen: true,
+  // 严格传输安全（仅生产环境）
+  hsts: {
+    maxAge: 31536000,  // 1 年
+    includeSubDomains: true,
+    preload: true,
+  },
+  //referrer 策略
+  referrerPolicy: {
+    policy: 'strict-origin-when-cross-origin',
+  },
+  // 权限策略
+  permissionsPolicy: {
+    features: {
+      geolocation: ["'none'"],
+      microphone: ["'none'"],
+      camera: ["'none'"],
+      payment: ["'none'"],
+      usb: ["'none'"],
+      magnetometer: ["'none'"],
+      accelerometer: ["'none'"],
+      gyroscope: ["'none'"],
+    },
+  },
+  // 隐藏 X-Powered-By 头
+  hidePoweredBy: true,
+  // 预留用于 HPKP（HTTP Public Key Pinning）
+  hpkp: {},
 }));
 
 // CORS - 允许 localhost 和本地 IP 地址访问
@@ -99,6 +155,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-maintenance-token'],
 }));
 
+// Rate limiting - 通用速率限制
+app.use(generalRateLimit);
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -106,6 +165,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Logging
 app.use(morgan('dev'));
 app.use(requestLogger);
+
+// Input sanitization and XSS protection
+app.use(sanitizeInput);
+app.use(addXSSProtectionHeaders);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -133,10 +196,11 @@ app.use('/api/network', networkRoutes);
 app.use('/api/universe', universeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/search', searchRoutes);
-app.use('/api/upload', uploadRoutes);
+app.use('/api/upload', uploadRateLimit, uploadRoutes);  // 文件上传速率限制
 app.use('/api/minio', minioRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRateLimit, authRoutes);     // 认证路由速率限制
 app.use('/api/files', fileRoutes);
+app.use('/api/rss', rssRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
@@ -144,6 +208,7 @@ app.use('/api/current-status', currentStatusRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/error', errorRoutes);
 app.use('/rss.xml', rssRoutes);
 
 // 404 handler

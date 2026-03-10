@@ -4,6 +4,8 @@ import Layout from './components/Layout';
 import { LangProvider } from './contexts/LangContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryClientProvider } from './contexts/QueryContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Lazy load pages
@@ -134,13 +136,15 @@ const NotFound: React.FC = () => (
 
 const App: React.FC = () => {
   return (
-    <QueryClientProvider>
-      <LangProvider>
-        <AuthProvider>
-          <BrowserRouter>
-          <ScrollToTop />
-          <Suspense fallback={<LoadingSpinner />}>
-          <Routes>
+    <ErrorBoundary>
+      <QueryClientProvider>
+        <LangProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <BrowserRouter>
+              <ScrollToTop />
+              <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
           {/* Layout包裹的页面 */}
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
@@ -201,9 +205,11 @@ const App: React.FC = () => {
            </Routes>
            </Suspense>
            </BrowserRouter>
+            </ToastProvider>
          </AuthProvider>
        </LangProvider>
      </QueryClientProvider>
+    </ErrorBoundary>
    );
  };
 

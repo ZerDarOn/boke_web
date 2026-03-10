@@ -4,14 +4,110 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { Request } from 'express';
 
-// 确保上传目录存在
+/**
+ * 危险的文件扩展名（防止上传可执行文件）
+ */
+const DANGEROUS_EXTENSIONS = [
+  '.exe', '.bat', '.cmd', '.sh', '.ps1', '.vbs', '.js', '.jar',
+  '.app', '.deb', '.rpm', '.dmg', '.pkg', '.msi',
+  '.docm', '.dotm', '.xlsm', '.xltm', '.xlam', '.pptm',
+];
+
+/**
+ * 允许的图片扩展名
+ */
+const ALLOWED_IMAGE_EXTENSIONS = [
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg',
+];
+
+/**
+ * 允许的文档扩展名
+ */
+const ALLOWED_DOC_EXTENSIONS = [
+  '.txt', '.md', '.pdf', '.json',
+];
+
+/**
+ * 文件类型的魔术字节（用于验证真实的文件类型）
+ */
+const FILE_MAGIC_BYTES: Record<string, string> = {
+  'image/jpeg': 'ffd8ffe0',
+  'image/png': '89504e47',
+  'image/gif': '47494638',
+  'image/webp': '52494646',
+};
+
+/**
+ * 确保上传目录存在
+ */
 const ensureDir = (dir: string) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 };
 
-// 配置存储
+/**
+ * 清理文件名（防止路径遍历攻击）
+ */
+function sanitizeFilename(filename: string): string {
+  // 移除路径分隔符
+  filename = filename.replace(/[\/\\]/g, '');
+
+  // 移除危险字符
+  filename = filename.replace(/[<>:"|?*]/g, '');
+
+  // 移除点号开头（防止隐藏文件）
+  filename = filename.replace(/^\.+/, '');
+
+  // 限制文件名长度
+  const ext = path.extname(filename);
+  const name = path.basename(filename, ext);
+  const maxNameLength = 100;
+  const trimmedName = name.slice(0, maxNameLength);
+
+  return trimmedName + ext;
+}
+
+/**
+ * 验证文件扩展名
+ */
+function validateExtension(filename: string, allowedExtensions: string[]): boolean {
+  const ext = path.extname(filename).toLowerCase();
+  return allowedExtensions.includes(ext) && !DANGEROUS_EXTENSIONS.includes(ext);
+}
+
+/**
+ * 验证文件 MIME 类型
+ */
+function validateMimeType(mimetype: string, allowedMimes: string[]): boolean {
+  return allowedMimes.includes(mimetype);
+}
+
+/**
+ * 检查文件的魔术字节
+ */
+function checkFileMagicBytes(filePath: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const fd = fs.openSync(filePath, 'r');
+    const buffer = Buffer.alloc(8);
+    fs.readSync(fd, buffer, 0, 8, 0);
+    fs.closeSync(fd);
+
+    const hex = buffer.toString('hex').slice(0, 8).toLowerCase();
+
+    for (const [mimetype, magic] of Object.entries(FILE_MAGIC_BYTES)) {
+      if (hex.startsWith(magic)) {
+        resolve(mimetype);
+        return;
+      }
+    }
+    resolve(null);
+  });
+}
+
+/**
+ * 配置存储
+ */
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
     const type = req.params.type || 'general';
@@ -20,18 +116,29 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req: Request, file: Express.Multer.File, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    const sanitized = sanitizeFilename(file.originalname);
+    const uniqueName = `${uuidv4()}_${sanitized}`;
     cb(null, uniqueName);
   },
 });
 
-// 文件过滤器
-const fileFilter = (
+/**
+ * 文件过滤器 - 图片
+ */
+const imageFileFilter = (
   req: Request,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ) => {
-  // 允许的图片类型
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  // 检查扩展名
+  if (!validateExtension(file.originalname, ALLOWED_IMAGE_EXTENSIONS)) {
+    cb(new Error(`不支持的图片格式。支持的格式：${ALLOWED_IMAGE_EXTENSIONS.join(', ')}`));
+    return;
+  }
+
+  // 检查 MIME 类型
   const allowedMimes = [
     'image/jpeg',
     'image/png',
@@ -40,50 +147,145 @@ const fileFilter = (
     'image/svg+xml',
   ];
 
-  // 允许的文档类型（About 页面文件）
-  const allowedDocMimes = [
+  if (!validateMimeType(file.mimetype, allowedMimes)) {
+    cb(new Error(`不支持的图片类型：${file.mimetype}`));
+    return;
+  }
+
+  cb(null, true);
+};
+
+/**
+ * 文件过滤器 - 文档
+ */
+const docFileFilter = (
+  req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  // 检查扩展名
+  if (!validateExtension(file.originalname, ALLOWED_DOC_EXTENSIONS)) {
+    cb(new Error(`不支持的文档格式。支持的格式：${ALLOWED_DOC_EXTENSIONS.join(', ')}`));
+    return;
+  }
+
+  // 检查 MIME 类型
+  const allowedMimes = [
     'text/plain',
     'text/markdown',
     'application/pdf',
     'application/json',
   ];
 
-  const allowedTypes = [...allowedMimes, ...allowedDocMimes];
-
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error(`不支持的文件类型: ${file.mimetype}`));
+  if (!validateMimeType(file.mimetype, allowedMimes)) {
+    cb(new Error(`不支持的文档类型：${file.mimetype}`));
+    return;
   }
+
+  cb(null, true);
 };
 
-// 配置上传限制
+/**
+ * 通用文件过滤器
+ */
+const generalFileFilter = (
+  req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  const allowedExtensions = [...ALLOWED_IMAGE_EXTENSIONS, ...ALLOWED_DOC_EXTENSIONS];
+
+  if (!validateExtension(file.originalname, allowedExtensions)) {
+    cb(new Error(`不支持的文件格式。支持的格式：${allowedExtensions.join(', ')}`));
+    return;
+  }
+
+  const allowedMimes = [
+    ...['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
+    ...['text/plain', 'text/markdown', 'application/pdf', 'application/json'],
+  ];
+
+  if (!validateMimeType(file.mimetype, allowedMimes)) {
+    cb(new Error(`不支持的文件类型：${file.mimetype}`));
+    return;
+  }
+
+  cb(null, true);
+};
+
+/**
+ * 上传限制配置
+ */
 const limits = {
-  fileSize: 10 * 1024 * 1024, // 10MB
-  files: 5, // 最多 5 个文件
+  fileSize: 10 * 1024 * 1024,  // 10MB
+  files: 10,  // 最多 10 个文件
+  fieldNameSize: 100,  // 字段名最大长度
+  fieldSize: 1024 * 1024,  // 字段值最大长度（1MB）
+  fields: 20,  // 最多 20 个字段
 };
 
-// 创建 multer 实例
-export const upload = multer({
+/**
+ * 创建 multer 实例 - 图片
+ */
+export const uploadImage = multer({
   storage,
-  fileFilter,
+  fileFilter: imageFileFilter,
+  limits: {
+    ...limits,
+    fileSize: 5 * 1024 * 1024,  // 图片最大 5MB
+  },
+});
+
+/**
+ * 创建 multer 实例 - 文档
+ */
+export const uploadDoc = multer({
+  storage,
+  fileFilter: docFileFilter,
+  limits: {
+    ...limits,
+    fileSize: 2 * 1024 * 1024,  // 文档最大 2MB
+  },
+});
+
+/**
+ * 创建 multer 实例 - 通用
+ */
+export const uploadGeneral = multer({
+  storage,
+  fileFilter: generalFileFilter,
   limits,
 });
 
-// 单文件上传（图片）
-export const uploadSingleImage = upload.single('image');
+/**
+ * 向后兼容的导出（使用通用上传）
+ */
+export const upload = uploadGeneral;
 
-// 多文件上传（相册）
-export const uploadMultipleImages = upload.array('images', 20);
+/**
+ * 单文件上传（图片）
+ */
+export const uploadSingleImage = uploadImage.single('image');
 
-// 混合上传（项目和文件）
-export const uploadMixed = upload.fields([
+/**
+ * 多文件上传（相册）
+ */
+export const uploadMultipleImages = uploadImage.array('images', 20);
+
+/**
+ * 混合上传（项目和文件）
+ */
+export const uploadMixed = uploadGeneral.fields([
   { name: 'image', maxCount: 1 },
   { name: 'images', maxCount: 20 },
   { name: 'file', maxCount: 1 },
 ]);
 
-// 错误处理中间件
+/**
+ * 错误处理中间件
+ */
 export const handleUploadError = (
   err: Error,
   req: Request,
@@ -91,31 +293,131 @@ export const handleUploadError = (
   next: any
 ) => {
   if (err instanceof multer.MulterError) {
-    // Multer 错误
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        message: '文件大小超过限制（最大 10MB）',
+        error: '文件大小超过限制（图片最大 5MB，文档最大 2MB，通用文件最大 10MB）',
+        code: 5000,
       });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json({
         success: false,
-        message: '文件数量超过限制',
+        error: '文件数量超过限制',
+        code: 5000,
       });
     }
+    if (err.code === 'LIMIT_FIELD_KEY') {
+      return res.status(400).json({
+        success: false,
+        error: '字段名过长',
+        code: 5000,
+      });
+    }
+    if (err.code === 'LIMIT_FIELD_VALUE') {
+      return res.status(400).json({
+        success: false,
+        error: '字段值过大',
+        code: 5000,
+      });
+    }
+    if (err.code === 'LIMIT_FIELD_COUNT') {
+      return res.status(400).json({
+        success: false,
+        error: '字段数量过多',
+        code: 5000,
+      });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        error: '不预期的文件字段',
+        code: 5000,
+      });
+    }
+
     return res.status(400).json({
       success: false,
-      message: `上传错误: ${err.message}`,
+      error: err.message,
+      code: 5000,
     });
   }
 
   if (err) {
     return res.status(400).json({
       success: false,
-      message: err.message,
+      error: err.message,
+      code: 5000,
     });
   }
 
   next();
 };
+
+/**
+ * 验证已上传的文件
+ */
+export async function validateUploadedFile(filePath: string, expectedMime?: string): Promise<boolean> {
+  try {
+    // 检查魔术字节
+    const magicMime = await checkFileMagicBytes(filePath);
+
+    if (expectedMime && magicMime !== expectedMime) {
+      return false;
+    }
+
+    // 检查文件大小
+    const stats = fs.statSync(filePath);
+    if (stats.size > 10 * 1024 * 1024) {  // 10MB
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * 删除上传的文件
+ */
+export function deleteUploadedFile(filePath: string): void {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (error) {
+    console.error('Failed to delete uploaded file:', error);
+  }
+}
+
+/**
+ * 清理临时文件（定期运行）
+ */
+export function cleanupTempFiles(maxAge: number = 24 * 60 * 60 * 1000): void {
+  const now = Date.now();
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+
+  const cleanDirectory = (dir: string) => {
+    if (!fs.existsSync(dir)) return;
+
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      const stats = fs.statSync(filePath);
+
+      if (stats.isDirectory()) {
+        cleanDirectory(filePath);
+      } else if (stats.isFile() && stats.mtimeMs < now - maxAge) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  };
+
+  cleanDirectory(uploadsDir);
+}
+
+// 每天清理一次临时文件
+setInterval(() => {
+  cleanupTempFiles();
+}, 24 * 60 * 60 * 1000);
