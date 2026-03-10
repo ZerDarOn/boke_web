@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Camera, Calendar, MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { api, GalleryImage, Album } from '../lib/api';
+import LazyImage from '../components/LazyImage';
 
 const Gallery: React.FC = () => {
   const [albums, setAlbums] = useState<Album[]>([]);

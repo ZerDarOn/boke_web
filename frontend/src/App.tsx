@@ -1,49 +1,57 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import Layout from './components/Layout';
 import { LangProvider } from './contexts/LangContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { QueryClientProvider } from './contexts/QueryContext';
+import LoadingSpinner from './components/LoadingSpinner';
 
-// Pages
-import Home from './pages/Home';
-import Posts from './pages/Posts';
-import PostDetail from './pages/PostDetail';
-import Archives from './pages/Archives';
-import Announcement from './pages/Announcement';
-import AnnouncementDetail from './pages/AnnouncementDetail';
-import Projects from './pages/Projects';
-import ProjectDetail from './pages/ProjectDetail';
-import Skills from './pages/Skills';
-import Timeline from './pages/Timeline';
-import About from './pages/About';
-import Network from './pages/Network';
-import Dashboard from './pages/Dashboard';
-import Anime from './pages/Anime';
-import AnimeDetail from './pages/AnimeDetail';
-import Diary from './pages/Diary';
-import DiaryDetail from './pages/DiaryDetail';
-import Gallery from './pages/Gallery';
-import GalleryDetail from './pages/GalleryDetail';
+// Lazy load pages
+const Home = lazy(() => import('./pages/Home'));
+const Posts = lazy(() => import('./pages/Posts'));
+const PostDetail = lazy(() => import('./pages/PostDetail'));
+const Archives = lazy(() => import('./pages/Archives'));
+const Announcement = lazy(() => import('./pages/Announcement'));
+const AnnouncementDetail = lazy(() => import('./pages/AnnouncementDetail'));
+const Projects = lazy(() => import('./pages/Projects'));
+const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
+const Skills = lazy(() => import('./pages/Skills'));
+const Timeline = lazy(() => import('./pages/Timeline'));
+const About = lazy(() => import('./pages/About'));
+const Network = lazy(() => import('./pages/Network'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Anime = lazy(() => import('./pages/Anime'));
+const AnimeDetail = lazy(() => import('./pages/AnimeDetail'));
+const Diary = lazy(() => import('./pages/Diary'));
+const DiaryDetail = lazy(() => import('./pages/DiaryDetail'));
+const Gallery = lazy(() => import('./pages/Gallery'));
+const GalleryDetail = lazy(() => import('./pages/GalleryDetail'));
 
 // Admin Pages
-import AdminLayout from './components/AdminLayout';
-import AdminLogin from './pages/AdminLogin';
-import AdminDashboard from './pages/Admin/AdminDashboard';
-import AdminPosts from './pages/Admin/AdminPosts';
-import AdminAnime from './pages/Admin/AdminAnime';
-import AdminSettings from './pages/Admin/AdminSettings';
-import AdminShortDiary from './pages/Admin/AdminShortDiary';
-import AdminActivities from './pages/Admin/AdminActivities';
-import AdminGallery from './pages/Admin/AdminGallery';
-import ContentImport from './pages/Admin/ContentImport';
-import ContentExport from './pages/Admin/ContentExport';
-import { AdminProjects, AdminDiary, AdminTimeline, AdminAnnouncements, AdminUsers, AdminCurrentStatus, AdminHistory } from './pages/Admin/SimpleAdminPages';
-import AdminNetwork from './pages/Admin/AdminNetwork';
-import AdminSkills from './pages/Admin/AdminSkills';
-import AdminUniverse from './pages/Admin/AdminUniverse';
-import AdminUniverseVisual from './pages/Admin/AdminUniverseVisual';
-import AdminFiles from './pages/Admin/AdminFiles';
-import MaintenancePanel from './components/MaintenancePanel';
+const AdminLayout = lazy(() => import('./components/AdminLayout'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
+const AdminPosts = lazy(() => import('./pages/Admin/AdminPosts'));
+const AdminAnime = lazy(() => import('./pages/Admin/AdminAnime'));
+const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
+const AdminShortDiary = lazy(() => import('./pages/Admin/AdminShortDiary'));
+const AdminActivities = lazy(() => import('./pages/Admin/AdminActivities'));
+const AdminGallery = lazy(() => import('./pages/Admin/AdminGallery'));
+const ContentImport = lazy(() => import('./pages/Admin/ContentImport'));
+const ContentExport = lazy(() => import('./pages/Admin/ContentExport'));
+const AdminProjects = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminProjects })));
+const AdminDiary = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminDiary })));
+const AdminTimeline = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminTimeline })));
+const AdminAnnouncements = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminAnnouncements })));
+const AdminUsers = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminUsers })));
+const AdminCurrentStatus = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminCurrentStatus })));
+const AdminHistory = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminHistory })));
+const AdminNetwork = lazy(() => import('./pages/Admin/AdminNetwork'));
+const AdminSkills = lazy(() => import('./pages/Admin/AdminSkills'));
+const AdminUniverse = lazy(() => import('./pages/Admin/AdminUniverse'));
+const AdminUniverseVisual = lazy(() => import('./pages/Admin/AdminUniverseVisual'));
+const AdminFiles = lazy(() => import('./pages/Admin/AdminFiles'));
+const MaintenancePanel = lazy(() => import('./components/MaintenancePanel'));
 
 // 路由切换滚动逻辑
 const ScrollToTop: React.FC = () => {
@@ -126,11 +134,13 @@ const NotFound: React.FC = () => (
 
 const App: React.FC = () => {
   return (
-    <LangProvider>
-      <AuthProvider>
-        <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
+    <QueryClientProvider>
+      <LangProvider>
+        <AuthProvider>
+          <BrowserRouter>
+          <ScrollToTop />
+          <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
           {/* Layout包裹的页面 */}
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
@@ -186,13 +196,15 @@ const App: React.FC = () => {
               <Route path="export" element={<ContentExport />} />
              </Route>
 
-          {/* 404 */}
-          <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </LangProvider>
-  );
-};
+           {/* 404 */}
+           <Route path="*" element={<NotFound />} />
+           </Routes>
+           </Suspense>
+           </BrowserRouter>
+         </AuthProvider>
+       </LangProvider>
+     </QueryClientProvider>
+   );
+ };
 
 export default App;

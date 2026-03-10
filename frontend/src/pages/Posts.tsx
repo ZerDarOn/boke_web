@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { TRANSLATIONS } from '../constants';
 import { ArrowRight, LayoutList, LayoutGrid, Filter, X, Loader2 } from 'lucide-react';
@@ -8,6 +8,17 @@ import { api, Post as ApiPost } from '../lib/api';
 interface Category {
   name: string;
   count: number;
+}
+
+// 文章卡片数据类型
+interface PostCardProps {
+  id: string;
+  slug: string;
+  title: string;
+  date: string;
+  category: string;
+  excerpt: string;
+  viewMode: 'list' | 'grid';
 }
 
 // 映射前端类型到后端类型
@@ -22,6 +33,45 @@ const mapPostType = (post: ApiPost) => ({
   tags: post.tags,
   readingTime: post.readingTime || '5 min',
 });
+
+// 使用 React.memo 优化文章卡片组件
+const PostCard = memo(({ id, slug, title, date, category, excerpt, viewMode }: PostCardProps) => {
+  return (
+    <Link
+      to={`/posts/${slug}`}
+      className={`
+        group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
+        ${viewMode === 'list' ? 'flex flex-col md:flex-row gap-6 items-start p-6' : 'flex flex-col p-6 h-full'}
+      `}
+    >
+      {/* Date Badge */}
+      <div className={`flex-shrink-0 ${viewMode === 'list' ? 'md:w-28 pt-1' : 'mb-4'}`}>
+        <span className="font-mono text-sm text-gray-400 block mb-1">{date}</span>
+        <span className="font-mono text-xs text-neon border border-neon px-2 py-0.5 inline-block bg-neon/5">
+          {category}
+        </span>
+      </div>
+
+      {/* Content Card */}
+      <div className="flex-1 flex flex-col h-full">
+        <h3 className="text-2xl font-bold font-sans text-ink dark:text-white group-hover:text-neon-dark dark:group-hover:text-neon transition-colors mb-3">
+          {title}
+        </h3>
+        <p className="font-serif text-gray-600 dark:text-gray-300 text-base leading-relaxed mb-4 flex-1">
+          {excerpt}
+        </p>
+        <button className="flex items-center gap-2 font-mono text-xs font-bold text-ink dark:text-gray-200 group-hover:text-neon transition-colors tracking-widest uppercase mt-auto">
+          Read <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform" />
+        </button>
+      </div>
+
+      {/* Decorative Ink Splat / Glow in Dark Mode */}
+      <div className="absolute top-0 right-0 w-12 h-12 bg-gray-50 dark:bg-white/5 opacity-0 group-hover:opacity-100 rounded-bl-3xl transition-opacity -z-10"></div>
+    </Link>
+  );
+});
+
+PostCard.displayName = 'PostCard';
 
 export default function Posts() {
   const [searchParams] = useSearchParams();
@@ -73,11 +123,13 @@ export default function Posts() {
     fetchPosts();
   }, [categoryParam, tagParam]);
   
-  const filteredPosts = posts.filter(post => {
-    if (selectedCategory && post.category !== selectedCategory) return false;
-    if (selectedTag && !post.tags.includes(selectedTag)) return false;
-    return true;
-  });
+  const filteredPosts = useMemo(() => {
+    return posts.filter(post => {
+      if (selectedCategory && post.category !== selectedCategory) return false;
+      if (selectedTag && !post.tags.includes(selectedTag)) return false;
+      return true;
+    });
+  }, [posts, selectedCategory, selectedTag]);
   
   // 从 API 获取标签列表
   const [allTags, setAllTags] = useState<string[]>([]);
@@ -297,38 +349,16 @@ export default function Posts() {
 
       <div className={viewMode === 'list' ? "grid grid-cols-1 gap-12" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
         {filteredPosts.map((post) => (
-          <Link 
+          <PostCard
             key={post.id}
-            to={`/posts/${post.slug}`}
-            className={`
-              group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
-              ${viewMode === 'list' ? 'flex flex-col md:flex-row gap-6 items-start p-6' : 'flex flex-col p-6 h-full'}
-            `}
-          >
-            {/* Date Badge */}
-            <div className={`flex-shrink-0 ${viewMode === 'list' ? 'md:w-28 pt-1' : 'mb-4'}`}>
-              <span className="font-mono text-sm text-gray-400 block mb-1">{post.date}</span>
-              <span className="font-mono text-xs text-neon border border-neon px-2 py-0.5 inline-block bg-neon/5">
-                {post.category}
-              </span>
-            </div>
-
-            {/* Content Card */}
-            <div className="flex-1 flex flex-col h-full">
-              <h3 className="text-2xl font-bold font-sans text-ink dark:text-white group-hover:text-neon-dark dark:group-hover:text-neon transition-colors mb-3">
-                {post.title}
-              </h3>
-              <p className="font-serif text-gray-600 dark:text-gray-300 text-base leading-relaxed mb-4 flex-1">
-                {post.excerpt}
-              </p>
-              <button className="flex items-center gap-2 font-mono text-xs font-bold text-ink dark:text-gray-200 group-hover:text-neon transition-colors tracking-widest uppercase mt-auto">
-                Read <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform" />
-              </button>
-            </div>
-            
-            {/* Decorative Ink Splat / Glow in Dark Mode */}
-            <div className="absolute top-0 right-0 w-12 h-12 bg-gray-50 dark:bg-white/5 opacity-0 group-hover:opacity-100 rounded-bl-3xl transition-opacity -z-10"></div>
-          </Link>
+            id={post.id}
+            slug={post.slug}
+            title={post.title}
+            date={post.date}
+            category={post.category}
+            excerpt={post.excerpt}
+            viewMode={viewMode}
+          />
         ))}
       </div>
       

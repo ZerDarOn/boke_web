@@ -53,6 +53,26 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, './src'),
         }
+      },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+              'ui-vendor': ['lucide-react'],
+              'query-vendor': ['@tanstack/react-query'],
+              'markdown-vendor': ['react-markdown', 'remark-gfm', 'rehype-raw', 'rehype-slug', 'rehype-toc'],
+            }
+          }
+        },
+        chunkSizeWarningLimit: 1000,
+        minify: 'terser',
+        terserOptions: {
+          compress: {
+            drop_console: true,
+            drop_debugger: true,
+          }
+        }
       }
     };
 });

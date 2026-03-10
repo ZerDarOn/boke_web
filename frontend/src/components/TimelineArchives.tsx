@@ -1,7 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { postsApi, Post } from '../lib/api';
 import { ArrowRight, List, GitCommit, Folder, Loader2, Lock } from 'lucide-react';
+
+// Visual helper for category colors (moved outside component)
+const getCategoryColor = (cat: string) => {
+  if (cat.includes('TECH') || cat.includes('ENGINEERING')) return 'text-blue-500 bg-blue-50 dark:bg-blue-900/20';
+  if (cat.includes('LIFE') || cat.includes('LIFESTYLE')) return 'text-green-500 bg-green-50 dark:bg-green-900/20';
+  return 'text-purple-500 bg-purple-50 dark:bg-purple-900/20';
+};
+
+// Format date (moved outside component)
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).replace(/\//g, '.');
+  } catch {
+    return dateString;
+  }
+};
 
 const TimelineArchives: React.FC = () => {
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('timeline');
@@ -28,35 +49,18 @@ const TimelineArchives: React.FC = () => {
   }, []);
 
   // Group posts by year
-  const postsByYear = posts.reduce((acc, post) => {
-    const year = new Date(post.date).getFullYear().toString();
-    if (!acc[year]) acc[year] = [];
-    acc[year].push(post);
-    return acc;
-  }, {} as Record<string, Post[]>);
+  const postsByYear = useMemo(() => {
+    return posts.reduce((acc, post) => {
+      const year = new Date(post.date).getFullYear().toString();
+      if (!acc[year]) acc[year] = [];
+      acc[year].push(post);
+      return acc;
+    }, {} as Record<string, Post[]>);
+  }, [posts]);
 
-  const years = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a));
-
-  // Visual helper for category colors
-  const getCategoryColor = (cat: string) => {
-    if (cat.includes('TECH') || cat.includes('ENGINEERING')) return 'text-blue-500 bg-blue-50 dark:bg-blue-900/20';
-    if (cat.includes('LIFE') || cat.includes('LIFESTYLE')) return 'text-green-500 bg-green-50 dark:bg-green-900/20';
-    return 'text-purple-500 bg-purple-50 dark:bg-purple-900/20';
-  };
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).replace(/\//g, '.');
-    } catch {
-      return dateString;
-    }
-  };
+  const years = useMemo(() => {
+    return Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a));
+  }, [postsByYear]);
 
   return (
     <div className="w-full min-h-screen py-12 relative bg-white dark:bg-[#050505] overflow-hidden transition-colors duration-300">
