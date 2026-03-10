@@ -1,0 +1,28 @@
+{
+  "1": {
+    "name": "1",
+    "type": "directory",
+    "path": "1",
+    "modifiedAt": "2026-03-09T06:33:42.051Z"
+  },
+  "2": {
+    "name": "2",
+    "type": "directory",
+    "path": "2",
+    "modifiedAt": "2026-03-09T09:02:48.596Z"
+  },
+  "3": {
+    "name": "3",
+    "type": "directory",
+    "path": "3",
+    "modifiedAt": "2026-03-09T07:53:30.736Z"
+  },
+  "1/321321.txt": {
+    "name": "321321.txt",
+    "type": "file",
+    "path": "1/321321.txt",
+    "size": 146304,
+    "modifiedAt": "2026-03-09T09:30:10.972Z",
+    "protected": false
+  }
+}

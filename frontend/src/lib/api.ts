@@ -1071,6 +1071,7 @@ export interface FileItem {
   fileType?: string;
   size?: number;
   modifiedAt: string;
+  protected?: boolean;
 }
 
 export interface FileContent {
@@ -1101,17 +1102,19 @@ export const filesApi = {
   },
 
   // GET /api/files/content - 获取文件内容
-  getContent: async (path: string) => {
+  getContent: async (path: string, password?: string) => {
     const queryParams = new URLSearchParams();
     queryParams.append('path', path);
+    if (password) queryParams.append('password', password);
 
     return apiRequest<FileContent>(`/api/files/content?${queryParams}`);
   },
 
   // GET /api/files/download - 下载文件
-  download: async (path: string) => {
+  download: async (path: string, password?: string) => {
     const queryParams = new URLSearchParams();
     queryParams.append('path', path);
+    if (password) queryParams.append('password', password);
 
     const url = `${API_BASE_URL}/api/files/download?${queryParams}`;
     const token = localStorage.getItem('auth_token');
@@ -1138,20 +1141,40 @@ export const filesApi = {
   },
 
   // POST /api/files - 创建文件/目录（需要认证）
-  create: async (path: string, type: 'file' | 'directory' = 'file', content?: string) => {
+  create: async (path: string, type: 'file' | 'directory' = 'file', content?: string, password?: string) => {
     return apiRequest<{ path: string; type: string; size?: number }>(`/api/files`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ path, type, content }),
+      body: JSON.stringify({ path, type, content, password }),
     });
   },
 
   // PUT /api/files/content - 更新文件内容（需要认证）
-  updateContent: async (path: string, content: string) => {
+  updateContent: async (path: string, content: string, password?: string) => {
     return apiRequest<{ path: string; size: number; modifiedAt: string }>(`/api/files/content`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ path, content }),
+      body: JSON.stringify({ path, content, password }),
+    });
+  },
+
+  // POST /api/files/password - 设置文件密码（需要认证）
+  setPassword: async (path: string, password: string) => {
+    return apiRequest<void>(`/api/files/password`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ path, password }),
+    });
+  },
+
+  // DELETE /api/files/password - 移除文件密码保护（需要认证）
+  removePassword: async (path: string) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('path', path);
+
+    return apiRequest<void>(`/api/files/password?${queryParams}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
     });
   },
 
@@ -1167,17 +1190,22 @@ export const filesApi = {
   },
 
   // POST /api/files/upload - 上传文件（需要认证）
-  upload: async (formData: FormData) => {
+  upload: async (path: string, files: Array<{ name: string; content: string; type: string }>) => {
     const token = localStorage.getItem('auth_token');
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
+    const queryParams = new URLSearchParams();
+    if (path) queryParams.append('path', path);
+
+    const response = await fetch(`${API_BASE_URL}/api/files/upload?${queryParams}`, {
       method: 'POST',
       headers,
-      body: formData,
+      body: JSON.stringify({ files }),
     });
 
     const data = await response.json();
@@ -1189,7 +1217,7 @@ export const filesApi = {
       };
     }
 
-    return data as ApiResponse<UploadedFile[]>;
+    return data as ApiResponse<any[]>;
   },
 };
 

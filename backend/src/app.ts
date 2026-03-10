@@ -32,8 +32,14 @@ const currentStatusRoutes = require('./routes/current-status').default;
 const historyRoutes = require('./routes/history').default;
 const contentRoutes = require('./routes/content').default;
 const exportRoutes = require('./routes/export').default;
+const fileService = require('./services/file.service').default;
 
 const app = express();
+
+// Initialize services
+fileService.initialize().catch(err => {
+  console.error('Failed to initialize file service:', err);
+});
 
 // Security middleware
 app.use(helmet({

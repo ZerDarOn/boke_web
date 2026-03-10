@@ -16,6 +16,8 @@ import {
   ChevronRight,
   ChevronDown,
   Search,
+  Lock,
+  LockOpen,
 } from 'lucide-react';
 
 interface FileEditorData {
@@ -33,10 +35,11 @@ const AdminFiles: React.FC = () => {
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'create-file' | 'create-dir' | 'edit' | 'delete'>('create-file');
+  const [modalType, setModalType] = useState<'create-file' | 'create-dir' | 'edit' | 'delete' | 'password'>('create-file');
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [formData, setFormData] = useState<FileEditorData>({ path: '', name: '', content: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [passwordData, setPasswordData] = useState({ path: '', password: '', confirmPassword: '' });
 
   // Upload states
   const [isUploading, setIsUploading] = useState(false);
@@ -115,6 +118,29 @@ const AdminFiles: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleSetPassword = (file: FileItem) => {
+    setModalType('password');
+    setSelectedFile(file);
+    setPasswordData({ path: file.path, password: '', confirmPassword: '' });
+    setIsModalOpen(true);
+  };
+
+  const handleRemovePassword = async (file: FileItem) => {
+    if (!confirm(`确定要移除文件 "${file.name}" 的密码保护吗？`)) return;
+
+    try {
+      const result = await api.files.removePassword(file.path);
+      if (result.success) {
+        await loadFiles();
+      } else {
+        setError(result.error || 'Failed to remove password');
+      }
+    } catch (error) {
+      console.error('Failed to remove password:', error);
+      setError('Failed to remove password');
+    }
+  };
+
   const confirmDelete = async () => {
     if (!selectedFile) return;
 
@@ -166,6 +192,18 @@ const AdminFiles: React.FC = () => {
         } else {
           setError(result.error || 'Failed to update file');
         }
+      } else if (modalType === 'password') {
+        if (passwordData.password !== passwordData.confirmPassword) {
+          setError('密码不匹配');
+          return;
+        }
+        const result = await api.files.setPassword(passwordData.path, passwordData.password);
+        if (result.success) {
+          await loadFiles();
+          setIsModalOpen(false);
+        } else {
+          setError(result.error || 'Failed to set password');
+        }
       }
     } catch (error) {
       console.error('Failed to save:', error);
@@ -187,12 +225,32 @@ const AdminFiles: React.FC = () => {
     setIsUploading(true);
 
     try {
-      const formData = new FormData();
+      // 将文件转换为 base64 格式
+      const fileArray = [];
       for (let i = 0; i < files.length; i++) {
-        formData.append('files', files[i]);
+        const file = files[i];
+        
+        const filePromise = new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const result = e.target?.result as string;
+            resolve({
+              name: file.name,
+              content: result.split(',')[1], // 移除 base64 前缀
+              type: 'file',
+              size: file.size,
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        fileArray.push(filePromise);
       }
 
-      const result = await api.files.upload(formData);
+      const uploadedFiles = await Promise.all(fileArray);
+
+      const result = await api.files.upload(currentPath, uploadedFiles);
       if (result.success) {
         await loadFiles();
       } else {
@@ -222,6 +280,10 @@ const AdminFiles: React.FC = () => {
     setCurrentPath(parts.join('/'));
   };
 
+  const handlePathClick = (path: string) => {
+    setCurrentPath(path);
+  };
+
   const getFileIcon = (file: FileItem) => {
     if (file.type === 'directory') {
       return <Folder className="text-yellow-500" size={20} />;
@@ -247,11 +309,23 @@ const AdminFiles: React.FC = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">File Management</h1>
           <p className="text-gray-600 dark:text-gray-400">Manage files and directories in your content folder</p>
+
+          <div className="flex gap-2 mt-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search files..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Actions Bar */}
-        <div className="mb-6 flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex gap-2">
+        {/* Action Buttons */}
+        <div className="flex gap-2 mb-4">
             <button
               onClick={handleCreate}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -277,20 +351,6 @@ const AdminFiles: React.FC = () => {
               />
             </label>
           </div>
-
-          <div className="flex gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search files..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </div>
 
         {/* Breadcrumb */}
         <div className="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -375,7 +435,14 @@ const AdminFiles: React.FC = () => {
                     <div className="flex items-center gap-3">
                       {getFileIcon(file)}
                       <div>
-                        <div className="font-medium text-gray-900 dark:text-white">{file.name}</div>
+                        <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          {file.name}
+                          {file.protected && (
+                            <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded flex items-center gap-1">
+                              <Lock size={12} /> 密码保护
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           {file.size ? `${(file.size / 1024).toFixed(1)}KB` : '0KB'} • {new Date(file.modifiedAt).toLocaleDateString()}
                         </div>
@@ -389,6 +456,22 @@ const AdminFiles: React.FC = () => {
                       >
                         <Edit size={16} />
                       </button>
+                      <button
+                        onClick={() => handleSetPassword(file)}
+                        className={`p-2 rounded transition-colors ${file.protected ? 'text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20' : 'text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/20'}`}
+                        title={file.protected ? 'Change Password' : 'Set Password'}
+                      >
+                        {file.protected ? <Lock size={16} /> : <LockOpen size={16} />}
+                      </button>
+                      {file.protected && (
+                        <button
+                          onClick={() => handleRemovePassword(file)}
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                          title="Remove Password"
+                        >
+                          <LockOpen size={16} />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDownload(file.path)}
                         className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
@@ -426,10 +509,11 @@ const AdminFiles: React.FC = () => {
           <div className="bg-white dark:bg-[#0a0a0a] rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-white/10">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                {modalType === 'create-file' && 'Create New File'}
-                {modalType === 'create-dir' && 'Create New Directory'}
-                {modalType === 'edit' && 'Edit File'}
-                {modalType === 'delete' && 'Delete Item'}
+               {modalType === 'create-file' && 'Create New File'}
+               {modalType === 'create-dir' && 'Create New Directory'}
+               {modalType === 'edit' && 'Edit File'}
+               {modalType === 'delete' && 'Delete Item'}
+               {modalType === 'password' && 'Set Password'}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -441,7 +525,7 @@ const AdminFiles: React.FC = () => {
 
             <div className="p-4">
               {modalType === 'delete' && selectedFile ? (
-                <div>
+                <>
                   <p className="text-gray-900 dark:text-white mb-4">
                     Are you sure you want to delete <strong>{selectedFile.name}</strong>?
                     {selectedFile.type === 'directory' && (
@@ -464,6 +548,63 @@ const AdminFiles: React.FC = () => {
                     >
                       {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
                       Delete
+                    </button>
+                  </div>
+                </>
+              ) : modalType === 'password' ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      File Path
+                    </label>
+                    <input
+                      type="text"
+                      value={passwordData.path}
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordData.password}
+                      onChange={(e) => setPasswordData({ ...passwordData, password: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter password..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Confirm password..."
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-[#1a1a1a] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={
+                        isSubmitting ||
+                        (!passwordData.password || passwordData.password !== passwordData.confirmPassword)
+                      }
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                      Save
                     </button>
                   </div>
                 </div>
@@ -507,7 +648,10 @@ const AdminFiles: React.FC = () => {
                     </button>
                     <button
                       onClick={handleSave}
-                      disabled={isSubmitting || !formData.name}
+                      disabled={
+                        isSubmitting ||
+                        ((modalType === 'create-file' || modalType === 'create-dir') && !formData.name)
+                      }
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
