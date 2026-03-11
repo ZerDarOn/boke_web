@@ -1,4 +1,5 @@
 import { Prisma, AccessLevel } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma';
 import { PaginationParams } from '../types';
 
@@ -83,20 +84,46 @@ export class PostService {
       select: { password: true, accessLevel: true },
     });
 
-    if (!post || post.accessLevel !== 'PASSWORD') {
+    if (!post || post.accessLevel !== 'PASSWORD' || !post.password) {
       return false;
     }
 
-    return post.password === password;
+    // 检查密码是否已经是 bcrypt 哈希（以 $2a$ 或 $2b$ 开头）
+    const isHashed = post.password.startsWith('$2a$') || post.password.startsWith('$2b$');
+    
+    if (isHashed) {
+      // 使用 bcrypt 验证
+      return bcrypt.compare(password, post.password);
+    } else {
+      // 兼容旧的明文密码
+      if (post.password === password) {
+        // 自动升级为 bcrypt 哈希
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await prisma.post.update({
+          where: { id: postId },
+          data: { password: hashedPassword },
+        });
+        return true;
+      }
+      return false;
+    }
   }
 
   // 创建文章
   static async create(data: Prisma.PostCreateInput) {
+    // 如果设置了密码，进行哈希处理
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
     return prisma.post.create({ data });
   }
 
   // 更新文章
   static async update(id: string, data: Prisma.PostUpdateInput) {
+    // 如果更新了密码，进行哈希处理
+    if (data.password && typeof data.password === 'string') {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
     return prisma.post.update({
       where: { id },
       data,
