@@ -24,6 +24,7 @@ import TableOfContents from '../components/TableOfContents';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
+import { SEO } from '../components/SEO';
 import { postsApi, Post } from '../lib/api';
 
 const PostDetail: React.FC = () => {
@@ -269,6 +270,16 @@ const PostDetail: React.FC = () => {
 
   return (
     <div className="animate-in fade-in duration-500 relative">
+      {/* SEO Meta Tags */}
+      {post && (
+        <SEO 
+          title={post.title}
+          description={post.excerpt}
+          keywords={post.tags?.join(', ')}
+          type="article"
+        />
+      )}
+      
       {/* 阅读进度条 */}
       <div className="fixed top-0 left-0 w-full h-1 bg-gray-200 dark:bg-gray-800 z-[60]">
         <div

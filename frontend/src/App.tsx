@@ -7,6 +7,7 @@ import { QueryClientProvider } from './contexts/QueryContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
+import { LoadingProgress } from './components/LoadingProgress';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
@@ -142,6 +143,7 @@ const App: React.FC = () => {
           <AuthProvider>
             <ToastProvider>
               <BrowserRouter>
+              <LoadingProgress />
               <ScrollToTop />
               <Suspense fallback={<LoadingSpinner />}>
               <Routes>

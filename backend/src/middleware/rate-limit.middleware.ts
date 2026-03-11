@@ -12,11 +12,11 @@ export interface RateLimitConfig {
 
 // 通用速率限制
 export const generalRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,  // 15 分钟
-  max: 100,                   // 每个IP最多100个请求
+  windowMs: process.env.NODE_ENV === 'development' ? 1 * 60 * 1000 : 15 * 60 * 1000,  // 开发环境1分钟，生产环境15分钟
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100,  // 开发环境1000个请求，生产环境100个
   message: {
     success: false,
-    error: '请求过于频繁，请15分钟后再试',
+    error: '请求过于频繁，请稍后再试',
     code: 7001,
   },
   standardHeaders: true,

@@ -11,7 +11,7 @@ const getApiBaseUrl = (): string => {
 
   const isBrowser = typeof window !== 'undefined';
   if (!isBrowser) {
-    return 'http://localhost:3001';
+    return 'http://localhost:3002';
   }
 
   const origin = window.location.origin;
@@ -19,10 +19,10 @@ const getApiBaseUrl = (): string => {
 
   if (origin.includes('192.168.') || origin.includes('localhost')) {
     const hostname = window.location.hostname;
-    return `http://${hostname}:3001`;
+    return `http://${hostname}:3002`;
   }
 
-  return 'http://localhost:3001';
+  return 'http://localhost:3002';
 };
 
 const API_BASE_URL = getApiBaseUrl();

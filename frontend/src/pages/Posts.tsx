@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { TRANSLATIONS } from '../constants';
 import { ArrowRight, LayoutList, LayoutGrid, Filter, X, Loader2 } from 'lucide-react';
 import { api, Post as ApiPost } from '../lib/api';
+import { PostListSkeleton } from '../components/Skeleton';
 
 // 分类类型定义
 interface Category {
@@ -210,9 +211,7 @@ export default function Posts() {
        <div className="mb-8">
          {/* Loading State */}
          {loading && (
-           <div className="flex items-center justify-center py-12">
-             <Loader2 className="animate-spin text-neon" size={24} />
-           </div>
+           <PostListSkeleton count={5} viewMode={viewMode} />
          )}
          
          {/* Error State */}
@@ -241,50 +240,39 @@ export default function Posts() {
         <div className="mb-4">
           <span className="text-xs font-mono text-gray-500 mb-2 block">CATEGORY</span>
            <div className="flex flex-wrap gap-2">
-             <Link
-               key="all-posts"
-               to="/posts"
-               className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
-                 !selectedCategory
-                   ? 'bg-neon text-white'
-                   : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
-               }`}
-             >
-               全部
-             </Link>
-               {loadingCategories ? (
-                 <div className="flex items-center gap-2">
-                   <Loader2 className="w-3 h-3 animate-spin" />
-                   <span className="text-xs text-gray-500">加载中...</span>
-                 </div>
-               ) : (
-                 <>
+             {loadingCategories ? (
+               <div className="flex items-center gap-2">
+                 <Loader2 className="w-3 h-3 animate-spin" />
+                 <span className="text-xs text-gray-500">加载中...</span>
+               </div>
+             ) : (
+               <>
+                 <Link
+                   key="category-all"
+                   to={selectedTag ? `/posts?tag=${selectedTag}` : '/posts'}
+                   className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
+                     !selectedCategory
+                       ? 'bg-neon text-white'
+                       : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
+                   }`}
+                 >
+                   全部
+                 </Link>
+                 {categories.map(category => (
                    <Link
-                     key="category-all"
-                     to={selectedTag ? `/posts?tag=${selectedTag}` : '/posts'}
+                     key={`category-${category.name}`}
+                     to={`/posts?category=${category.name}${selectedTag ? `&tag=${selectedTag}` : ''}`}
                      className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
-                       !selectedCategory
+                       selectedCategory === category.name
                          ? 'bg-neon text-white'
                          : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
                      }`}
                    >
-                     全部
+                     {category.name}
                    </Link>
-                   {categories.map(category => (
-                     <Link
-                       key={`category-${category.name}`}
-                       to={`/posts?category=${category.name}${selectedTag ? `&tag=${selectedTag}` : ''}`}
-                       className={`px-3 py-1 rounded-full text-sm font-mono transition-all ${
-                         selectedCategory === category.name
-                           ? 'bg-neon text-white'
-                           : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/20'
-                       }`}
-                     >
-                       {category.name}
-                     </Link>
-                   ))}
-                 </>
-               )}
+                 ))}
+               </>
+             )}
            </div>
         </div>
 
