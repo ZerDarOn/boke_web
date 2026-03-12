@@ -69,37 +69,77 @@ class FileService {
   private bucket: string;
   private metadata: Map<string, FileMetadata>;
   private useMinIO: boolean;
+  private storageMode: 'minio' | 'local' = 'local';
 
   constructor() {
     this.minioClient = getMinioClient();
     this.bucket = process.env.MINIO_BUCKET || 'ink-spirit-blog';
     this.metadata = loadMetadata();
-    this.useMinIO = !!process.env.MINIO_ENDPOINT;
+    // 初始假设不使用 MinIO，在 initialize 中检测
+    this.useMinIO = false;
 
-    if (!this.useMinIO) {
-      console.log('⚠️  MinIO not configured, using local file system');
+    // 确保本地目录存在（作为降级方案）
+    ensureLocalDir();
+  }
+
+  // 初始化 - 检测 MinIO 可用性并自动降级
+  async initialize(): Promise<void> {
+    const minioConfigured = !!process.env.MINIO_ENDPOINT;
+
+    if (!minioConfigured) {
+      console.log('');
+      console.log('📁 文件存储模式: 本地文件系统');
+      console.log('   └─ 原因: 未配置 MinIO 环境变量 (MINIO_ENDPOINT)');
+      console.log('   └─ 存储路径: ' + LOCAL_STORAGE_DIR);
+      console.log('');
+      this.useMinIO = false;
+      this.storageMode = 'local';
+      return;
+    }
+
+    // 尝试连接 MinIO
+    console.log('');
+    console.log('🔌 尝试连接 MinIO...');
+    console.log(`   └─ Endpoint: ${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || 9000}`);
+    console.log(`   └─ Bucket: ${this.bucket}`);
+
+    try {
+      // 检查连接
+      const bucketExists = await this.minioClient!.bucketExists(this.bucket);
+
+      if (!bucketExists) {
+        await this.minioClient!.makeBucket(this.bucket, 'us-east-1');
+        console.log(`   └─ 创建 Bucket: ${this.bucket}`);
+      }
+
+      this.useMinIO = true;
+      this.storageMode = 'minio';
+
+      console.log('');
+      console.log('✅ 文件存储模式: MinIO 对象存储');
+      console.log(`   └─ Bucket: ${this.bucket} ✓`);
+      console.log(`   └─ 控制台: ${process.env.MINIO_PUBLIC_URL || 'http://localhost:9001'}`);
+      console.log('');
+
+    } catch (error: any) {
+      console.log('');
+      console.log('⚠️  MinIO 连接失败，自动降级到本地文件系统');
+      console.log(`   └─ 错误: ${error.message || error.code || 'Unknown error'}`);
+      console.log(`   └─ 降级路径: ${LOCAL_STORAGE_DIR}`);
+      console.log('   └─ 提示: 请确保 MinIO 服务已启动 (docker-compose up -d minio)');
+      console.log('');
+
+      this.useMinIO = false;
+      this.storageMode = 'local';
+
+      // 确保本地目录存在
       ensureLocalDir();
     }
   }
 
-  // 初始化
-  async initialize(): Promise<void> {
-    if (!this.useMinIO) {
-      console.log('✅ File service initialized (local file system)');
-      return;
-    }
-
-    try {
-      const bucketExists = await this.minioClient!.bucketExists(this.bucket);
-      if (!bucketExists) {
-        await this.minioClient!.makeBucket(this.bucket, 'us-east-1');
-        console.log(`✅ Created MinIO bucket: ${this.bucket}`);
-      }
-      console.log(`✅ MinIO bucket "${this.bucket}" is ready`);
-    } catch (error) {
-      console.error('❌ Failed to initialize MinIO bucket:', error);
-      throw error;
-    }
+  // 获取当前存储模式
+  getStorageMode(): 'minio' | 'local' {
+    return this.storageMode;
   }
 
   // 获取本地文件路径
@@ -333,6 +373,65 @@ class FileService {
       const API_BASE_URL = process.env.API_URL || 'http://localhost:3001';
       return `${API_BASE_URL}/api/files/download?path=${encodeURIComponent(key)}`;
     }
+  }
+
+  // 获取文件二进制内容（用于导出）
+  async getFileBuffer(key: string): Promise<Buffer> {
+    if (this.useMinIO) {
+      const stream = await this.minioClient!.getObject(this.bucket, key);
+      return new Promise((resolve, reject) => {
+        const chunks: Buffer[] = [];
+        stream.on('data', (chunk) => chunks.push(chunk));
+        stream.on('end', () => resolve(Buffer.concat(chunks)));
+        stream.on('error', reject);
+      });
+    } else {
+      const localPath = this.getLocalPath(key);
+      return fs.readFileSync(localPath);
+    }
+  }
+
+  // 获取目录下所有文件（递归）
+  async getAllFilesInDirectory(dirPath: string): Promise<string[]> {
+    const files: string[] = [];
+    
+    if (this.useMinIO) {
+      const objects = this.minioClient!.listObjects(this.bucket, dirPath, true);
+      return new Promise((resolve, reject) => {
+        objects.on('data', (obj) => {
+          if (obj.name && !obj.name.endsWith('/')) {
+            files.push(obj.name);
+          }
+        });
+        objects.on('error', reject);
+        objects.on('end', () => resolve(files));
+      });
+    } else {
+      const localPath = this.getLocalPath(dirPath);
+      if (!fs.existsSync(localPath)) return files;
+      
+      const scanDir = (dir: string, basePath: string) => {
+        const items = fs.readdirSync(dir);
+        for (const item of items) {
+          const fullPath = path.join(dir, item);
+          const relativePath = basePath ? `${basePath}/${item}` : item;
+          const stats = fs.statSync(fullPath);
+          if (stats.isDirectory()) {
+            scanDir(fullPath, relativePath);
+          } else {
+            files.push(relativePath);
+          }
+        }
+      };
+      
+      scanDir(localPath, dirPath);
+      return files;
+    }
+  }
+
+  // 获取本地文件路径
+  private getLocalPath(key: string): string {
+    return path.join(LOCAL_STORAGE_DIR, key);
   }
 }
 

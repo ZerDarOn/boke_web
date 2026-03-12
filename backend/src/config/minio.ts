@@ -1,19 +1,31 @@
 import { Client } from 'minio';
 
-// MinIO 配置
-const minioClient = new Client({
-  endPoint: process.env.MINIO_ENDPOINT || 'localhost',
-  port: parseInt(process.env.MINIO_PORT || '9000'),
-  useSSL: process.env.MINIO_USE_SSL === 'true',
-  accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-  secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
-});
+// MinIO 配置 - 仅在配置了 MINIO_ENDPOINT 时创建客户端
+const createMinioClient = (): Client | null => {
+  if (!process.env.MINIO_ENDPOINT) {
+    return null;
+  }
+
+  return new Client({
+    endPoint: process.env.MINIO_ENDPOINT,
+    port: parseInt(process.env.MINIO_PORT || '9000'),
+    useSSL: process.env.MINIO_USE_SSL === 'true',
+    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+  });
+};
+
+const minioClient = createMinioClient();
 
 // 默认 bucket 名称
 const DEFAULT_BUCKET = 'ink-spirit-blog';
 
 // 初始化 bucket
-export const initializeMinIO = async () => {
+export const initializeMinIO = async (): Promise<boolean> => {
+  if (!minioClient) {
+    return false;
+  }
+
   try {
     // 检查 bucket 是否存在
     const bucketExists = await minioClient.bucketExists(DEFAULT_BUCKET);
@@ -22,18 +34,6 @@ export const initializeMinIO = async () => {
       // 创建 bucket
       await minioClient.makeBucket(DEFAULT_BUCKET, 'us-east-1');
       console.log(`✅ MinIO bucket "${DEFAULT_BUCKET}" created successfully`);
-
-      // 设置 bucket 为公开读取（可选）
-      // await minioClient.setBucketPolicy(DEFAULT_BUCKET, {
-      //   Version: '2012-10-17',
-      //   Statement: [{
-      //     Sid: 'PublicRead',
-      //     Effect: 'Allow',
-      //     Principal: { AWS: '*' },
-      //     Action: ['s3:GetObject'],
-      //     Resource: [`arn:aws:s3:::${DEFAULT_BUCKET}/*`]
-      //   }]
-      // });
     } else {
       console.log(`✅ MinIO bucket "${DEFAULT_BUCKET}" already exists`);
     }
@@ -46,7 +46,7 @@ export const initializeMinIO = async () => {
 };
 
 // 获取 MinIO 客户端实例
-export const getMinioClient = () => minioClient;
+export const getMinioClient = (): Client | null => minioClient;
 
 // 获取文件 URL
 export const getFileUrl = (

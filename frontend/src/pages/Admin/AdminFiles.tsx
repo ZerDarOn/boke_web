@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api, FileItem, FileContent } from '../../lib/api';
 import {
   FileText,
@@ -18,6 +18,10 @@ import {
   Search,
   Lock,
   LockOpen,
+  Package,
+  Archive,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 
 interface FileEditorData {
@@ -44,6 +48,13 @@ const AdminFiles: React.FC = () => {
   // Upload states
   const [isUploading, setIsUploading] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
+
+  // Export/Import states
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadFiles();
@@ -284,6 +295,75 @@ const AdminFiles: React.FC = () => {
     setCurrentPath(path);
   };
 
+  // 选择/取消选择文件
+  const toggleSelect = (path: string) => {
+    const newSelected = new Set(selectedPaths);
+    if (newSelected.has(path)) {
+      newSelected.delete(path);
+    } else {
+      newSelected.add(path);
+    }
+    setSelectedPaths(newSelected);
+  };
+
+  // 全选/取消全选
+  const toggleSelectAll = () => {
+    if (selectedPaths.size === files.length) {
+      setSelectedPaths(new Set());
+    } else {
+      setSelectedPaths(new Set(files.map(f => f.path)));
+    }
+  };
+
+  // 导出选中文件
+  const handleExport = async () => {
+    if (selectedPaths.size === 0) {
+      setError('请先选择要导出的文件');
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      const result = await api.files.exportFiles(Array.from(selectedPaths));
+      if (result.success) {
+        setSelectedPaths(new Set());
+      } else {
+        setError(result.error || '导出失败');
+      }
+    } catch (err: any) {
+      setError('导出失败: ' + err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // 导入ZIP文件
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.zip')) {
+      setError('只支持ZIP格式文件');
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      const result = await api.files.importFiles(file, currentPath);
+      if (result.success) {
+        await loadFiles();
+        setSelectedPaths(new Set());
+      } else {
+        setError(result.error || '导入失败');
+      }
+    } catch (err: any) {
+      setError('导入失败: ' + err.message);
+    } finally {
+      setIsImporting(false);
+      e.target.value = '';
+    }
+  };
+
   const getFileIcon = (file: FileItem) => {
     if (file.type === 'directory') {
       return <Folder className="text-yellow-500" size={20} />;
@@ -325,7 +405,7 @@ const AdminFiles: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={handleCreate}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -344,38 +424,79 @@ const AdminFiles: React.FC = () => {
               {isUploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
               Upload Files
               <input
+                ref={fileInputRef}
                 type="file"
                 multiple
                 onChange={handleUpload}
                 className="hidden"
               />
             </label>
+            
+            {/* 导出按钮 */}
+            <button
+              onClick={handleExport}
+              disabled={selectedPaths.size === 0 || isExporting}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isExporting ? <Loader2 className="animate-spin" size={16} /> : <Archive size={16} />}
+              Export ({selectedPaths.size})
+            </button>
+            
+            {/* 导入按钮 */}
+            <label className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors flex items-center gap-2 cursor-pointer">
+              {isImporting ? <Loader2 className="animate-spin" size={16} /> : <Package size={16} />}
+              Import ZIP
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".zip"
+                onChange={handleImport}
+                className="hidden"
+              />
+            </label>
           </div>
 
         {/* Breadcrumb */}
-        <div className="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <button
-            onClick={() => setCurrentPath('')}
-            className={`hover:text-blue-600 dark:hover:text-blue-400 ${!currentPath ? 'font-bold' : ''}`}
-          >
-            Root
-          </button>
-          {currentPath && (
-            <>
-              <ChevronRight size={14} />
-              <button
-                onClick={handleBack}
-                className="hover:text-blue-600 dark:hover:text-blue-400"
-              >
-                ..
-              </button>
-              {currentPath.split('/').map((part, index) => (
-                <React.Fragment key={index}>
-                  <ChevronRight size={14} />
-                  <span className="text-gray-900 dark:text-white font-medium">{part}</span>
-                </React.Fragment>
-              ))}
-            </>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <button
+              onClick={() => setCurrentPath('')}
+              className={`hover:text-blue-600 dark:hover:text-blue-400 ${!currentPath ? 'font-bold' : ''}`}
+            >
+              Root
+            </button>
+            {currentPath && (
+              <>
+                <ChevronRight size={14} />
+                <button
+                  onClick={handleBack}
+                  className="hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                  ..
+                </button>
+                {currentPath.split('/').map((part, index) => (
+                  <React.Fragment key={index}>
+                    <ChevronRight size={14} />
+                    <span className="text-gray-900 dark:text-white font-medium">{part}</span>
+                  </React.Fragment>
+                ))}
+              </>
+            )}
+          </div>
+          
+          {/* 全选按钮 */}
+          {files.length > 0 && (
+            <button
+              onClick={toggleSelectAll}
+              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              {selectedPaths.size === files.length ? (
+                <CheckSquare size={16} className="text-blue-600" />
+              ) : (
+                <Square size={16} />
+              )}
+              {selectedPaths.size === files.length ? '取消全选' : '全选'}
+            </button>
           )}
         </div>
 
@@ -406,19 +527,49 @@ const AdminFiles: React.FC = () => {
                 {directories.map((file) => (
                   <div
                     key={file.path}
-                    onClick={() => handleNavigate(file.name)}
-                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors group"
                   >
                     <div className="flex items-center gap-3">
-                      {getFileIcon(file)}
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-white">{file.name}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(file.modifiedAt).toLocaleDateString()}
+                      {/* 复选框 */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(file.path);
+                        }}
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        {selectedPaths.has(file.path) ? (
+                          <CheckSquare size={18} className="text-blue-600" />
+                        ) : (
+                          <Square size={18} />
+                        )}
+                      </button>
+                      <div 
+                        onClick={() => handleNavigate(file.name)}
+                        className="flex items-center gap-3 cursor-pointer"
+                      >
+                        {getFileIcon(file)}
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">{file.name}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(file.modifiedAt).toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <ChevronRight className="text-gray-400" size={16} />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(file);
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                      <ChevronRight className="text-gray-400" size={16} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -433,6 +584,17 @@ const AdminFiles: React.FC = () => {
                     className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors group"
                   >
                     <div className="flex items-center gap-3">
+                      {/* 复选框 */}
+                      <button
+                        onClick={() => toggleSelect(file.path)}
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        {selectedPaths.has(file.path) ? (
+                          <CheckSquare size={18} className="text-blue-600" />
+                        ) : (
+                          <Square size={18} />
+                        )}
+                      </button>
                       {getFileIcon(file)}
                       <div>
                         <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">

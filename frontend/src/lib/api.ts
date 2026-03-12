@@ -1219,6 +1219,72 @@ export const filesApi = {
 
     return data as ApiResponse<any[]>;
   },
+
+  // POST /api/files/export - 批量导出文件（需要认证）
+  exportFiles: async (paths: string[]) => {
+    const token = localStorage.getItem('auth_token');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/files/export`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ paths }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      return {
+        success: false,
+        error: data.message || data.error || `HTTP ${response.status}`,
+      };
+    }
+
+    // 下载ZIP文件
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-${new Date().toISOString().slice(0, 10)}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    return { success: true };
+  },
+
+  // POST /api/files/import - 批量导入文件（需要认证）
+  importFiles: async (file: File, targetPath: string = '') => {
+    const token = localStorage.getItem('auth_token');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const queryParams = new URLSearchParams();
+    if (targetPath) queryParams.append('targetPath', targetPath);
+
+    const response = await fetch(`${API_BASE_URL}/api/files/import?${queryParams}`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || `HTTP ${response.status}`,
+      };
+    }
+
+    return data as ApiResponse<{ fileCount: number; message: string }>;
+  },
 };
 
 // ==================== Users (Placeholder - backend not implemented) ====================
