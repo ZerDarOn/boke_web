@@ -1,3 +1,16 @@
+import type {
+  ProjectStatus,
+  AnimeStatus,
+  AnimeType,
+  DiaryMood,
+  DiaryWeather,
+  TimelineEventType,
+  SkillNodeType,
+  ImageAspect,
+  AnnouncementType,
+  FileType,
+} from '@ink-spirit/shared';
+
 export interface BlogPost {
   id: string;
   slug: string;
@@ -24,8 +37,8 @@ export interface LongFormDiary {
   content: string;
   date: string;
   location: string;
-  mood: '😊' | '🌙' | '☔' | '🌸' | '⚡';
-  weather: '☀️' | '☁️' | '🌧️' | '⛈️' | '❄️';
+  mood: DiaryMood;
+  weather: DiaryWeather;
   coverImage: string;
   tags: string[];
   readingTime: string;
@@ -36,7 +49,7 @@ export interface Project {
   name: string;
   type: string;
   tech: string[];
-  status: 'ACTIVE' | 'ARCHIVED' | 'DEPLOYED';
+  status: ProjectStatus;
   description: string;
   featured?: boolean;
   link?: string;
@@ -54,7 +67,7 @@ export interface SkillNode {
   x: number;
   y: number;
   connections: string[];
-  type: 'core' | 'major' | 'minor';
+  type: SkillNodeType;
 }
 
 export interface Activity {
@@ -69,7 +82,7 @@ export interface Activity {
 export interface FileNode {
   id: string;
   name: string;
-  type: 'folder' | 'markdown' | 'binary';
+  type: FileType;
   size?: string;
   date: string;
   content?: string;
@@ -84,7 +97,7 @@ export interface RelationNode {
   avatar?: string;
   description: string;
   connections: string[];
-  type: 'core' | 'major' | 'minor';
+  type: SkillNodeType;
 }
 
 export interface AnimeItem {
@@ -93,7 +106,7 @@ export interface AnimeItem {
   cover: string;
   totalEps: number;
   currentEp: number;
-  status: 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
+  status: AnimeStatus;
   score?: number;
   favorite?: boolean;
   studio?: string;
@@ -104,9 +117,9 @@ export interface AnimeDetail {
   title: string;
   coverImage: string;
   bannerImage: string;
-  type: 'TV' | 'OVA' | 'Movie' | 'Special' | 'ONA';
+  type: AnimeType;
   episodes: number;
-  status: 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
+  status: AnimeStatus;
   score?: number;
   aired: string;
   studios: string[];
@@ -114,7 +127,7 @@ export interface AnimeDetail {
   synopsis: string;
   myEpisodes: number;
   myScore?: number;
-  myStatus: 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
+  myStatus: AnimeStatus;
   startDate?: string;
   finishDate?: string;
   favorite: boolean;
@@ -129,7 +142,7 @@ export interface GalleryItem {
   title: string;
   date: string;
   location: string;
-  aspect: 'portrait' | 'landscape' | 'square';
+  aspect: ImageAspect;
   camera?: string;
   settings?: string;
   tags?: string[];
@@ -161,7 +174,7 @@ export interface TimelineEvent {
   date: string;
   title: string;
   description: string;
-  type: 'MILESTONE' | 'JOB' | 'LIFE';
+  type: TimelineEventType;
 }
 
 export interface SkillGroup {
@@ -179,10 +192,24 @@ export interface Announcement {
   title: string;
   content: string;
   date: string;
-  type: 'INFO' | 'WARNING' | 'SUCCESS' | 'IMPORTANT';
+  type: AnnouncementType;
   attachments?: {
     name: string;
     size: string;
     url: string;
   }[];
 }
+
+// 重新导出共享类型，方便其他模块使用
+export type {
+  ProjectStatus,
+  AnimeStatus,
+  AnimeType,
+  DiaryMood,
+  DiaryWeather,
+  TimelineEventType,
+  SkillNodeType,
+  ImageAspect,
+  AnnouncementType,
+  FileType,
+} from '@ink-spirit/shared';

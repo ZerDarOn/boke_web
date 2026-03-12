@@ -1,4 +1,32 @@
 import { z } from 'zod';
+import type {
+  ProjectStatus,
+  AnimeStatus,
+  AnimeType,
+  DiaryType,
+  TimelineEventType,
+  SkillRank,
+  SkillNodeType,
+  ImageAspect,
+  AnnouncementType,
+  AccessLevel,
+  HistoryIcon,
+} from '@ink-spirit/shared';
+
+// 重新导出共享类型
+export type {
+  ProjectStatus,
+  AnimeStatus,
+  AnimeType,
+  DiaryType,
+  TimelineEventType,
+  SkillRank,
+  SkillNodeType,
+  ImageAspect,
+  AnnouncementType,
+  AccessLevel,
+  HistoryIcon,
+} from '@ink-spirit/shared';
 
 export const registerSchema = z.object({
   username: z.string().min(3).max(50),
@@ -47,7 +75,7 @@ export const projectSchema = z.object({
   description: z.string().min(1).max(1000),
   type: z.string().min(1).max(50),
   tech: z.array(z.string()).optional(),
-  status: z.enum(['ACTIVE', 'ARCHIVED', 'DEPLOYED']).optional(),
+  status: z.enum(['ACTIVE', 'ARCHIVED', 'DEPLOYED'] as const).optional(),
   link: z.string().url().optional(),
   imageUrl: z.string().url().optional(),
   githubUrl: z.string().url().optional(),
@@ -62,14 +90,14 @@ export const animeSchema = z.object({
   title: z.string().min(1).max(200),
   cover: z.string().min(1),
   bannerImage: z.string().optional(),
-  type: z.enum(['TV', 'OVA', 'Movie', 'Special', 'ONA']).optional(),
+  type: z.enum(['TV', 'OVA', 'Movie', 'Special', 'ONA'] as const).optional(),
   episodes: z.number().int().min(1),
   aired: z.string().optional(),
   studios: z.array(z.string()).optional(),
   genres: z.array(z.string()).optional(),
   synopsis: z.string().optional(),
   currentEp: z.number().int().min(0).optional(),
-  status: z.enum(['WATCHING', 'COMPLETED', 'ON_HOLD', 'DROPPED']).optional(),
+  status: z.enum(['WATCHING', 'COMPLETED', 'ON_HOLD', 'DROPPED'] as const).optional(),
   score: z.number().min(0).max(10).optional(),
   favorite: z.boolean().optional(),
   notes: z.string().optional(),
@@ -88,7 +116,7 @@ export const animeScoreSchema = z.object({
 });
 
 export const diarySchema = z.object({
-  type: z.enum(['SHORT', 'LONG']).optional(),
+  type: z.enum(['SHORT', 'LONG'] as const).optional(),
   content: z.string().optional(),
   stamp: z.string().max(10).optional(),
   title: z.string().max(200).optional(),
@@ -108,7 +136,7 @@ export const galleryImageSchema = z.object({
   src: z.string().url(),
   date: z.coerce.date().optional(),
   location: z.string().max(100).optional(),
-  aspect: z.enum(['portrait', 'landscape', 'square']).optional(),
+  aspect: z.enum(['portrait', 'landscape', 'square'] as const).optional(),
   camera: z.string().max(100).optional(),
   settings: z.string().max(100).optional(),
   tags: z.array(z.string()).optional(),
@@ -126,11 +154,11 @@ export const skillSchema = z.object({
   name: z.string().min(1).max(100),
   category: z.string().min(1).max(50),
   level: z.number().int().min(0).max(100),
-  rank: z.enum(['Master', 'Expert', 'Adept', 'Novice']),
+  rank: z.enum(['Master', 'Expert', 'Adept', 'Novice'] as const),
   projectCount: z.number().int().min(0).optional(),
   nodeX: z.number().optional(),
   nodeY: z.number().optional(),
-  nodeType: z.enum(['core', 'major', 'minor']).optional(),
+  nodeType: z.enum(['core', 'major', 'minor'] as const).optional(),
   connections: z.array(z.string()).optional(),
   // 图片
   image: z.string().max(500).optional(),
@@ -145,7 +173,7 @@ export const timelineEventSchema = z.object({
   date: z.string().regex(/^\d{2}\.\d{2}$/),
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(500),
-  type: z.enum(['MILESTONE', 'JOB', 'LIFE']).optional(),
+  type: z.enum(['MILESTONE', 'JOB', 'LIFE'] as const).optional(),
   projectId: z.string().optional(),
 });
 
@@ -167,7 +195,7 @@ export const historyItemSchema = z.object({
   location: z.string().max(100).optional().default(''),
   tags: z.array(z.string()).optional(),
   color: z.string().max(20).optional(),  // 放宽颜色验证，允许任意格式
-  icon: z.enum(['FileText', 'Briefcase', 'Code', 'Star', 'Trophy', 'Globe', 'Zap', 'Heart']).optional(),
+  icon: z.enum(['FileText', 'Briefcase', 'Code', 'Star', 'Trophy', 'Globe', 'Zap', 'Heart'] as const).optional(),
   order: z.number().int().min(0).optional(),
   isActive: z.boolean().optional(),
 });
@@ -179,7 +207,7 @@ export const networkNodeSchema = z.object({
   avatar: z.string().url().optional().or(z.literal('')),
   x: z.number().default(0),
   y: z.number().default(0),
-  type: z.enum(['core', 'major', 'minor']).optional(),
+  type: z.enum(['core', 'major', 'minor'] as const).optional(),
   connections: z.array(z.string()).optional(),
   // 按钮配置
   buttonEnabled: z.boolean().optional(),
@@ -208,7 +236,7 @@ export const fileSchema = z.object({
 export const announcementSchema = z.object({
   title: z.string().min(1).max(200),
   content: z.string().min(1).max(2000),
-  type: z.enum(['INFO', 'WARNING', 'SUCCESS', 'IMPORTANT']).optional(),
+  type: z.enum(['INFO', 'WARNING', 'SUCCESS', 'IMPORTANT'] as const).optional(),
   date: z.coerce.date().optional(),
   attachments: z.any().optional(),
 });

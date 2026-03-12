@@ -13,7 +13,10 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "typeRoots": ["./src/types"]
+    "typeRoots": ["./src/types"],
+    "paths": {
+      "@ink-spirit/shared": ["../shared"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]

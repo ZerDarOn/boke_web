@@ -16,7 +16,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@ink-spirit/shared": ["../shared"]
     }
   },
   "include": ["src/**/*.tsx", "src/**/*.ts"],
