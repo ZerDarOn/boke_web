@@ -14,79 +14,16 @@ const iconMap: Record<string, React.ElementType> = {
   Heart,
 };
 
-// 默认当前状态 (用于 API 失败时)
-const defaultCurrentStatus: CurrentStatus = {
-  id: 'default',
-  title: 'BUILDING THE FUTURE',
-  currentFocus: 'Learning Next.js & Rust',
-  location: 'Neo-City, Sector 7',
-  vibe: '💻 Coding / ☕ Coffee',
-  emoji: '💻',
-  isActive: true,
-  createdAt: '',
-  updatedAt: '',
-};
 
-// 默认历史数据 (用于 API 失败时)
-const defaultHistoryItems: HistoryItem[] = [
-  {
-    id: '1',
-    date: '2023年6月',
-    title: '个人博客项目',
-    role: '全栈开发',
-    description: '从零开始搭建个人博客系统，包括前端页面设计、后端API开发、数据库设计和部署上线',
-    duration: '9个月2天',
-    location: '远程',
-    tags: ['项目经历', 'MongoDB', 'Node.js', 'Vercel', 'Tailwind CSS', 'React'],
-    color: '#a855f7',
-    icon: 'FileText',
-    order: 0,
-    isActive: true,
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: '2',
-    date: '2023年3月',
-    title: '机器学习项目',
-    role: '数据分析与建模',
-    description: '参与客户数据分析项目，负责数据清洗、特征工程和模型构建',
-    duration: '5个月8天',
-    location: '上海',
-    tags: ['项目经历', 'Python', 'Pandas', '数据可视化', 'Scikit-learn', 'TensorFlow'],
-    color: '#3b82f6',
-    icon: 'Briefcase',
-    order: 1,
-    isActive: true,
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: '3',
-    date: '2022年3月',
-    title: 'Python 数据分析',
-    role: '入门学习',
-    description: '系统学习 Python 数据分析生态，掌握 NumPy, Pandas 等核心库的使用。',
-    duration: '持续进行',
-    location: '自学',
-    tags: ['项目经历', 'Python', 'Data'],
-    color: '#a855f7',
-    icon: 'FileText',
-    order: 2,
-    isActive: true,
-    createdAt: '',
-    updatedAt: '',
-  },
-];
 
 const PageTimeline: React.FC = () => {
   const [viewMode, setViewMode] = useState<'timeline' | 'history'>('timeline');
   const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [currentStatus, setCurrentStatus] = useState<CurrentStatus>(defaultCurrentStatus);
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>(defaultHistoryItems);
+  const [currentStatus, setCurrentStatus] = useState<CurrentStatus | null>(null);
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -99,28 +36,31 @@ const PageTimeline: React.FC = () => {
           api.history.getAll({ active: true }),
         ]);
 
-        // 更新时间线事件
+        // 更新时间线事件 - 使用真实数据，空就显示空
         if (timelineResult.success && timelineResult.data) {
           setEvents(timelineResult.data);
         }
 
-        // 更新当前状态 (失败时使用默认值)
+        // 更新当前状态 - 使用真实数据，失败或为空时设为 null
         if (statusResult.success && statusResult.data) {
           setCurrentStatus(statusResult.data);
+        } else {
+          setCurrentStatus(null);
         }
 
-        // 更新历史项目 (失败时使用默认值)
-        if (historyResult.success && historyResult.data && historyResult.data.length > 0) {
+        // 更新历史项目 - 使用真实数据，空就显示空
+        if (historyResult.success && historyResult.data) {
           setHistoryItems(historyResult.data);
         }
       } catch (err) {
-        console.error('Failed to fetch timeline data:', err);
-        // 出错时使用默认值，不显示错误
+        // 出错时设置为空，让用户看到空状态提示
+        setHistoryItems([]);
+        setCurrentStatus(null);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
 
@@ -162,7 +102,8 @@ const PageTimeline: React.FC = () => {
 
         {viewMode === 'timeline' ? (
         <>
-            {/* 1. Header: Current Status (Top Entry) */}
+            {/* 1. Header: Current Status (Top Entry) - 仅在有数据时显示 */}
+            {currentStatus && (
             <div className="w-full max-w-3xl mb-24 relative z-10">
                 <div className="relative bg-ink text-white p-8 rounded-sm shadow-xl overflow-hidden group">
                     {/* Pulsing Border Effect */}
@@ -178,7 +119,7 @@ const PageTimeline: React.FC = () => {
                             <h2 className="text-3xl font-black font-sans mb-4">
                                 {currentStatus.title}
                             </h2>
-                            
+
                             <div className="flex flex-col gap-2 font-mono text-xs text-gray-400">
                                 <div className="flex items-center gap-2">
                                     <Briefcase size={12} /> CURRENT_FOCUS: {currentStatus.currentFocus}
@@ -191,16 +132,17 @@ const PageTimeline: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="hidden md:block text-right">
                             <div className="font-black text-6xl text-white/5 font-sans">NOW</div>
                         </div>
                     </div>
                 </div>
-                
+
                 {/* Connector Line to main timeline */}
                 <div className="absolute left-1/2 bottom-[-96px] w-[2px] h-24 bg-gradient-to-b from-neon to-ink transform -translate-x-1/2 z-0"></div>
             </div>
+            )}
 
                  {/* 2. Main Timeline (History) */}
                  {events.length > 0 ? (
@@ -267,6 +209,7 @@ const PageTimeline: React.FC = () => {
                     <h2 className="text-4xl font-black font-sans text-ink dark:text-white">历史</h2>
                 </div>
 
+                {historyItems.length > 0 ? (
                 <div className="relative pl-8 md:pl-16 border-l border-gray-200 dark:border-gray-800 space-y-12">
                     {historyItems.map((item, idx) => {
                         const IconComponent = iconMap[item.icon] || FileText;
@@ -318,6 +261,18 @@ const PageTimeline: React.FC = () => {
                         );
                     })}
                 </div>
+                ) : (
+                  <div className="flex items-center justify-center p-12 bg-gray-50 dark:bg-white/5 border-2 border-dashed border-gray-300 dark:border-white/10 rounded-xl">
+                    <div className="text-center">
+                      <p className="text-gray-500 dark:text-gray-400 font-mono text-sm mb-2">
+                        暂无历史项目
+                      </p>
+                      <p className="text-gray-400 dark:text-gray-500 text-xs">
+                        请在后台管理中添加历史项目
+                      </p>
+                    </div>
+                  </div>
+                )}
             </div>
         )}
   

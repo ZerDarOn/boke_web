@@ -43,7 +43,7 @@ router.post('/', validateBody(historyItemSchema), async (req, res) => {
     const item = await HistoryItemService.create(req.body);
     response.created(res, item);
   } catch (error: any) {
-    response.badRequest(res, error.message);
+    response.badRequest(res, error.message || 'Failed to create history item');
   }
 });
 

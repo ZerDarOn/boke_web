@@ -138,8 +138,6 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       return error(res, '路径不能为空', 400);
     }
 
-    console.log('Creating item:', { filePath, type, contentLength: content?.length });
-
     // 检查是否已存在（检查文件系统）
     const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'content-files');
     const localPath = path.join(LOCAL_STORAGE_DIR, filePath);
@@ -257,8 +255,6 @@ router.post('/upload', authenticate, requireAdmin, async (req, res) => {
   try {
     const { path: dirPath = '' } = req.query;
     const { files } = req.body;
-
-    console.log('Upload request:', { dirPath, filesCount: files?.length });
 
     if (!files || !Array.isArray(files)) {
       return error(res, '请提供文件数据', 400);

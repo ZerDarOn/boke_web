@@ -25,9 +25,16 @@ export const validateBody = (schema: ZodSchema) => {
       (req.body as any) = schema.parse(req.body);
       next();
     } catch (error: any) {
+      console.error('[VALIDATION ERROR]', error.errors);
       return res.status(400).json({
+        success: false,
         error: 'Validation failed',
-        details: error.errors,
+        details: error.errors?.map((e: any) => ({
+        field: e.path?.join('.'),
+        message: e.message,
+        code: e.code,
+      })),
+      rawError: error.message,
       });
     }
   };

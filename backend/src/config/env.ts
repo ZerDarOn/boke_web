@@ -3,6 +3,51 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+// 必需的环境变量（生产环境强制检查）
+const REQUIRED_ENV_VARS = [
+  'DATABASE_URL',
+  'JWT_SECRET',
+];
+
+// 敏感的默认值（生产环境不应使用）
+const INSECURE_DEFAULTS: Record<string, string> = {
+  'JWT_SECRET': 'default-secret-change-me',
+  'CSRF_SECRET': 'default-csrf-secret-change-me',
+  'SESSION_SECRET': 'default-session-secret-change-me',
+};
+
+/**
+ * 验证生产环境配置
+ * 在生产环境中检查必需的环境变量和不安全的默认值
+ */
+export function validateProductionEnv(): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (!isProduction) {
+    return { valid: true, errors: [] };
+  }
+
+  // 检查必需的环境变量
+  for (const varName of REQUIRED_ENV_VARS) {
+    if (!process.env[varName]) {
+      errors.push(`缺少必需的环境变量: ${varName}`);
+    }
+  }
+
+  // 检查是否使用了不安全的默认值
+  for (const [varName, insecureValue] of Object.entries(INSECURE_DEFAULTS)) {
+    if (process.env[varName] === insecureValue) {
+      errors.push(`${varName} 使用了不安全的默认值，请在生产环境中设置安全的密钥`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
 export const config = {
     PORT: parseInt(process.env.PORT || '3001'),
     NODE_ENV: process.env.NODE_ENV || 'development',

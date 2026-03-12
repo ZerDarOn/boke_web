@@ -1337,8 +1337,6 @@ export const settingsApi = {
     // Remove undefined values and ensure clean JSON
     const cleanConfig = JSON.parse(JSON.stringify(config));
     
-    console.log('Sending settings to API:', { settings: cleanConfig });
-    
     return apiRequest<any>(`/api/settings/bulk`, {
       method: 'PUT',
       headers: getAuthHeaders(),

@@ -163,10 +163,10 @@ export const historyItemSchema = z.object({
   title: z.string().min(1).max(200),
   role: z.string().min(1).max(100),
   description: z.string().min(1).max(2000),
-  duration: z.string().min(1).max(100),
-  location: z.string().min(1).max(100),
+  duration: z.string().max(100).optional().default(''),
+  location: z.string().max(100).optional().default(''),
   tags: z.array(z.string()).optional(),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z.string().max(20).optional(),  // 放宽颜色验证，允许任意格式
   icon: z.enum(['FileText', 'Briefcase', 'Code', 'Star', 'Trophy', 'Globe', 'Zap', 'Heart']).optional(),
   order: z.number().int().min(0).optional(),
   isActive: z.boolean().optional(),

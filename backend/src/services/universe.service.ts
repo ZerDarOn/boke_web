@@ -186,7 +186,6 @@ export class UniverseService {
           y,
         },
       });
-      console.log(`Saved layout for ${nodeId}: (${x}, ${y})`);
     } catch (error) {
       console.error('Failed to save universe layout:', error);
       throw error; // 抛出错误让调用方知道保存失败

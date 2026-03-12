@@ -201,6 +201,18 @@ async function ensurePrismaClient(): Promise<boolean> {
 
 // Main startup
 async function main() {
+  // 动态导入配置模块
+  const { config, validateProductionEnv } = await import('./config/env');
+  
+  // 生产环境安全检查
+  const envValidation = validateProductionEnv();
+  if (!envValidation.valid) {
+    console.error('\n🔒 生产环境安全检查失败:\n');
+    envValidation.errors.forEach(err => console.error(`   ❌ ${err}`));
+    console.error('\n💡 请在 .env 文件中正确配置以上环境变量\n');
+    process.exit(1);
+  }
+
   // 检查/生成 Prisma Client
   const hasClient = await ensurePrismaClient();
   
@@ -213,9 +225,8 @@ async function main() {
   }
 
   // 动态导入依赖 Prisma 的模块
-  const [{ default: app }, { config }, { initializeDatabase }] = await Promise.all([
+  const [{ default: app }, { initializeDatabase }] = await Promise.all([
     import('./app'),
-    import('./config/env'),
     import('./lib/database-init')
   ]);
 

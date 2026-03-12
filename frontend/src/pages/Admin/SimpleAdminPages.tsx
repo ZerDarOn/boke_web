@@ -638,6 +638,29 @@ const AdminHistory: React.FC = () => {
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
+      
+      // 验证必填字段
+      if (!formData.title?.trim()) {
+        alert('请填写标题');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.date?.trim()) {
+        alert('请填写日期');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.role?.trim()) {
+        alert('请填写角色');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.description?.trim()) {
+        alert('请填写描述');
+        setIsSubmitting(false);
+        return;
+      }
+      
       const submitData = {
         ...formData,
         tags: formData.tags ? formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
