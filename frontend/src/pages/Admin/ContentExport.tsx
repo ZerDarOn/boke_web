@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../lib/apiConfig';
 import {
   Download,
   FileText,
@@ -40,7 +41,7 @@ const ContentExport: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/export/stats`, {
+      const response = await fetch(`${API_BASE_URL}/api/export/stats`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
@@ -65,8 +66,8 @@ const ContentExport: React.FC = () => {
 
     try {
       const url = type === 'all'
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/export/all?downloadImages=${downloadImages}`
-        : `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/export/${type}?downloadImages=${downloadImages}`;
+        ? `${API_BASE_URL}/api/export/all?downloadImages=${downloadImages}`
+        : `${API_BASE_URL}/api/export/${type}?downloadImages=${downloadImages}`;
 
       const response = await fetch(url, {
         headers: {

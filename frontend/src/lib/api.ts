@@ -3,29 +3,7 @@
  * Provides typed API calls to backend
  */
 
-// API Base URL - 动态生成，兼容 localhost 和 IP 地址访问
-const getApiBaseUrl = (): string => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-
-  const isBrowser = typeof window !== 'undefined';
-  if (!isBrowser) {
-    return 'http://localhost:3002';
-  }
-
-  const origin = window.location.origin;
-  const port = window.location.port;
-
-  if (origin.includes('192.168.') || origin.includes('localhost')) {
-    const hostname = window.location.hostname;
-    return `http://${hostname}:3002`;
-  }
-
-  return 'http://localhost:3002';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+import { API_BASE_URL } from './apiConfig';
 
 /**
  * API Response Wrapper

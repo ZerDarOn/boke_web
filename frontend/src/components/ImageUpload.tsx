@@ -69,7 +69,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       formData.append('image', blob, 'avatar.png');
 
       // 上传到服务器
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const { API_BASE_URL } = await import('../lib/apiConfig');
       const uploadTypeMap = { network: 'avatars', skill: 'skills', author: 'avatars' };
       const uploadType = uploadTypeMap[type];
 
@@ -80,7 +80,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const uploadRes = await fetch(`${apiBaseUrl}/api/upload/image/${uploadType}`, {
+      const uploadRes = await fetch(`${API_BASE_URL}/api/upload/image/${uploadType}`, {
         method: 'POST',
         headers,
         body: formData,

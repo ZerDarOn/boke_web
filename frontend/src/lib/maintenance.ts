@@ -2,6 +2,8 @@
  * Maintenance API
  */
 
+import { API_BASE_URL } from './apiConfig';
+
 interface MaintenanceLoginRequest {
   password: string;
 }
@@ -42,7 +44,7 @@ export const maintenanceApi = {
    * Check maintenance mode status
    */
   getStatus: async () => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/maintenance/status`);
+    const response = await fetch(`${API_BASE_URL}/api/maintenance/status`);
     const data = await response.json();
     return data as MaintenanceStatusResponse;
   },
@@ -51,7 +53,7 @@ export const maintenanceApi = {
    * Login to maintenance mode
    */
   login: async (password: string) => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/maintenance/login`, {
+    const response = await fetch(`${API_BASE_URL}/api/maintenance/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +69,7 @@ export const maintenanceApi = {
    * Verify maintenance token
    */
   verifyToken: async (token: string) => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/maintenance/verify`, {
+    const response = await fetch(`${API_BASE_URL}/api/maintenance/verify`, {
       headers: {
         'x-maintenance-token': token,
       },
@@ -82,7 +84,7 @@ export const maintenanceApi = {
    */
   getLogs: async (category: string, token: string, limit: number = 100) => {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/maintenance/logs/${category}?limit=${limit}`,
+      `${API_BASE_URL}/api/maintenance/logs/${category}?limit=${limit}`,
       {
         headers: {
           'x-maintenance-token': token,
@@ -99,7 +101,7 @@ export const maintenanceApi = {
    */
   getCategories: async (token: string) => {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/maintenance/logs/categories`,
+      `${API_BASE_URL}/api/maintenance/logs/categories`,
       {
         headers: {
           'x-maintenance-token': token,
@@ -116,7 +118,7 @@ export const maintenanceApi = {
    */
   filterLogs: async (category: string, level: string, token: string, limit: number = 100) => {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/maintenance/logs/filter?category=${category}&level=${level}&limit=${limit}`,
+      `${API_BASE_URL}/api/maintenance/logs/filter?category=${category}&level=${level}&limit=${limit}`,
       {
         headers: {
           'x-maintenance-token': token,
@@ -133,7 +135,7 @@ export const maintenanceApi = {
    */
   searchLogs: async (category: string, query: string, token: string, limit: number = 100) => {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/maintenance/logs/search?category=${category}&query=${encodeURIComponent(query)}&limit=${limit}`,
+      `${API_BASE_URL}/api/maintenance/logs/search?category=${category}&query=${encodeURIComponent(query)}&limit=${limit}`,
       {
         headers: {
           'x-maintenance-token': token,
@@ -150,7 +152,7 @@ export const maintenanceApi = {
    */
   clearLogs: async (category: string, token: string) => {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/maintenance/logs/clear?category=${category}`,
+      `${API_BASE_URL}/api/maintenance/logs/clear?category=${category}`,
       {
         method: 'POST',
         headers: {

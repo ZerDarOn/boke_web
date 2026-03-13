@@ -4,18 +4,31 @@
   "description": "INK.SPIRIT - Cyber-Wuxia Personal Blog (Fullstack)",
   "private": true,
   "scripts": {
+    "start": "node start.js dev",
+    "start:dev": "node start.js dev",
+    "start:preview": "node start.js preview",
+    "start:tunnel": "node start.js tunnel",
+    "start:dev:tunnel": "node start.js dev --tunnel",
+    "start:preview:tunnel": "node start.js preview --tunnel",
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
-    "build": "npm run build:frontend && npm run build:backend",
+    "preview": "node start.js preview",
+    "build": "node start.js build",
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npm run build",
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install"
   },
-  "keywords": ["blog", "react", "cyberpunk", "wuxia"],
+  "keywords": [
+    "blog",
+    "react",
+    "cyberpunk",
+    "wuxia"
+  ],
   "author": "CYBER.RONIN",
   "license": "MIT",
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.0",
+    "ngrok": "^5.0.0-beta.2"
   }
 }

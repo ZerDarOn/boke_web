@@ -96,7 +96,7 @@ export function logError(category: string, error: Error | string, data?: any): v
   const reset = '\x1b[0m';
   const prefix = `${colors.error}[ERROR]${reset} [${category}]`;
 
-  console.log(`${prefix} ${message}`, data || '');
+  console.log(`${prefix} ${errorMessage}`, data || '');
   if (stack && process.env.NODE_ENV === 'development') {
     console.log(stack);
   }

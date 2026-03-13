@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { API_BASE_URL } from '../../lib/apiConfig';
 import { useDropzone } from 'react-dropzone';
 import {
   Upload,
@@ -51,7 +51,7 @@ const ContentImport: React.FC = () => {
       const file = acceptedFiles[0];
       const content = await file.text();
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/content/import/single`, {
+      const response = await fetch(`${API_BASE_URL}/api/content/import/single`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ const ContentImport: React.FC = () => {
         }))
       );
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/content/import/batch`, {
+      const response = await fetch(`${API_BASE_URL}/api/content/import/batch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +215,7 @@ const ContentImport: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/content/import/folder`, {
+      const response = await fetch(`${API_BASE_URL}/api/content/import/folder`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -300,7 +300,7 @@ const ContentImport: React.FC = () => {
 
           setProgress(30);
 
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/content/import/zip`, {
+          const response = await fetch(`${API_BASE_URL}/api/content/import/zip`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

@@ -1,7 +1,19 @@
 import path from 'path';
+import fs from 'fs';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { BLOG_POSTS } from './src/constants';
+
+const getBackendPort = () => {
+  const configPath = path.join(__dirname, '..', '.port-config.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      return config.backendPort || 3001;
+    } catch (e) {}
+  }
+  return 3001;
+};
 
 const generateRSS = () => {
   return {
@@ -39,10 +51,36 @@ const generateRSS = () => {
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const backendPort = getBackendPort();
+    
+    const proxyConfig = {
+      '/api': {
+        target: `http://localhost:${backendPort}`,
+        changeOrigin: true,
+        secure: false,
+      },
+    };
+    
+    // 共享的 allowedHosts
+    const allowedHosts = [
+      'localhost',
+      '127.0.0.1',
+      '.trycloudflare.com',  // Cloudflare Tunnel
+      '.ngrok-free.app',      // ngrok
+    ];
+    
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        allowedHosts,
+        proxy: proxyConfig,
+      },
+      preview: {
+        port: 3000,
+        host: '0.0.0.0',
+        allowedHosts,
+        proxy: proxyConfig,
       },
       plugins: [react(), generateRSS()],
       define: {

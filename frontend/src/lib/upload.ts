@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './api';
+import { API_BASE_URL } from './apiConfig';
 
 /**
  * 统一的图片上传服务
@@ -36,8 +36,7 @@ export const uploadImage = async (
 
   try {
     // 上传到服务器
-    const apiBaseUrl = getApiBaseUrl();
-    const response = await fetch(`${apiBaseUrl}/api/upload/image/${type}`, {
+    const response = await fetch(`${API_BASE_URL}/api/upload/image/${type}`, {
       method: 'POST',
       headers,
       body: formData,
@@ -111,8 +110,7 @@ export const uploadImages = async (
 
   try {
     // 上传到服务器
-    const apiBaseUrl = getApiBaseUrl();
-    const response = await fetch(`${apiBaseUrl}/api/upload/images/${type}`, {
+    const response = await fetch(`${API_BASE_URL}/api/upload/images/${type}`, {
       method: 'POST',
       headers,
       body: formData,

@@ -32,6 +32,12 @@ build/
 *.tmp
 *.temp
 
+# 隧道运行时生成的文件
+tunnel/tunnel-info.json
+
+# 端口配置文件（动态生成）
+.port-config.json
+
 # 操作系统生成的文件
 Thumbs.db
 .DS_Store

@@ -219,11 +219,9 @@ const AdminAnime: React.FC = () => {
     setCoverPreview('');
   };
 
-  const getApiBaseUrl = () => {
-    if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
-    return 'http://localhost:3001';
+  const getApiBaseUrl = async () => {
+    const { API_BASE_URL } = await import('../../lib/apiConfig');
+    return API_BASE_URL;
   };
 
   const getStatusColor = (status: string) => {
