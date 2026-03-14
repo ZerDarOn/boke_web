@@ -4,13 +4,31 @@ import { useAuth } from '../contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 /**
+ * 检测是否为触屏设备
+ */
+const isTouchDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    ((navigator as any).msMaxTouchPoints ?? 0) > 0
+  );
+};
+
+/**
  * 自定义霓虹光标组件 - 在深色管理后台中更显眼
+ * 触屏设备自动禁用
  */
 const NeonCursor: React.FC = () => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isVisible, setIsVisible] = useState(false);
+  const [isTouch, setIsTouch] = useState(false);
 
   useEffect(() => {
+    setIsTouch(isTouchDevice());
+    
+    if (isTouchDevice()) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       setPosition({ x: e.clientX, y: e.clientY });
       if (!isVisible) setIsVisible(true);
@@ -30,9 +48,10 @@ const NeonCursor: React.FC = () => {
     };
   }, [isVisible]);
 
+  if (isTouch) return null;
+
   return (
     <>
-      {/* 隐藏默认光标 */}
       <style>{`
         .admin-cursor-area {
           cursor: none !important;
@@ -49,7 +68,6 @@ const NeonCursor: React.FC = () => {
         }
       `}</style>
       
-      {/* 中心点 - 实心霓虹绿 */}
       <div
         className="fixed pointer-events-none z-[9999] mix-blend-difference"
         style={{
@@ -63,7 +81,6 @@ const NeonCursor: React.FC = () => {
         <div className="w-3 h-3 bg-neon rounded-full shadow-[0_0_10px_#10b981,0_0_20px_#10b981,0_0_30px_#10b981]" />
       </div>
       
-      {/* 外圈光环 */}
       <div
         className="fixed pointer-events-none z-[9998]"
         style={{
@@ -77,7 +94,6 @@ const NeonCursor: React.FC = () => {
         <div className="w-8 h-8 border-2 border-neon rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)] animate-pulse" />
       </div>
 
-      {/* 十字准星 - 增强可见性 */}
       <div
         className="fixed pointer-events-none z-[9997]"
         style={{

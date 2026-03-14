@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Search, Palette, SidebarClose, SidebarOpen, Globe, Settings, ChevronDown, 
-  Github, Video, Book, Camera, Heart, Network, Code, Clock, UserCheck, RotateCcw, Moon, Sun, BookOpen
+  Github, Video, Book, Camera, Heart, Network, Code, Clock, UserCheck, RotateCcw, Moon, Sun, BookOpen,
+  Menu, X
 } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
@@ -45,6 +46,7 @@ const Navigation: React.FC<NavigationProps> = ({
 }) => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
   const navRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -234,6 +236,14 @@ const Navigation: React.FC<NavigationProps> = ({
             </div>
         </div>
 
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+        >
+          {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+
         {/* Right: Utility Icons */}
         <div className="flex items-center gap-1 md:gap-2 pl-4 relative">
             <button
@@ -338,6 +348,123 @@ const Navigation: React.FC<NavigationProps> = ({
             </button>
         </div>
       </div>
+
+      {/* Mobile Menu Panel */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed top-16 left-0 right-0 bottom-0 bg-[#0a0a0a]/98 backdrop-blur-xl z-40 overflow-y-auto">
+          <div className="p-4 space-y-2">
+            {menuItems.map((item) => (
+              <div key={item.id}>
+                {item.path ? (
+                  <Link
+                    to={item.path}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`block px-4 py-3 text-base rounded-lg transition-colors ${
+                      activeItem === item.label 
+                        ? 'text-neon bg-neon/10 border-l-2 border-neon' 
+                        : 'text-gray-300 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <div>
+                    <div className="px-4 py-3 text-gray-500 text-sm font-mono uppercase tracking-wider">
+                      {item.label}
+                    </div>
+                    {item.dropdownItems && (
+                      <div className="pl-4 space-y-1">
+                        {item.dropdownItems.map((subItem, idx) => (
+                          subItem.link ? (
+                            <a
+                              key={idx}
+                              href={subItem.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                              onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                              {subItem.icon && <subItem.icon size={16} />}
+                              {subItem.label}
+                            </a>
+                          ) : (
+                            <Link
+                              key={idx}
+                              to={subItem.path || '/'}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                              onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                              {subItem.icon && <subItem.icon size={16} />}
+                              {subItem.label}
+                            </Link>
+                          )
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {/* Mobile Settings */}
+            <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+              <div className="flex items-center justify-between px-4">
+                <span className="text-sm text-gray-400">{uiText.appearance}</span>
+                <button 
+                  onClick={toggleTheme}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  {theme === 'light' ? (
+                    <div className="flex items-center gap-2 text-yellow-400">
+                      <Sun size={16} /> <span className="text-xs">LIGHT</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-blue-400">
+                      <Moon size={16} /> <span className="text-xs">DARK</span>
+                    </div>
+                  )}
+                </button>
+              </div>
+              
+              <div className="px-4">
+                <label className="text-xs text-gray-500 mb-2 block">{uiText.primary}</label>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="360" 
+                  value={primaryHue} 
+                  onChange={(e) => setPrimaryHue(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                  style={{ accentColor: 'var(--color-neon)' }}
+                />
+              </div>
+              
+              <div className="px-4">
+                <label className="text-xs text-gray-500 mb-2 block">{uiText.secondary}</label>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="360" 
+                  value={secondaryHue} 
+                  onChange={(e) => setSecondaryHue(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                  style={{ accentColor: 'var(--color-secondary)' }}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between px-4">
+                <span className="text-sm text-gray-400">Language</span>
+                <button 
+                  onClick={toggleLang}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-sm"
+                >
+                  <Globe size={16} /> {lang}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

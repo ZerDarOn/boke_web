@@ -1,9 +1,35 @@
+/**
+ * ============================================================================
+ * 主布局组件 (Main Layout Component)
+ * ============================================================================
+ * 
+ * 【移动端兼容性说明】
+ * 本文件实现了响应式布局，针对桌面端和移动端采用不同的布局策略：
+ * 
+ * 桌面端（>=1024px）：
+ * - 左侧边栏（Sidebar）+ 主内容区 + 右侧边栏（RightSidebar）
+ * - 三列并排布局
+ * 
+ * 移动端（<1024px）：
+ * - 仅显示主内容区（单列布局）
+ * - 左右边栏隐藏（hidden lg:block）
+ * - MobileBottomBar 组件在主内容底部显示，提供折叠式边栏内容访问
+ * 
+ * 【相关文件】
+ * - MobileBottomBar.tsx: 移动端底部边栏组件
+ * - index.css: 移动端触摸优化样式
+ * - Navigation.tsx: 移动端汉堡菜单
+ * 
+ * @created 移动端兼容性优化
+ * ============================================================================
+ */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import Navigation from './Navigation';
 import Sidebar from './Sidebar';
 import RightSidebar from './RightSidebar';
 import Hero from './Hero';
+import MobileBottomBar from './MobileBottomBar';
 import { Search, X, Loader2, AlertCircle } from 'lucide-react';
 import { useLang } from '../contexts/LangContext';
 import { useSiteConfig } from '../hooks/useSiteConfig';
@@ -378,16 +404,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* 主内容区域 - 从 Hero 下方开始 */}
         <div className="relative z-10 mt-[100vh] bg-transparent min-h-screen">
-          <div className="max-w-[1600px] mx-auto flex items-start pt-12 pb-24 px-4 md:px-6 gap-6 lg:gap-8 transition-all duration-300">
-            <Sidebar />
+          <div className="max-w-[1600px] mx-auto flex items-start pt-6 md:pt-12 pb-16 md:pb-24 px-3 md:px-6 gap-4 md:gap-6 lg:gap-8 transition-all duration-300">
+            {/* 左侧边栏 - 仅桌面端显示 */}
+            <div className="hidden lg:block">
+              <Sidebar />
+            </div>
 
-            <main className={`flex-1 min-w-0 flex flex-col gap-6 transition-all duration-300 ${isRightSidebarOpen ? '' : 'lg:mr-0'}`}>
-              <div className="bg-paper/80 dark:bg-[#0a0a0a]/90 backdrop-blur-md rounded-xl p-0 lg:p-6 border border-white/50 dark:border-white/10 shadow-sm ring-1 ring-black/5 dark:ring-white/10 min-h-[600px]">
+            <main className={`flex-1 min-w-0 flex flex-col gap-4 md:gap-6 transition-all duration-300`}>
+              <div className="bg-paper/80 dark:bg-[#0a0a0a]/90 backdrop-blur-md rounded-xl p-3 md:p-4 lg:p-6 border border-white/50 dark:border-white/10 shadow-sm ring-1 ring-black/5 dark:ring-white/10 min-h-[600px]">
                 {children || <Outlet />}
               </div>
+              
+              <MobileBottomBar />
             </main>
 
-            {isRightSidebarOpen && <RightSidebar />}
+            <div className={`hidden xl:block ${isRightSidebarOpen ? '' : 'hidden'}`}>
+              <RightSidebar />
+            </div>
           </div>
 
           <footer className="bg-ink text-white py-12 text-center relative overflow-hidden mt-12 dark:border-t dark:border-white/10">
@@ -404,11 +437,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* 回到顶部按钮 */}
         <button
           onClick={scrollToTop}
-          className={`fixed bottom-8 right-8 w-12 h-12 bg-white dark:bg-ink border-2 border-neon text-ink dark:text-paper flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all duration-500 hover:bg-neon hover:text-white z-50 ${
+          className={`fixed bottom-6 right-4 md:bottom-8 md:right-8 w-10 h-10 md:w-12 md:h-12 bg-white dark:bg-ink border-2 border-neon text-ink dark:text-paper flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all duration-500 hover:bg-neon hover:text-white z-50 rounded-full ${
             showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'
           }`}
         >
-          <span className="font-serif font-black text-xl">↑</span>
+          <span className="font-serif font-black text-lg md:text-xl">↑</span>
         </button>
       </div>
     </HeroContext.Provider>
