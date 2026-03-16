@@ -1147,4 +1147,59 @@ async function seedSiteConfigOnly() {
   }
 }
 
-export { main, seedSiteConfigOnly };
+/**
+ * 干净初始化 - 只创建站点配置，不创建示例数据
+ * 适合新环境部署时使用，避免硬编码数据污染
+ */
+async function seedClean() {
+  console.log('🌱 Initializing clean database (no demo data)...\n');
+
+  const existingUsers = await prisma.user.count();
+  if (existingUsers > 0) {
+    console.log('⚠️  Database already has users. Skipping clean seed.');
+    console.log('   Use `npm run db:reset` if you want to wipe all data.\n');
+    return;
+  }
+
+  await seedSiteConfigOnly();
+
+  console.log('═══════════════════════════════════════');
+  console.log('✨ Clean database initialized!');
+  console.log('═══════════════════════════════════════');
+  console.log('');
+  console.log('📊 Summary:');
+  console.log('   - Users: 0 (create your own via admin panel)');
+  console.log('   - Posts: 0');
+  console.log('   - Demo data: None');
+  console.log('');
+  console.log('🚀 Next steps:');
+  console.log('   1. Start the server: npm run dev');
+  console.log('   2. Create admin user via API or database directly');
+  console.log('');
+}
+
+export { main, seedSiteConfigOnly, seedClean };
+
+const command = process.argv[2];
+
+if (command === 'seedClean') {
+  seedClean()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+} else if (command === 'seedSiteConfigOnly') {
+  seedSiteConfigOnly();
+} else {
+  main()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

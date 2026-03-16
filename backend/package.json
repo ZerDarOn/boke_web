@@ -4,6 +4,7 @@
   "description": "INK.SPIRIT Blog Backend API",
   "main": "dist/index.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -11,6 +12,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push --skip-generate",
     "db:seed": "npx prisma db seed",
+    "db:seed:clean": "tsx prisma/seed.ts seedClean",
+    "db:seed:demo": "tsx prisma/seed.ts main",
     "db:reset": "prisma db push --force-reset --skip-generate && npm run db:generate && npm run db:seed",
     "db:fix": "tsx scripts/sync-db.ts",
     "db:init": "tsx init-db.ts",
