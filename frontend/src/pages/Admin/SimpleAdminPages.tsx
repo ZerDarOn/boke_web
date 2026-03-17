@@ -9,8 +9,9 @@ import AdminHistory from './components/AdminHistory';
 interface Field {
   key: string;
   label: string;
-  type: 'text' | 'textarea' | 'select';
+  type: 'text' | 'textarea' | 'select' | 'array';
   options?: string[];
+  required?: boolean;
 }
 
 interface AdminPageProps {
@@ -51,17 +52,13 @@ const AdminPage: React.FC<AdminPageProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const params: any = {};
-      if (filter !== 'all') {
-        params.status = filter === 'active';
-      }
       const apiModule = (api as any)[apiEndpoint];
       if (!apiModule) {
         setError('API endpoint not found');
         setLoading(false);
         return;
       }
-      const result = await apiModule.getAll(params);
+      const result = await apiModule.getAll();
       if (result.success && result.data) {
         setItems(result.data);
       } else {
@@ -97,7 +94,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   const handleCreate = () => {
     setEditingItem(null);
-    setFormData({ status: 'active' });
+    setFormData({ status: 'ACTIVE' });
     setIsModalOpen(true);
   };
 
@@ -116,10 +113,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
       setIsSubmitting(true);
       const apiModule = (api as any)[apiEndpoint];
       if (!apiModule) return;
+      const submitData = { ...formData };
+      if (submitData.featured !== undefined) {
+        submitData.featured = submitData.featured === 'true' || submitData.featured === true;
+      }
       if (editingItem) {
-        await apiModule.update(editingItem.id, formData);
+        await apiModule.update(editingItem.id, submitData);
       } else {
-        await apiModule.create(formData);
+        await apiModule.create(submitData);
       }
       await fetchItems();
       handleCloseModal();
@@ -131,11 +132,20 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const filteredItems = items.filter(item =>
-    item.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item[itemKey]?.toLowerCase?.().includes(searchTerm.toLowerCase())
-  );
+  const isActive = (status: string) => {
+    const s = status?.toLowerCase();
+    return s === 'active' || s === 'published';
+  };
+
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item[itemKey]?.toLowerCase?.().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
+    if (filter === 'all') return true;
+    if (filter === 'active') return isActive(item.status);
+    return !isActive(item.status);
+  });
 
   if (loading) {
     return (
@@ -179,7 +189,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">活跃</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-purple-400">{items.filter(item => item.status === 'active').length}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-purple-400">{items.filter(item => isActive(item.status)).length}</p>
             </div>
             <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-purple-900/30 flex items-center justify-center">
               <Eye size={20} className="text-gray-700 dark:text-purple-400" />
@@ -190,7 +200,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">草稿</p>
-              <p className="text-2xl font-bold text-yellow-700 dark:text-orange-400">{items.filter(item => item.status === 'inactive').length}</p>
+              <p className="text-2xl font-bold text-yellow-700 dark:text-orange-400">{items.filter(item => !isActive(item.status)).length}</p>
             </div>
             <div className="w-10 h-10 rounded-lg bg-yellow-200 dark:bg-orange-900/30 flex items-center justify-center">
               <Clock size={20} className="text-yellow-700 dark:text-orange-400" />
@@ -242,7 +252,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="font-bold text-gray-900 dark:text-white text-lg line-clamp-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">{item.title || item.name || item[itemKey]}</h3>
-                  <span className={'px-2 py-1 rounded-full text-xs font-medium ' + (item.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300')}>{item.status === 'active' ? '活跃' : '草稿'}</span>
+                  <span className={'px-2 py-1 rounded-full text-xs font-medium ' + (isActive(item.status) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300')}>{isActive(item.status) ? '活跃' : '草稿'}</span>
                 </div>
                 <div className="mt-4 flex gap-2">
                   <button onClick={() => handleEdit(item)} className="flex-1 py-2 px-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5"><Edit size={14} />编辑</button>
@@ -271,15 +281,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
             <div className="p-6 overflow-y-auto max-h-[60vh]">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">标题 / 名称</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">标题 / 名称 <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.title || formData.name || ''} onChange={(e) => handleInputChange(itemKey === 'name' ? 'name' : 'title', e.target.value)} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="请输入标题" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">状态</label>
-                  <select value={formData.status || 'active'} onChange={(e) => handleInputChange('status', e.target.value)} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-                    <option value="active">活跃</option>
-                    <option value="inactive">草稿</option>
-                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">描述</label>
@@ -287,13 +290,23 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 </div>
                 {fields.map((field) => (
                   <div key={field.key}>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{field.label}</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {field.label}{field.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
                     {field.type === 'textarea' ? (
                       <textarea value={formData[field.key] || ''} onChange={(e) => handleInputChange(field.key, e.target.value)} rows={4} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder={'请输入' + field.label} />
                     ) : field.type === 'select' ? (
                       <select value={formData[field.key] || ''} onChange={(e) => handleInputChange(field.key, e.target.value)} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                         {field.options?.map((opt: string) => (<option key={opt} value={opt}>{opt}</option>))}
                       </select>
+                    ) : field.type === 'array' ? (
+                      <input 
+                        type="text" 
+                        value={Array.isArray(formData[field.key]) ? formData[field.key].join(', ') : (formData[field.key] || '')} 
+                        onChange={(e) => handleInputChange(field.key, e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))} 
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
+                        placeholder={'用逗号分隔多个' + field.label} 
+                      />
                     ) : (
                       <input type="text" value={formData[field.key] || ''} onChange={(e) => handleInputChange(field.key, e.target.value)} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder={'请输入' + field.label} />
                     )}
@@ -315,7 +328,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 };
 
 // 使用通用 AdminPage 的简单管理组件
-const AdminProjects: React.FC = () => <AdminPage title="项目管理" icon={<Code size={24} className="text-gray-700 dark:text-white" />} description="管理所有项目" apiEndpoint="projects" itemKey="name" fields={[{ key: 'tech', label: '技术栈', type: 'text' }, { key: 'githubUrl', label: 'GitHub链接', type: 'text' }, { key: 'demoUrl', label: '演示链接', type: 'text' }]} />;
+const AdminProjects: React.FC = () => <AdminPage title="项目管理" icon={<Code size={24} className="text-gray-700 dark:text-white" />} description="管理所有项目" apiEndpoint="projects" itemKey="name" fields={[{ key: 'name', label: '项目名称', type: 'text', required: true }, { key: 'slug', label: 'URL别名', type: 'text', required: true }, { key: 'type', label: '项目类型', type: 'text', required: true }, { key: 'tech', label: '技术栈', type: 'array' }, { key: 'status', label: '状态', type: 'select', options: ['ACTIVE', 'ARCHIVED', 'DEPLOYED'] }, { key: 'featured', label: '首页展示', type: 'select', options: ['true', 'false'] }, { key: 'githubUrl', label: 'GitHub链接', type: 'text' }, { key: 'demoUrl', label: '演示链接', type: 'text' }]} />;
 const AdminDiary: React.FC = () => <AdminPage title="日记管理" icon={<FileText size={24} className="text-gray-700 dark:text-white" />} description="管理日记" apiEndpoint="diary" itemKey="title" fields={[{ key: 'content', label: '内容', type: 'textarea' }, { key: 'mood', label: '心情', type: 'text' }]} />;
 const AdminSkills: React.FC = () => <AdminPage title="技能管理" icon={<Star size={24} className="text-gray-700 dark:text-white" />} description="管理技能" apiEndpoint="skills" itemKey="name" fields={[{ key: 'category', label: '分类', type: 'text' }, { key: 'level', label: '等级', type: 'text' }]} />;
 const AdminTimeline: React.FC = () => <AdminPage title="时间线管理" icon={<Calendar size={24} className="text-gray-700 dark:text-white" />} description="管理时间线" apiEndpoint="timeline" itemKey="title" fields={[{ key: 'year', label: '年份', type: 'text' }, { key: 'type', label: '类型', type: 'select', options: ['MILESTONE', 'JOB', 'LIFE'] }]} />;

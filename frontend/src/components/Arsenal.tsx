@@ -107,9 +107,16 @@ const Arsenal: React.FC = () => {
                 ))}
               </div>
               
-              <button className="bg-ink dark:bg-white text-white dark:text-ink p-2 hover:bg-neon hover:text-white dark:hover:bg-neon dark:hover:text-white transition-all duration-300">
-                <ExternalLink size={16} />
-              </button>
+              {(project.link || project.demoUrl || project.githubUrl) && (
+                <a 
+                  href={project.link || project.demoUrl || project.githubUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-ink dark:bg-white text-white dark:text-ink p-2 hover:bg-neon hover:text-white dark:hover:bg-neon dark:hover:text-white transition-all duration-300"
+                >
+                  <ExternalLink size={16} />
+                </a>
+              )}
             </div>
           </div>
         ))}

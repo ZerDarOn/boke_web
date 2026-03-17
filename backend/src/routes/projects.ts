@@ -15,9 +15,11 @@ router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'projects' }), async (req
       req.query.limit as string
     );
 
+    const featured = req.query.featured !== undefined ? req.query.featured === 'true' : undefined;
+
     const { projects, total } = await ProjectService.findMany({
       pagination,
-      featured: req.query.featured === 'true',
+      featured,
       status: req.query.status as string,
     });
 

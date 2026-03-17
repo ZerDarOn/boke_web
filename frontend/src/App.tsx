@@ -42,7 +42,7 @@ const AdminActivities = lazy(() => import('./pages/Admin/AdminActivities'));
 const AdminGallery = lazy(() => import('./pages/Admin/AdminGallery'));
 const ContentImport = lazy(() => import('./pages/Admin/ContentImport'));
 const ContentExport = lazy(() => import('./pages/Admin/ContentExport'));
-const AdminProjects = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminProjects })));
+const AdminProjects = lazy(() => import('./pages/Admin/AdminProjectsPage'));
 const AdminDiary = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminDiary })));
 const AdminTimeline = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminTimeline })));
 const AdminAnnouncements = lazy(() => import('./pages/Admin/SimpleAdminPages').then(m => ({ default: m.AdminAnnouncements })));
