@@ -9,10 +9,12 @@ import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.mid
 import { validateBody } from '../middleware/validate.middleware';
 import { fileSchema } from '../schemas';
 import fileService from '../services/file.service';
+import { AuthPayload } from '../types';
 
 declare module 'express' {
   interface Request {
     files?: { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[];
+    user?: AuthPayload;
   }
 }
 

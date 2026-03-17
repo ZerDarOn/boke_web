@@ -145,9 +145,10 @@ export function sanitizeHTML(html: string): string {
  * 清理对象中的字符串字段
  */
 export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
-  const sanitized = { ...obj };
+  const sanitized: Record<string, any> = { ...obj };
 
-  for (const [key, value] of Object.entries(sanitized)) {
+  for (const key of Object.keys(sanitized)) {
+    const value = sanitized[key];
     if (typeof value === 'string') {
       sanitized[key] = sanitizeString(value);
     } else if (typeof value === 'object' && value !== null) {
@@ -155,7 +156,7 @@ export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
     }
   }
 
-  return sanitized;
+  return sanitized as T;
 }
 
 /**

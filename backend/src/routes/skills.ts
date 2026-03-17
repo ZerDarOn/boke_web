@@ -3,11 +3,11 @@ import { SkillService } from '../services/skill.service';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { skillSchema } from '../schemas';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 
 const router = Router();
 
-// GET /api/skills - 技能列表（分组）
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 600, keyPrefix: 'skills' }), async (req, res) => {
   try {
     const skills = await SkillService.findAll();
     response.success(res, skills);
@@ -16,8 +16,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/skills/nodes - 技能节点（图谱用）
-router.get('/nodes', async (req, res) => {
+router.get('/nodes', cacheMiddleware({ ttl: 600, keyPrefix: 'skills' }), async (req, res) => {
   try {
     const nodes = await SkillService.findNodes();
     response.success(res, nodes);
@@ -26,8 +25,7 @@ router.get('/nodes', async (req, res) => {
   }
 });
 
-// GET /api/skills/stats - 技能统计
-router.get('/stats', async (req, res) => {
+router.get('/stats', cacheMiddleware({ ttl: 120, keyPrefix: 'skills' }), async (req, res) => {
   try {
     const stats = await SkillService.getStats();
     response.success(res, stats);
@@ -36,8 +34,7 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// GET /api/skills/:id - 技能详情
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'skill' }), async (req, res) => {
   try {
     const skill = await SkillService.findById(req.params.id);
     if (!skill) {
@@ -49,8 +46,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/skills - 创建技能
-router.post('/', validateBody(skillSchema), async (req, res) => {
+router.post('/', validateBody(skillSchema), invalidateCache('skills:*'), async (req, res) => {
   try {
     const skill = await SkillService.create(req.body);
     response.created(res, skill);
@@ -59,8 +55,7 @@ router.post('/', validateBody(skillSchema), async (req, res) => {
   }
 });
 
-// PUT /api/skills/:id - 更新技能
-router.put('/:id', validateBody(skillSchema.partial()), async (req, res) => {
+router.put('/:id', validateBody(skillSchema.partial()), invalidateCache('skills:*'), async (req, res) => {
   try {
     const skill = await SkillService.update(req.params.id, req.body);
     response.success(res, skill);
@@ -69,8 +64,7 @@ router.put('/:id', validateBody(skillSchema.partial()), async (req, res) => {
   }
 });
 
-// DELETE /api/skills/:id - 删除技能
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', invalidateCache('skills:*'), async (req, res) => {
   try {
     await SkillService.delete(req.params.id);
     response.noContent(res);

@@ -8,6 +8,7 @@ import { getMinioClient, getObjectKey } from '../config/minio';
 interface FileMetadata {
   name: string;
   type: 'file' | 'directory';
+  path?: string;
   size?: number;
   modifiedAt: string;
   protected?: boolean;
@@ -155,7 +156,13 @@ class FileService {
 
       if (this.useMinIO) {
         // 使用 MinIO
-        const objects = await this.minioClient!.listObjects(this.bucket, prefix, false);
+        const objects = await new Promise<any[]>((resolve, reject) => {
+          const results: any[] = [];
+          const stream = this.minioClient!.listObjects(this.bucket, prefix, false);
+          stream.on('data', (obj) => results.push(obj));
+          stream.on('error', reject);
+          stream.on('end', () => resolve(results));
+        });
         const seenPaths = new Set<string>();
 
         for (const obj of objects) {
@@ -427,11 +434,6 @@ class FileService {
       scanDir(localPath, dirPath);
       return files;
     }
-  }
-
-  // 获取本地文件路径
-  private getLocalPath(key: string): string {
-    return path.join(LOCAL_STORAGE_DIR, key);
   }
 }
 

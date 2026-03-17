@@ -1,32 +1,17 @@
 import { z } from 'zod';
-import type {
-  ProjectStatus,
-  AnimeStatus,
-  AnimeType,
-  DiaryType,
-  TimelineEventType,
-  SkillRank,
-  SkillNodeType,
-  ImageAspect,
-  AnnouncementType,
-  AccessLevel,
-  HistoryIcon,
-} from '@ink-spirit/shared';
 
-// 重新导出共享类型
-export type {
-  ProjectStatus,
-  AnimeStatus,
-  AnimeType,
-  DiaryType,
-  TimelineEventType,
-  SkillRank,
-  SkillNodeType,
-  ImageAspect,
-  AnnouncementType,
-  AccessLevel,
-  HistoryIcon,
-} from '@ink-spirit/shared';
+// 本地定义共享类型
+export type ProjectStatus = 'ACTIVE' | 'ARCHIVED' | 'DEPLOYED';
+export type AnimeStatus = 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
+export type AnimeType = 'TV' | 'OVA' | 'Movie' | 'Special' | 'ONA';
+export type DiaryType = 'SHORT' | 'LONG';
+export type TimelineEventType = 'MILESTONE' | 'JOB' | 'LIFE';
+export type SkillRank = 'Master' | 'Expert' | 'Adept' | 'Novice';
+export type SkillNodeType = 'core' | 'major' | 'minor';
+export type ImageAspect = 'portrait' | 'landscape' | 'square';
+export type AnnouncementType = 'INFO' | 'WARNING' | 'SUCCESS' | 'IMPORTANT';
+export type AccessLevel = 'PUBLIC' | 'PRIVATE' | 'PASSWORD';
+export type HistoryIcon = 'FileText' | 'Briefcase' | 'Code' | 'Star' | 'Trophy' | 'Globe' | 'Zap' | 'Heart';
 
 export const registerSchema = z.object({
   username: z.string().min(3).max(50),

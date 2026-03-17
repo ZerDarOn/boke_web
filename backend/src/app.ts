@@ -14,6 +14,7 @@ import {
   formRateLimit,
 } from './middleware/rate-limit.middleware';
 import { sanitizeInput, addXSSProtectionHeaders } from './lib/sanitizer';
+import { initializeCache, cache, shutdownCache } from './lib/cache';
 
 // Import routes
 const postRoutes = require('./routes/posts').default;
@@ -48,6 +49,10 @@ const app = express();
 // Initialize services
 fileService.initialize().catch(err => {
   console.error('Failed to initialize file service:', err);
+});
+
+initializeCache().catch(err => {
+  console.error('Failed to initialize cache:', err);
 });
 
 // Security middleware - 加强的安全头配置
@@ -90,23 +95,8 @@ app.use(helmet({
   referrerPolicy: {
     policy: 'strict-origin-when-cross-origin',
   },
-  // 权限策略
-  permissionsPolicy: {
-    features: {
-      geolocation: ["'none'"],
-      microphone: ["'none'"],
-      camera: ["'none'"],
-      payment: ["'none'"],
-      usb: ["'none'"],
-      magnetometer: ["'none'"],
-      accelerometer: ["'none'"],
-      gyroscope: ["'none'"],
-    },
-  },
   // 隐藏 X-Powered-By 头
   hidePoweredBy: true,
-  // 预留用于 HPKP（HTTP Public Key Pinning）
-  hpkp: {},
 }));
 
 // CORS - 允许 localhost 和本地 IP 地址访问
@@ -177,6 +167,7 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     environment: config.NODE_ENV,
+    cache: cache.getStats(),
   });
 });
 

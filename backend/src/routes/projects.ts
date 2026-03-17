@@ -4,11 +4,11 @@ import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { projectSchema } from '../schemas';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 
 const router = Router();
 
-// GET /api/projects - 项目列表
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'projects' }), async (req, res) => {
   try {
     const pagination = getPagination(
       req.query.page as string,
@@ -27,8 +27,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/projects/stats - 项目统计
-router.get('/stats', async (req, res) => {
+router.get('/stats', cacheMiddleware({ ttl: 120, keyPrefix: 'projects' }), async (req, res) => {
   try {
     const stats = await ProjectService.getStats();
     response.success(res, stats);
@@ -37,8 +36,7 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// GET /api/projects/:id - 项目详情
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'project' }), async (req, res) => {
   try {
     const project = await ProjectService.findById(req.params.id);
     if (!project) {
@@ -50,8 +48,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/projects - 创建项目
-router.post('/', validateBody(projectSchema), async (req, res) => {
+router.post('/', validateBody(projectSchema), invalidateCache('projects:*'), async (req, res) => {
   try {
     const project = await ProjectService.create(req.body);
     response.created(res, project);
@@ -60,8 +57,7 @@ router.post('/', validateBody(projectSchema), async (req, res) => {
   }
 });
 
-// PUT /api/projects/:id - 更新项目
-router.put('/:id', validateBody(projectSchema.partial()), async (req, res) => {
+router.put('/:id', validateBody(projectSchema.partial()), invalidateCache('projects:*'), invalidateCache('project:*'), async (req, res) => {
   try {
     const project = await ProjectService.update(req.params.id, req.body);
     response.success(res, project);
@@ -70,8 +66,7 @@ router.put('/:id', validateBody(projectSchema.partial()), async (req, res) => {
   }
 });
 
-// DELETE /api/projects/:id - 删除项目
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', invalidateCache('projects:*'), invalidateCache('project:*'), async (req, res) => {
   try {
     await ProjectService.delete(req.params.id);
     response.noContent(res);

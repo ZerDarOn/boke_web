@@ -1,7 +1,19 @@
 import { Request } from 'express';
 
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthPayload;
+      session?: {
+        verifiedPosts?: Record<string, boolean>;
+      };
+    }
+  }
+}
+
 // API 通用响应类型
 export interface ApiResponse<T> {
+  success: boolean;
   data: T;
   message?: string;
   meta?: {
@@ -14,7 +26,7 @@ export interface ApiResponse<T> {
 
 export interface ApiError {
   error: string;
-  details?: Record<string, string[]>;
+  details?: Record<string, string[] | string | number | boolean>;
   code?: string;
 }
 
@@ -38,6 +50,7 @@ export interface FilterParams {
 
 // 认证相关
 export interface AuthPayload {
+  id: string;
   userId: string;
   role: 'USER' | 'ADMIN' | 'EDITOR';
 }

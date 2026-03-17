@@ -225,9 +225,10 @@ async function main() {
   }
 
   // 动态导入依赖 Prisma 的模块
-  const [{ default: app }, { initializeDatabase }] = await Promise.all([
+  const [{ default: app }, { initializeDatabase }, { shutdownCache }] = await Promise.all([
     import('./app'),
-    import('./lib/database-init')
+    import('./lib/database-init'),
+    import('./lib/cache')
   ]);
 
   const PORT = config.PORT || 3001;
@@ -263,7 +264,18 @@ async function main() {
       `);
     });
 
-    // 处理服务器错误（包括端口占用）
+    const gracefulShutdown = () => {
+      console.log('\n🔄 Shutting down gracefully...');
+      shutdownCache();
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+
     server.on('error', async (error: any) => {
       if (error.code === 'EADDRINUSE') {
         const errorMessage = await formatPortError(PORT);

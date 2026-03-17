@@ -38,9 +38,8 @@ export class DashboardService {
     const totalRequests = (siteStatsAgg._sum.pageViews ?? 0) || (totalViews._sum.viewCount ?? 0);
     const uniqueVisitors = (siteStatsAgg._sum.uniqueVisitors ?? 0) || Math.floor((totalViews._sum.viewCount ?? 0) * 0.3);
     
-    // 从 anime 表统计 favorites
-    const animeData = await prisma.anime.findMany({ select: { favorite: true } });
-    const totalFavorites = animeData.filter(a => a.favorite).length;
+    // 从 anime 表统计 favorites - 使用 count 避免全表扫描
+    const totalFavorites = await prisma.anime.count({ where: { favorite: true } });
 
     // 计算评论分布百分比
     const totalComments = postCommentsCount + galleryCommentsCount + animeCommentsCount;

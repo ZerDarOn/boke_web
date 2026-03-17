@@ -86,8 +86,9 @@ export const config = {
     UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
     CONTENT_DIR: process.env.CONTENT_DIR || 'content',
     AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
-    INIT_DB: process.env.INIT_DB || 'true',  // Enable auto-initialization by default
-    RESET_DB: process.env.RESET_DB || 'false',  // Force rebuild database
+    REDIS_URL: process.env.REDIS_URL || '',
+    INIT_DB: process.env.INIT_DB || 'true',
+    RESET_DB: process.env.RESET_DB || 'false',
     
     // Security settings
     CSRF_SECRET: process.env.CSRF_SECRET || 'default-csrf-secret-change-me',

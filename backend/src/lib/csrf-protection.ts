@@ -121,10 +121,12 @@ export function requireCSRFToken(
 
   // 获取请求中的 CSRF Token
   const requestToken = req.body?.csrfToken || req.headers['x-csrf-token'];
+  const headerSessionId = req.headers['x-session-id'];
+  const sessionIdValue = Array.isArray(headerSessionId) ? headerSessionId[0] : headerSessionId;
 
   // 从 session 中获取 sessionId
   // 注意：这里简化处理，实际应用中应该从 session 或 JWT 中获取
-  const sessionId = req.user?.id || req.headers['x-session-id'] || 'anonymous';
+  const sessionId = req.user?.id || sessionIdValue || 'anonymous';
 
   if (!requestToken) {
     res.status(403).json({
@@ -158,7 +160,9 @@ export function generateCSRFTokenMiddleware(
   next: NextFunction
 ): void {
   // 从 session 中获取 sessionId
-  const sessionId = req.user?.id || req.headers['x-session-id'] || 'anonymous';
+  const headerSessionId = req.headers['x-session-id'];
+  const sessionIdValue = Array.isArray(headerSessionId) ? headerSessionId[0] : headerSessionId;
+  const sessionId = req.user?.id || sessionIdValue || 'anonymous';
 
   // 生成新的 CSRF Token
   const token = csrfProtection.generateToken(sessionId);
@@ -204,15 +208,3 @@ export function getCookieOptions() {
     path: '/',
   };
 }
-
-/**
- * 导出工具函数和中间件
- */
-export {
-  generateCSRFToken,
-  verifyCSRFToken,
-  requireCSRFToken,
-  requireCSRFForSensitiveOperations,
-  generateCSRFTokenMiddleware,
-  getCookieOptions,
-};

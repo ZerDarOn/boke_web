@@ -1,15 +1,13 @@
 import { Router } from 'express';
 import { DashboardController } from '../controllers/dashboard.controller';
+import { cacheMiddleware } from '../middleware/cache.middleware';
 
 const router = Router();
 
-// GET /api/dashboard/stats - 仪表盘统计
-router.get('/stats', DashboardController.getStats);
+router.get('/stats', cacheMiddleware({ ttl: 60, keyPrefix: 'dashboard' }), DashboardController.getStats);
 
-// GET /api/dashboard/popular - 热门内容
-router.get('/popular', DashboardController.getPopular);
+router.get('/popular', cacheMiddleware({ ttl: 120, keyPrefix: 'dashboard' }), DashboardController.getPopular);
 
-// GET /api/dashboard/content-distribution - 内容分布
-router.get('/content-distribution', DashboardController.getContentDistribution);
+router.get('/content-distribution', cacheMiddleware({ ttl: 120, keyPrefix: 'dashboard' }), DashboardController.getContentDistribution);
 
 export default router;

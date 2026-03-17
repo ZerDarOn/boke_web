@@ -3,48 +3,36 @@ import { PostController } from '../controllers/post.controller';
 import { validateBody } from '../middleware/validate.middleware';
 import { postSchema } from '../schemas';
 import { z } from 'zod';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 
 const router = Router();
 
-// 密码验证 schema
 const passwordSchema = z.object({
   password: z.string().min(1),
 });
 
-// GET /api/posts - 文章列表
-router.get('/', PostController.getAll);
+router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'posts' }), PostController.getAll);
 
-// GET /api/posts/categories - 分类列表
-router.get('/categories', PostController.getCategories);
+router.get('/categories', cacheMiddleware({ ttl: 600, keyPrefix: 'posts' }), PostController.getCategories);
 
-// GET /api/posts/tags - 标签列表
-router.get('/tags', PostController.getTags);
+router.get('/tags', cacheMiddleware({ ttl: 600, keyPrefix: 'posts' }), PostController.getTags);
 
-// GET /api/posts/tags/popular - 热门标签
-router.get('/tags/popular', PostController.getPopularTags);
+router.get('/tags/popular', cacheMiddleware({ ttl: 600, keyPrefix: 'posts' }), PostController.getPopularTags);
 
-// GET /api/posts/:id - 文章详情
-router.get('/:id', PostController.getById);
+router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'post' }), PostController.getById);
 
-// GET /api/posts/:id/related - 相关文章
-router.get('/:id/related', PostController.getRelated);
+router.get('/:id/related', cacheMiddleware({ ttl: 300, keyPrefix: 'post' }), PostController.getRelated);
 
-// POST /api/posts/:id/view - 增加阅读量
 router.post('/:id/view', PostController.incrementView);
 
-// POST /api/posts/:id/like - 点赞
 router.post('/:id/like', PostController.incrementLike);
 
-// POST /api/posts/:id/verify - 验证文章密码
 router.post('/:id/verify', validateBody(passwordSchema), PostController.verifyPassword);
 
-// POST /api/posts - 创建文章 (Admin)
-router.post('/', validateBody(postSchema), PostController.create);
+router.post('/', validateBody(postSchema), invalidateCache('posts:*'), PostController.create);
 
-// PUT /api/posts/:id - 更新文章 (Admin)
-router.put('/:id', validateBody(postSchema.partial()), PostController.update);
+router.put('/:id', validateBody(postSchema.partial()), invalidateCache('posts:*'), invalidateCache('post:*'), PostController.update);
 
-// DELETE /api/posts/:id - 删除文章 (Admin)
-router.delete('/:id', PostController.delete);
+router.delete('/:id', invalidateCache('posts:*'), invalidateCache('post:*'), PostController.delete);
 
 export default router;

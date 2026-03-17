@@ -162,11 +162,11 @@ class AIClient {
   /**
    * Get recommended posts
    */
-  async recommendPosts(userId?: string, postId: string, limit = 5): Promise<RecommendPostsResponse> {
+  async recommendPosts(postId: string, userId?: string, limit = 5): Promise<RecommendPostsResponse> {
     try {
       const response = await axios.post(
         `${this.baseURL}/api/v1/recommend/posts`,
-        { user_id: userId, post_id, limit },
+        { user_id: userId, post_id: postId, limit },
         { timeout: REQUEST_TIMEOUT }
       );
       return response.data;

@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth.middleware';
 import { success, error, notFound } from '../utils/response';
-import { parseMarkdown, buildPrismaData, generateId, generateSlug } from '../services/markdown.service';
+import { parseMarkdown, buildPrismaData, generateId, generateSlug, ParsedContent } from '../services/markdown.service';
 import * as response from '../utils/response';
 import { PrismaClient } from '@prisma/client';
-import * as extractZip from 'extract-zip';
+import extractZip from 'extract-zip';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,7 +26,7 @@ router.post('/import/single', authenticate, async (req: Request, res: Response) 
     }
 
     // 解析 Markdown
-    const parsed = parseMarkdown(content);
+    const parsed = await parseMarkdown(content);
 
     // 检查冲突
     const existing = await findExistingContent(parsed);
@@ -87,7 +87,7 @@ router.post('/import/batch', authenticate, async (req: Request, res: Response) =
         }
 
         // 解析并保存
-        const parsed = parseMarkdown(file.content);
+        const parsed = await parseMarkdown(file.content);
         const existing = await findExistingContent(parsed);
 
         if (existing) {
@@ -142,7 +142,7 @@ router.post('/import/folder', authenticate, async (req: Request, res: Response) 
         const type = detectContentType(file);
 
         // 解析并保存
-        const parsed = parseMarkdown(file.content);
+        const parsed = await parseMarkdown(file.content);
         parsed.type = type; // 使用文件夹检测的类型
 
         const existing = await findExistingContent(parsed);
@@ -229,7 +229,7 @@ router.post('/import/zip', authenticate, async (req: Request, res: Response) => 
       for (const file of filesWithContent) {
         try {
           const type = detectContentType(file);
-          const parsed = parseMarkdown(file.content);
+          const parsed = await parseMarkdown(file.content);
           parsed.type = type;
 
           const existing = await findExistingContent(parsed);

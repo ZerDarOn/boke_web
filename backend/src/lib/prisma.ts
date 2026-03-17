@@ -4,16 +4,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// 创建 Prisma 实例的配置选项
 const prismaOptions = {
   log: process.env.NODE_ENV === 'development' 
     ? [
-        { emit: 'stdout' as const, level: 'query' },
-        { emit: 'stdout' as const, level: 'info' },
-        { emit: 'stdout' as const, level: 'warn' },
-        { emit: 'stdout' as const, level: 'error' },
+        { emit: 'stdout' as const, level: 'query' as const },
+        { emit: 'stdout' as const, level: 'info' as const },
+        { emit: 'stdout' as const, level: 'warn' as const },
+        { emit: 'stdout' as const, level: 'error' as const },
       ]
-    : [{ emit: 'stdout' as const, level: 'error' }],
+    : [{ emit: 'stdout' as const, level: 'error' as const }],
   errorFormat: 'pretty' as const,
 };
 

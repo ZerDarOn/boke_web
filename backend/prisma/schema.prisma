@@ -48,6 +48,9 @@ model Post {
   @@index([isPublished])
   @@index([authorId])
   @@index([accessLevel])
+  @@index([isPublished, date])
+  @@index([isPublished, accessLevel])
+  @@index([isPublished, category])
   @@map("posts")
 }
 
@@ -103,6 +106,7 @@ model Project {
 
   @@index([status])
   @@index([featured])
+  @@index([featured, status])
   @@map("projects")
 }
 
@@ -180,7 +184,7 @@ model CurrentStatus {
   currentFocus String   // "Learning Next.js & Rust"
   location     String   // "Neo-City, Sector 7"
   vibe         String   // "💻 Coding / ☕ Coffee"
-  emoji        String   // "💻"
+  emoji        String?  // "💻"
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -196,11 +200,11 @@ model HistoryItem {
   title       String   // "个人博客项目"
   role        String   // "全栈开发"
   description String   // 项目描述
-  duration    String   // "9个月2天"
-  location    String   // "远程"
+  duration    String   @default("") // "9个月2天"
+  location    String   @default("") // "远程"
   tags        String[] // ["项目经历", "MongoDB", ...]
-  color       String   // "#a855f7"
-  icon        String   // "FileText", "Briefcase", "Code", "Star"
+  color       String?  // "#a855f7"
+  icon        String?  // "FileText", "Briefcase", "Code", "Star"
   order       Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -285,6 +289,7 @@ model Diary {
 
   @@index([date])
   @@index([type])
+  @@index([type, date])
   @@map("diaries")
 }
 

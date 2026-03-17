@@ -28,7 +28,7 @@ export interface ParsedContent {
 /**
  * 解析 Markdown 文件内容
  */
-export function parseMarkdown(content: string): ParsedContent {
+export async function parseMarkdown(content: string): Promise<ParsedContent> {
   try {
     // 1. 解析 Front Matter
     const { data: frontMatter, content: markdown } = matter(content);
@@ -43,7 +43,7 @@ export function parseMarkdown(content: string): ParsedContent {
     }
 
     // 3. 转换 Markdown 为 HTML
-    const html = marked(markdown);
+    const html = await marked(markdown);
 
     // 4. 提取图片
     const images = extractImages(markdown);
