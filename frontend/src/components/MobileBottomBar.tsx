@@ -34,6 +34,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { User, Hash, Bell, Activity, ChevronRight, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useSiteConfig } from '../hooks/useSiteConfig';
+import useActivities from '../hooks/useActivities';
 
 /* ============================================================================
  * 类型定义
@@ -51,15 +52,6 @@ interface Tag {
   count: number;
 }
 
-/** 动态数据结构 */
-interface Activity {
-  id: string;
-  project: string;
-  title: string;
-  status: 'DONE' | 'IN_PROGRESS' | 'PLANNED';
-  date: string;
-}
-
 /* ============================================================================
  * 主组件
  * ============================================================================ */
@@ -68,25 +60,11 @@ const MobileBottomBar: React.FC = () => {
   const location = useLocation();
   const config = useSiteConfig();
   
-  /* --------
-   * 状态管理
-   * -------- */
-  /** 分类列表数据 */
+  const { activities } = useActivities({ limit: 3 });
+
   const [categories, setCategories] = useState<Category[]>([]);
-  /** 标签列表数据 */
   const [tags, setTags] = useState<Tag[]>([]);
-  /** 动态列表数据 */
-  const [activities, setActivities] = useState<Activity[]>([]);
-  /** 数据加载状态 */
   const [loading, setLoading] = useState(true);
-  /** 
-   * 当前展开的区块
-   * - null: 所有区块收起
-   * - 'categories': 分类展开
-   * - 'tags': 标签展开
-   * - 'activities': 动态展开
-   * 注意：同一时间只能展开一个区块，节省屏幕空间
-   */
   const [expandedSection, setExpandedSection] = useState<'categories' | 'tags' | 'activities' | null>(null);
 
   /* --------
@@ -98,14 +76,11 @@ const MobileBottomBar: React.FC = () => {
       try {
         setLoading(true);
         
-        // 并行请求三个接口，提高加载效率
-        const [categoriesRes, tagsRes, activitiesRes] = await Promise.all([
+        const [categoriesRes, tagsRes] = await Promise.all([
           api.posts.getCategories(),
           api.posts.getTags(),
-          api.settings.getByKey('activities').catch(() => ({ success: false })),
         ]);
 
-        // 处理分类数据：添加"全部"选项
         if (categoriesRes.success && categoriesRes.data) {
           const totalCount = categoriesRes.data.reduce((sum: number, cat: any) => sum + (cat.count || 0), 0);
           setCategories([
@@ -117,22 +92,11 @@ const MobileBottomBar: React.FC = () => {
           ]);
         }
 
-        // 处理标签数据：限制显示10个
         if (tagsRes.success && tagsRes.data) {
           setTags(tagsRes.data.map((tag: any) => ({
             name: tag.name,
             count: tag.count || 0,
           })).slice(0, 10));
-        }
-
-        // 处理动态数据：限制显示3条
-        if (activitiesRes.success && activitiesRes.data?.value) {
-          const parsed = typeof activitiesRes.data.value === 'string'
-            ? JSON.parse(activitiesRes.data.value)
-            : activitiesRes.data.value;
-          if (Array.isArray(parsed)) {
-            setActivities(parsed.slice(0, 3));
-          }
         }
       } catch (error) {
         console.error('Failed to fetch mobile bottom bar data:', error);

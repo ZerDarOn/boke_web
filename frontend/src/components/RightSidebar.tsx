@@ -1,116 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Activity, Rss, ArrowRight, Copy, CheckCircle2, Clock, TrendingUp, ExternalLink } from 'lucide-react';
-import { LATEST_ACTIVITIES } from '../constants';
 import { usePageCopy } from '../hooks/useSiteConfig';
-import { api } from '../lib/api';
-
-interface Activity {
-  id: string;
-  project: string;
-  title: string;
-  tags: string[];
-  status: 'DONE' | 'IN_PROGRESS' | 'PLANNED';
-  date: string;
-}
+import useActivities from '../hooks/useActivities';
 
 const RightSidebar: React.FC = () => {
   const [rssCopied, setRssCopied] = useState(false);
   const [rssUrl, setRssUrl] = useState('');
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { activities, loading } = useActivities({ limit: 5 });
   const pageCopy = usePageCopy();
-
-  // 从 API 获取活动数据
-  useEffect(() => {
-    const fetchData = async () => {
-      setRssUrl(`${window.location.origin}/rss.xml`);
-
-      try {
-        setLoading(true);
-
-        // 尝试从 settings 获取活动数据
-        const result = await api.settings.getByKey('activities');
-
-        if (result.success && result.data?.value) {
-          const parsedActivities = typeof result.data.value === 'string'
-            ? JSON.parse(result.data.value)
-            : result.data.value;
-
-          // 验证数据格式
-          if (Array.isArray(parsedActivities) && parsedActivities.length > 0) {
-            const validActivities = parsedActivities.filter((item: any) =>
-              item && item.id && (item.project || item.title)
-            );
-
-            if (validActivities.length > 0) {
-              setActivities(validActivities);
-              setLoading(false);
-              return;
-            }
-          }
-        }
-
-        // 如果 API 失败或数据无效，使用时间线 API
-        const timelineResult = await api.timeline.getAll({ limit: 5 });
-
-        if (timelineResult.success && timelineResult.data) {
-          const timelineActivities: Activity[] = timelineResult.data.map((item: any) => ({
-            id: item.id,
-            project: 'Timeline',
-            title: item.title,
-            tags: [],
-            status: 'DONE' as const,
-            date: item.date || new Date(item.createdAt).toISOString(),
-          }));
-
-          setActivities(timelineActivities);
-          setLoading(false);
-          return;
-        }
-
-        // 如果都失败了，设置为空数组
-        setActivities([]);
-        setLoading(false);
-      } catch (error) {
-        console.error('Failed to fetch activities:', error);
-        // 出错时使用 fallback 数据
-        setActivities(LATEST_ACTIVITIES as Activity[]);
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  const fetchActivities = async () => {
-    try {
-      const result = await api.settings.getByKey('activities');
-      console.log('Activities API result:', result);
-      if (result.success && result.data?.value) {
-        const parsedActivities = typeof result.data.value === 'string' 
-          ? JSON.parse(result.data.value) 
-          : result.data.value;
-        console.log('Parsed activities:', parsedActivities);
-        if (Array.isArray(parsedActivities) && parsedActivities.length > 0) {
-          // 验证数据格式是否正确
-          const validActivities = parsedActivities.filter((item: any) => 
-            item && item.id && (item.project || item.title)
-          );
-          console.log('Valid activities:', validActivities);
-          if (validActivities.length > 0) {
-            setActivities(validActivities);
-            return;
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch activities:', error);
-    }
-    // Fallback to local data
-    console.log('Using fallback local data');
-    setActivities(LATEST_ACTIVITIES as Activity[]);
-  };
 
   useEffect(() => {
     setRssUrl(`${window.location.origin}/rss.xml`);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import type { DashboardStats } from '../../lib/api';
 import { Loader2, FileText, Rocket, Tv, Camera, Database } from 'lucide-react';
+import useActivities from '../../hooks/useActivities';
 
 interface DashboardStats {
   totalPosts: number;
@@ -15,20 +16,11 @@ interface DashboardStats {
   uniqueVisitors: number;
 }
 
-interface Activity {
-  id: string;
-  project: string;
-  title: string;
-  tags: string[];
-  status: 'DONE' | 'IN_PROGRESS' | 'PLANNED';
-  date: string;
-}
-
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const { activities } = useActivities({ limit: 4 });
 
   useEffect(() => {
     fetchData();
@@ -39,24 +31,12 @@ const AdminDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // 并行获取统计数据和动态
-      const [statsResult, activitiesResult] = await Promise.all([
-        api.dashboard.getStats(),
-        api.settings.getByKey('activities')
-      ]);
+      const statsResult = await api.dashboard.getStats();
 
       if (statsResult.success && statsResult.data) {
         setStats(statsResult.data);
       } else {
         setError(statsResult.error || 'Failed to fetch dashboard stats');
-      }
-
-      // 获取最新动态（最多 4 条）
-      if (activitiesResult.success && activitiesResult.data?.value) {
-        const parsedActivities = typeof activitiesResult.data.value === 'string'
-          ? JSON.parse(activitiesResult.data.value)
-          : activitiesResult.data.value;
-        setActivities(Array.isArray(parsedActivities) ? parsedActivities.slice(0, 4) : []);
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);

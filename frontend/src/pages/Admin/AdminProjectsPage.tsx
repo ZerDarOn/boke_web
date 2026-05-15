@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api, Project } from '../../lib/api';
-import { Search, Plus, Edit, Trash2, Code, Loader2, X, Save, LayoutGrid, FileText } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Code, Loader2, X, Save, LayoutGrid, FileText, Rocket, Archive, CheckCircle2 } from 'lucide-react';
 
 const AdminProjectsPage: React.FC = () => {
   const [items, setItems] = useState<Project[]>([]);
@@ -140,6 +140,36 @@ const AdminProjectsPage: React.FC = () => {
         <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-800 to-purple-600 text-white rounded-xl hover:from-gray-700 hover:to-purple-700 transition-all shadow-lg">
           <Plus size={18} />新建项目
         </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm">活跃项目</p>
+              <p className="text-3xl font-bold">{items.filter(i => i.status === 'ACTIVE').length}</p>
+            </div>
+            <Rocket size={32} className="text-purple-200" />
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm">已部署</p>
+              <p className="text-3xl font-bold">{items.filter(i => i.status === 'DEPLOYED').length}</p>
+            </div>
+            <CheckCircle2 size={32} className="text-green-200" />
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-100 text-sm">已归档</p>
+              <p className="text-3xl font-bold">{items.filter(i => i.status === 'ARCHIVED').length}</p>
+            </div>
+            <Archive size={32} className="text-gray-200" />
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-4 flex-wrap">
