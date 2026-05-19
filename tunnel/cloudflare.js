@@ -21,7 +21,7 @@ const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 
 // 检查是否有动态端口配置（由 start.js 生成）
 const portConfigPath = path.join(__dirname, '..', '.port-config.json');
-let FRONTEND_PORT = config.frontendPort || 3000;
+let FRONTEND_PORT = config.frontendPort || 5173;
 let BACKEND_PORT = config.backendPort || 3001;
 
 if (fs.existsSync(portConfigPath)) {

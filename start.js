@@ -188,7 +188,7 @@ const startFrontendDev = async (port) => {
   const isWindows = process.platform === 'win32';
   const cmd = isWindows ? 'npm.cmd' : 'npm';
   
-  return spawn(cmd, ['run', 'dev'], {
+  return spawn(cmd, ['run', 'dev', '--', '--port', String(port), '--host'], {
     cwd: FRONTEND_DIR,
     stdio: 'inherit',
     shell: isWindows,

@@ -103,7 +103,7 @@ backend/
 |------|------|--------|
 | DATABASE_URL | PostgreSQL 连接字符串 | - |
 | JWT_SECRET | JWT 签名密钥 | - |
-| FRONTEND_URL | 前端地址 | http://localhost:3000 |
+| FRONTEND_URL | 前端地址 | http://localhost:5173 |
 | API_URL | API 地址 | http://localhost:3001 |
 | MAX_FILE_SIZE | 最大文件大小 | 10485760 (10MB) |
 | UPLOAD_DIR | 上传目录 | uploads |

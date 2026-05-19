@@ -1,6 +1,6 @@
 {
   "provider": "cloudflare",
-  "frontendPort": 3000,
+  "frontendPort": 5173,
   "backendPort": 3001,
   "tunnelName": "ink-spirit-blog",
   "description": "隧道配置文件 - 可切换不同的隧道提供商"

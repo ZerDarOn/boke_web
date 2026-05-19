@@ -259,7 +259,7 @@ async function main() {
 📡 Server running on port: ${PORT}
 🌐 Environment: ${config.NODE_ENV}
 📊 API Health: http://localhost:${PORT}/api/health
-🔐 Admin Panel: http://localhost:3000/admin/login
+🔐 Admin Panel: ${config.FRONTEND_URL}/admin/login
 ════════════════════════════════════
       `);
     });

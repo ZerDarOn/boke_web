@@ -76,7 +76,7 @@ ink-spirit-blog/
 
 | 服务 | 端口 | 技术栈 | 职责 |
 |------|------|--------|------|
-| frontend | 3000 | React + Vite | 用户界面 |
+| frontend | 5173 | React + Vite | 用户界面 |
 | backend | 3001 | Node.js + Express | 主 API 服务 |
 | ai-service | 8000 | Python + FastAPI | AI 功能 |
 | db | 5432 | PostgreSQL 16 | 数据存储 |

@@ -54,22 +54,22 @@ export const config = {
     DATABASE_URL: process.env.DATABASE_URL || '',
     JWT_SECRET: process.env.JWT_SECRET || 'default-secret-change-me',
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
-    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
     FRONTEND_URLS: (() => {
       const baseUrls = process.env.NODE_ENV === 'production'
         ? [
-            process.env.FRONTEND_URL || 'http://localhost:3000',
-            'http://localhost:3000',
-            'http://127.0.0.1:3000',
+            process.env.FRONTEND_URL || 'http://localhost:5173',
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
           ]
         : [
-            process.env.FRONTEND_URL || 'http://localhost:3000',
-            'http://localhost:3000',
-            'http://127.0.0.1:3000',
+            process.env.FRONTEND_URL || 'http://localhost:5173',
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
             // 开发环境：允许所有本地网络 IP 地址访问
-            'http://192.168.*:3000',
-            'http://10.*:3000',
-            'http://172.*:3000',
+            'http://192.168.*:5173',
+            'http://10.*:5173',
+            'http://172.*:5173',
           ];
       
       // 添加 ALLOWED_ORIGINS 中的地址（包含隧道域名通配符）
@@ -100,8 +100,8 @@ export const config = {
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ? 
       process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) :
       [
-        process.env.FRONTEND_URL || 'http://localhost:3000',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
+        process.env.FRONTEND_URL || 'http://localhost:5173',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
       ],
 };

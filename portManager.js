@@ -355,14 +355,14 @@ const preparePorts = async () => {
   const configPath = path.join(__dirname, '.port-config.json');
   
   // 读取默认端口
-  let frontendPort = 3000;
+  let frontendPort = 5173;
   let backendPort = 3001;
   
   // 检查是否有保存的端口配置
   if (fs.existsSync(configPath)) {
     try {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      frontendPort = config.frontendPort || 3000;
+      frontendPort = config.frontendPort || 5173;
       backendPort = config.backendPort || 3001;
     } catch (e) {}
   }
@@ -403,7 +403,7 @@ const preparePorts = async () => {
 const cleanupZombieProcesses = async () => {
   log.info('检查残留进程...');
   
-  const portsToCheck = [3000, 3001, 3002];
+  const portsToCheck = [5173, 3001, 3002];
   const zombies = [];
   
   for (const port of portsToCheck) {
