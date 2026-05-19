@@ -1,5 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { api } from '../../lib/api';
+import { queryKeys } from '../../hooks/api/query-keys';
+import {
+  useAdminResourceList,
+  useAdminResourceCreate,
+  useAdminResourceUpdate,
+  useAdminResourceDelete,
+  type CrudApi,
+} from '../../hooks/queries/admin-resource';
 import { Search, Plus, Edit, Trash2, Star, Clock, Eye, Heart, FileText, Calendar, Users, Globe, Code, Network, Loader2, X, Save } from 'lucide-react';
 
 // 导入拆分后的独立组件
@@ -20,8 +28,18 @@ interface AdminPageProps {
   description: string;
   apiEndpoint: string;
   itemKey: string;
-  fields?: Field[]; 
+  fields?: Field[];
 }
+
+const ENDPOINT_CONFIG: Record<string, { rootKey: readonly unknown[]; module: CrudApi<Record<string, unknown>> }> = {
+  projects: { rootKey: queryKeys.projects.all, module: api.projects as CrudApi<Record<string, unknown>> },
+  diary: { rootKey: queryKeys.diary.all, module: api.diary as CrudApi<Record<string, unknown>> },
+  skills: { rootKey: queryKeys.skills.all, module: api.skills as CrudApi<Record<string, unknown>> },
+  timeline: { rootKey: queryKeys.timeline.all, module: api.timeline as CrudApi<Record<string, unknown>> },
+  network: { rootKey: queryKeys.network.all, module: api.network as CrudApi<Record<string, unknown>> },
+  announcements: { rootKey: queryKeys.announcements.all, module: api.announcements as CrudApi<Record<string, unknown>> },
+  users: { rootKey: ['users'], module: api.users as CrudApi<Record<string, unknown>> },
+};
 
 /**
  * 通用管理页面组件
@@ -34,54 +52,36 @@ const AdminPage: React.FC<AdminPageProps> = ({
   itemKey,
   fields = []
 }) => {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const config = ENDPOINT_CONFIG[apiEndpoint];
+  const rootKey = config?.rootKey ?? [apiEndpoint];
+  const apiModule = config?.module;
+
+  const { data: items = [], isLoading: loading, error: queryError, refetch } = useAdminResourceList(
+    rootKey,
+    apiModule ?? { getAll: async () => ({ success: false, error: 'API endpoint not found' }) },
+  );
+  const error = queryError?.message ?? (!apiModule ? 'API endpoint not found' : null);
+
+  const createMutation = useAdminResourceCreate(rootKey, apiModule?.create ?? (async () => ({ success: false, error: 'Not supported' })));
+  const updateMutation = useAdminResourceUpdate(rootKey, apiModule?.update ?? (async () => ({ success: false, error: 'Not supported' })));
+  const deleteMutation = useAdminResourceDelete(rootKey, apiModule?.delete ?? (async () => ({ success: false, error: 'Not supported' })));
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [editingItem, setEditingItem] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchItems();
-  }, [filter]);
-
-  const fetchItems = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const apiModule = (api as any)[apiEndpoint];
-      if (!apiModule) {
-        setError('API endpoint not found');
-        setLoading(false);
-        return;
-      }
-      const result = await apiModule.getAll();
-      if (result.success && result.data) {
-        setItems(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch data');
-      }
-    } catch (error) {
-      console.error('Failed to fetch:', error);
-      setError('Failed to fetch data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定要删除吗？')) return;
+    if (!apiModule?.delete) {
+      alert('删除失败');
+      return;
+    }
     try {
-      const apiModule = (api as any)[apiEndpoint];
-      if (apiModule && apiModule.delete) {
-        await apiModule.delete(id);
-        setItems(items.filter(item => item.id !== id));
-      }
-    } catch (error) {
-      console.error('Failed to delete:', error);
+      await deleteMutation.mutateAsync(id);
+    } catch {
       alert('删除失败');
     }
   };
@@ -109,26 +109,20 @@ const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   const handleSubmit = async () => {
+    if (!apiModule) return;
+    const submitData = { ...formData };
+    if (submitData.featured !== undefined) {
+      submitData.featured = submitData.featured === 'true' || submitData.featured === true;
+    }
     try {
-      setIsSubmitting(true);
-      const apiModule = (api as any)[apiEndpoint];
-      if (!apiModule) return;
-      const submitData = { ...formData };
-      if (submitData.featured !== undefined) {
-        submitData.featured = submitData.featured === 'true' || submitData.featured === true;
-      }
       if (editingItem) {
-        await apiModule.update(editingItem.id, submitData);
-      } else {
-        await apiModule.create(submitData);
+        await updateMutation.mutateAsync({ id: editingItem.id, data: submitData });
+      } else if (apiModule.create) {
+        await createMutation.mutateAsync(submitData);
       }
-      await fetchItems();
       handleCloseModal();
-    } catch (error) {
-      console.error('Failed to save:', error);
+    } catch {
       alert('保存失败');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -162,7 +156,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
         <p className="text-red-600 dark:text-red-300 font-mono text-sm">ERROR: {error}</p>
-        <button onClick={fetchItems} className="mt-2 text-sm text-red-600 dark:text-red-300 underline">重试</button>
+        <button onClick={() => refetch()} className="mt-2 text-sm text-red-600 dark:text-red-300 underline">重试</button>
       </div>
     );
   }

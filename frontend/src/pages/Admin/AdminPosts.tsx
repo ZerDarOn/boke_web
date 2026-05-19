@@ -1,5 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api, AccessLevel } from '../../lib/api';
+import {
+  usePostsList,
+  useCreatePost,
+  useUpdatePost,
+  useDeletePost,
+} from '../../hooks/queries/posts';
 import { uploadImage } from '../../lib/upload';
 import { Search, Plus, Edit, Trash2, FileText, Clock, Eye, Heart, Loader2, X, Save, Image, Lock, Globe, Key } from 'lucide-react';
 
@@ -42,53 +48,35 @@ interface Post {
 }
 
 const AdminPosts: React.FC = () => {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
-  const [error, setError] = useState<string | null>(null);
+
+  const { data: allPosts = [], isLoading: loading, error: queryError, refetch } = usePostsList({ limit: 500 });
+  const createPost = useCreatePost();
+  const updatePost = useUpdatePost();
+  const deletePost = useDeletePost();
+
+  const posts = useMemo(() => {
+    if (filter === 'all') return allPosts as Post[];
+    return (allPosts as Post[]).filter((p) =>
+      filter === 'published' ? p.isPublished : !p.isPublished
+    );
+  }, [allPosts, filter]);
+
+  const error = queryError?.message ?? null;
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [formData, setFormData] = useState<Partial<Post>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmitting = createPost.isPending || updatePost.isPending;
   const [uploadingImage, setUploadingImage] = useState(false);
-
-  useEffect(() => {
-    fetchPosts();
-  }, [filter]);
-
-  const fetchPosts = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params: any = {};
-      if (filter !== 'all') {
-        params.isPublished = filter === 'published';
-      }
-      const result = await api.posts.getAll(params);
-      if (result.success && result.data) {
-        setPosts(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch posts');
-      }
-    } catch (error) {
-      console.error('Failed to fetch posts:', error);
-      setError('Failed to fetch posts');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定要删除这篇文章吗？')) return;
-
     try {
-      await api.posts.delete(id);
-      setPosts(posts.filter(p => p.id !== id));
-    } catch (error) {
-      console.error('Failed to delete post:', error);
+      await deletePost.mutateAsync(id);
+    } catch {
       alert('删除失败');
     }
   };
@@ -154,32 +142,16 @@ const AdminPosts: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     try {
       if (editingPost) {
-        // Update
-        const result = await api.posts.update(editingPost.id, formData);
-        if (result.success) {
-          setPosts(posts.map(p => p.id === editingPost.id ? { ...p, ...formData } : p));
-          handleCloseModal();
-        } else {
-          alert('更新失败: ' + result.error);
-        }
+        await updatePost.mutateAsync({ id: editingPost.id, data: formData });
       } else {
-        // Create
-        const result = await api.posts.create(formData as any);
-        if (result.success && result.data) {
-          setPosts([result.data, ...posts]);
-          handleCloseModal();
-        } else {
-          alert('创建失败: ' + result.error);
-        }
+        await createPost.mutateAsync(formData as Parameters<typeof createPost.mutateAsync>[0]);
       }
-    } catch (error) {
-      console.error('Submit error:', error);
-      alert('操作失败');
-    } finally {
-      setIsSubmitting(false);
+      handleCloseModal();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '操作失败';
+      alert(editingPost ? `更新失败: ${message}` : `创建失败: ${message}`);
     }
   };
 
@@ -206,7 +178,7 @@ const AdminPosts: React.FC = () => {
           ERROR: {error}
         </p>
         <button
-          onClick={fetchPosts}
+          onClick={() => refetch()}
           className="mt-2 text-sm text-red-600 dark:text-red-300 underline"
         >
           重试

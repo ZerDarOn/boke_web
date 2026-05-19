@@ -1,35 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { api, UniverseNode } from '../../lib/api';
+import React, { useState } from 'react';
+import type { UniverseNode } from '../../lib/api';
+import { useUniverseData } from '../../hooks/queries/universe';
 import { AlertCircle, Loader2, Plus, RefreshCw, Users, Zap, User } from 'lucide-react';
 
 const AdminUniverse: React.FC = () => {
-  const [nodes, setNodes] = useState<UniverseNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: nodes = [], isLoading: loading, error: queryError, refetch } = useUniverseData('all');
+  const error = queryError?.message ?? null;
   const [activeTab, setActiveTab] = useState<'all' | 'skill' | 'person'>('all');
 
-  useEffect(() => {
-    loadNodes();
-  }, []);
-
-  const loadNodes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.universe.getAll();
-      if (result.success && result.data) {
-        setNodes(result.data);
-      } else {
-        setError(result.error || 'Failed to load universe nodes');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredNodes = nodes.filter(node => {
+  const filteredNodes = (nodes as UniverseNode[]).filter((node) => {
     if (activeTab === 'all') return node.type !== 'self';
     return node.type === activeTab;
   });
@@ -79,7 +58,7 @@ const AdminUniverse: React.FC = () => {
 
           <div className="flex gap-2">
             <button
-              onClick={loadNodes}
+              onClick={() => refetch()}
               className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
               <RefreshCw size={16} />
@@ -94,7 +73,7 @@ const AdminUniverse: React.FC = () => {
             <AlertCircle size={20} />
             <span className="flex-1">{error}</span>
             <button
-              onClick={() => setError(null)}
+              onClick={() => refetch()}
               className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
             >
               ×

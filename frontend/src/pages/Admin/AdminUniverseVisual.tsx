@@ -1,35 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { api, UniverseNode } from '../../lib/api';
+import type { UniverseNode } from '../../lib/api';
+import { useUniverseData, useSaveUniverseLayout } from '../../hooks/queries/universe';
 import { AlertCircle, Loader2, RefreshCw, Save, MousePointer, Eye } from 'lucide-react';
 
 const AdminUniverseVisual: React.FC = () => {
+  const { data: serverNodes = [], isLoading: loading, error: queryError, refetch } = useUniverseData('all');
+  const saveLayout = useSaveUniverseLayout();
   const [nodes, setNodes] = useState<UniverseNode[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const saving = saveLayout.isPending;
   const [draggingNode, setDraggingNode] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    loadNodes();
-  }, []);
-
-  const loadNodes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.universe.getAll();
-      if (result.success && result.data) {
-        setNodes(result.data);
-      } else {
-        setError(result.error || 'Failed to load universe');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
+    if (serverNodes.length > 0) {
+      setNodes(serverNodes);
     }
-  };
+  }, [serverNodes]);
+
+  useEffect(() => {
+    if (queryError) {
+      setError(queryError.message);
+    }
+  }, [queryError]);
 
   // 处理拖拽开始
   const handleMouseDown = (e: React.MouseEvent, node: UniverseNode) => {
@@ -72,27 +65,12 @@ const AdminUniverseVisual: React.FC = () => {
   // 保存所有更改（保存到宇宙图专用布局表）
   const handleSaveAll = async () => {
     try {
-      setSaving(true);
       setError(null);
-
-      // 保存到宇宙图布局表（全部模式专用坐标）
-      for (const node of nodes) {
-        if (node.type === 'self') continue;
-        
-        await api.universe.updateLayout(
-          node.id,
-          node.type as 'skill' | 'person',
-          node.x,
-          node.y
-        );
-      }
-
+      await saveLayout.mutateAsync(nodes);
       alert('宇宙图布局保存成功！（不影响技能/人脉单独视图的布局）');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
       alert('保存失败，请重试');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -173,7 +151,7 @@ const AdminUniverseVisual: React.FC = () => {
 
           <div className="flex gap-2">
             <button
-              onClick={loadNodes}
+              onClick={() => refetch()}
               className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
               <RefreshCw size={16} />

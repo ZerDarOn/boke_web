@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { api, Diary } from '../../lib/api';
+import React, { useState } from 'react';
+import type { Diary } from '../../lib/api';
+import {
+  useShortDiaryList,
+  useCreateDiary,
+  useUpdateDiary,
+  useDeleteDiary,
+} from '../../hooks/queries/diary';
 import { Search, Plus, Edit, Trash2, Loader2, X, Save, Quote } from 'lucide-react';
 
 const STAMP_OPTIONS = ['FLOW', 'READ', 'BUG', 'OBSERVE', 'OFFLINE', 'IDEA', 'DONE', 'MEMO'];
 
 const AdminShortDiary: React.FC = () => {
-  const [diaries, setDiaries] = useState<Diary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: diaries = [], isLoading: loading, error: queryError } = useShortDiaryList();
+  const createDiary = useCreateDiary();
+  const updateDiary = useUpdateDiary();
+  const deleteDiary = useDeleteDiary();
+  const error = queryError?.message ?? null;
   const [searchTerm, setSearchTerm] = useState('');
-  const [error, setError] = useState<string | null>(null);
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,38 +27,13 @@ const AdminShortDiary: React.FC = () => {
     stamp: 'NOTE',
     tags: []
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchDiaries();
-  }, []);
-
-  const fetchDiaries = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.diary.getAll({ type: 'SHORT' });
-      if (result.success && result.data) {
-        setDiaries(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch diaries');
-      }
-    } catch (error) {
-      console.error('Failed to fetch diaries:', error);
-      setError('Failed to fetch diaries');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isSubmitting = createDiary.isPending || updateDiary.isPending;
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定要删除这条短日记吗？')) return;
-
     try {
-      await api.diary.delete(id);
-      setDiaries(diaries.filter(d => d.id !== id));
-    } catch (error) {
-      console.error('Failed to delete diary:', error);
+      await deleteDiary.mutateAsync(id);
+    } catch {
       alert('删除失败');
     }
   };
@@ -79,33 +62,15 @@ const AdminShortDiary: React.FC = () => {
       return;
     }
 
-    setIsSubmitting(true);
     try {
       if (editingDiary) {
-        const result = await api.diary.update(editingDiary.id, formData);
-        if (result.success) {
-          await fetchDiaries();
-          setIsModalOpen(false);
-        } else {
-          alert(result.error || '更新失败');
-        }
+        await updateDiary.mutateAsync({ id: editingDiary.id, data: formData });
       } else {
-        const result = await api.diary.create({
-          ...formData,
-          type: 'SHORT'
-        });
-        if (result.success) {
-          await fetchDiaries();
-          setIsModalOpen(false);
-        } else {
-          alert(result.error || '创建失败');
-        }
+        await createDiary.mutateAsync({ ...formData, type: 'SHORT' });
       }
-    } catch (error) {
-      console.error('Failed to save diary:', error);
-      alert('保存失败');
-    } finally {
-      setIsSubmitting(false);
+      setIsModalOpen(false);
+    } catch {
+      alert(editingDiary ? '更新失败' : '创建失败');
     }
   };
 

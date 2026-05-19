@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './apiConfig';
+import { getAuthHeaders } from './api/request';
 
 /**
  * 统一的图片上传服务
@@ -20,15 +21,10 @@ export const uploadImage = async (
     throw new Error('图片大小不能超过 10MB');
   }
 
-  // 获取认证 token
-  const token = localStorage.getItem('auth_token');
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
+    Accept: 'application/json',
+    ...getAuthHeaders(),
   };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
   // 创建 FormData
   const formData = new FormData();
@@ -92,15 +88,10 @@ export const uploadImages = async (
     }
   }
 
-  // 获取认证 token
-  const token = localStorage.getItem('auth_token');
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
+    Accept: 'application/json',
+    ...getAuthHeaders(),
   };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
   // 创建 FormData
   const formData = new FormData();

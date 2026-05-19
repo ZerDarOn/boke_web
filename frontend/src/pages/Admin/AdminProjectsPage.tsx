@@ -1,48 +1,33 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { api, Project } from '../../lib/api';
+import React, { useState, useMemo } from 'react';
+import type { Project } from '../../lib/api';
+import {
+  useProjectsList,
+  useCreateProject,
+  useUpdateProject,
+  useDeleteProject,
+} from '../../hooks/queries/projects';
 import { Search, Plus, Edit, Trash2, Code, Loader2, X, Save, LayoutGrid, FileText, Rocket, Archive, CheckCircle2 } from 'lucide-react';
 
 const AdminProjectsPage: React.FC = () => {
-  const [items, setItems] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: items = [], isLoading: loading, error: queryError, refetch } = useProjectsList({ limit: 500 });
+  const error = queryError?.message ?? null;
+  const createProject = useCreateProject();
+  const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [editingItem, setEditingItem] = useState<Project | null>(null);
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmitting = createProject.isPending || updateProject.isPending;
   const [editMode, setEditMode] = useState<'card' | 'detail'>('card');
-
-  useEffect(() => {
-    fetchItems();
-  }, [filter]);
-
-  const fetchItems = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.projects.getAll();
-      if (result.success && result.data) {
-        setItems(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch data');
-      }
-    } catch (error) {
-      console.error('Failed to fetch:', error);
-      setError('Failed to fetch data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定要删除吗？')) return;
     try {
-      await api.projects.delete(id);
-      setItems(items.filter(item => item.id !== id));
-    } catch (error) {
-      console.error('Failed to delete:', error);
+      await deleteProject.mutateAsync(id);
+    } catch {
       alert('删除失败');
     }
   };
@@ -70,24 +55,19 @@ const AdminProjectsPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    const submitData = { ...formData };
+    if (submitData.featured !== undefined) {
+      submitData.featured = submitData.featured === 'true' || submitData.featured === true;
+    }
     try {
-      setIsSubmitting(true);
-      const submitData = { ...formData };
-      if (submitData.featured !== undefined) {
-        submitData.featured = submitData.featured === 'true' || submitData.featured === true;
-      }
       if (editingItem) {
-        await api.projects.update(editingItem.id, submitData);
+        await updateProject.mutateAsync({ id: editingItem.id, data: submitData });
       } else {
-        await api.projects.create(submitData);
+        await createProject.mutateAsync(submitData);
       }
-      await fetchItems();
       handleCloseModal();
-    } catch (error) {
-      console.error('Failed to save:', error);
+    } catch {
       alert('保存失败');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -120,7 +100,7 @@ const AdminProjectsPage: React.FC = () => {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
         <p className="text-red-600 dark:text-red-300 font-mono text-sm">ERROR: {error}</p>
-        <button onClick={fetchItems} className="mt-2 text-sm text-red-600 dark:text-red-300 underline">重试</button>
+        <button onClick={() => refetch()} className="mt-2 text-sm text-red-600 dark:text-red-300 underline">重试</button>
       </div>
     );
   }

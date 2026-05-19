@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { getAuthToken, setAuthToken } from '../lib/api/request';
 
 interface User {
   id: string;
@@ -48,7 +49,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const [user, setUser] = useState<User | null>(getStoredUser);
   // 如果有token但还没验证完，显示验证中而不是完全未登录
-  const hasToken = !!localStorage.getItem('auth_token');
+  const hasToken = !!getAuthToken();
   const [loading, setLoading] = useState(hasToken); // 有token时才需要loading
   const [isChecking, setIsChecking] = useState(false);
 
@@ -72,12 +73,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.setItem('auth_user', JSON.stringify(result.data));
         setUser(result.data);
       } else {
-        localStorage.removeItem('auth_token');
+        setAuthToken(null);
         localStorage.removeItem('auth_user');
         setUser(null);
       }
     } catch (error) {
       console.error('❌ checkAuth failed:', error);
+      setAuthToken(null);
       setUser(null);
     } finally {
       setIsChecking(false);
@@ -91,7 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const result = await api.auth.login(username, password);
 
       if (result.success && result.data && result.data.token) {
-        localStorage.setItem('auth_token', result.data.token);
+        setAuthToken(result.data.token);
         localStorage.setItem('auth_user', JSON.stringify(result.data.user));
         setUser(result.data.user);
       } else {
@@ -108,13 +110,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     try {
       await api.auth.logout();
-      localStorage.removeItem('auth_token');
+      setAuthToken(null);
       localStorage.removeItem('auth_user');
       setUser(null);
     } catch (error) {
       console.error('❌ Logout failed:', error);
-      // 即使API失败也清除本地数据
-      localStorage.removeItem('auth_token');
+      setAuthToken(null);
       localStorage.removeItem('auth_user');
       setUser(null);
     }

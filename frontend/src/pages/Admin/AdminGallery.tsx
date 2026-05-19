@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { api, GalleryImage, Album } from '../../lib/api';
+import { useGalleryAlbums, useAdminGalleryPhotos } from '../../hooks/queries/gallery';
 import { uploadImage } from '../../lib/upload';
 import {
   Search, Plus, Edit, Trash2, Loader2, X, Save,
@@ -14,13 +15,16 @@ const AdminGallery: React.FC = () => {
   const [view, setView] = useState<GalleryView>('albums');
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   
-  // 相册数据
-  const [albums, setAlbums] = useState<Album[]>([]);
-  const [albumsLoading, setAlbumsLoading] = useState(true);
-
-  // 照片数据
-  const [photos, setPhotos] = useState<GalleryImage[]>([]);
-  const [photosLoading, setPhotosLoading] = useState(false);
+  const {
+    data: albums = [],
+    isLoading: albumsLoading,
+    refetch: refetchAlbums,
+  } = useGalleryAlbums();
+  const {
+    data: photos = [],
+    isLoading: photosLoading,
+    refetch: refetchPhotos,
+  } = useAdminGalleryPhotos(selectedAlbum?.id, view === 'photos');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -50,66 +54,19 @@ const AdminGallery: React.FC = () => {
     tags: []
   });
 
-  // 加载相册列表
-  const fetchAlbums = async () => {
-    try {
-      setAlbumsLoading(true);
-      // 从照片数据中提取相册信息
-      const result = await api.gallery.getAll({ limit: 100 });
-      if (result.success && result.data) {
-        // 提取唯一的相册
-        const albumMap = new Map<string, Album>();
-        result.data.forEach((photo: GalleryImage) => {
-          if (photo.album) {
-            albumMap.set(photo.album.id, photo.album);
-          }
-        });
-        setAlbums(Array.from(albumMap.values()));
-      }
-    } catch (err) {
-      console.error('Failed to fetch albums:', err);
-      setError('获取相册失败');
-    } finally {
-      setAlbumsLoading(false);
-    }
-  };
-
-  // 加载照片列表
-  const fetchPhotos = async (albumId?: string) => {
-    try {
-      setPhotosLoading(true);
-      const params: any = { limit: 100 };
-      if (albumId) {
-        params.albumId = albumId;
-      }
-      const result = await api.gallery.getAll(params);
-      if (result.success && result.data) {
-        setPhotos(result.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch photos:', err);
-      setError('获取照片失败');
-    } finally {
-      setPhotosLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAlbums();
-  }, []);
+  const refreshAlbums = () => rerefreshAlbums();
+  const refreshPhotos = () => refetchPhotos();
 
   // 进入相册
   const handleEnterAlbum = (album: Album) => {
     setSelectedAlbum(album);
     setView('photos');
-    fetchPhotos(album.id);
   };
 
   // 返回相册列表
   const handleBackToAlbums = () => {
     setView('albums');
     setSelectedAlbum(null);
-    setPhotos([]);
   };
 
   // 创建相册
@@ -163,7 +120,7 @@ const AdminGallery: React.FC = () => {
         }
       }
       setIsModalOpen(false);
-      fetchAlbums();
+      refreshAlbums();
     } catch (err) {
       console.error('Failed to save album:', err);
       alert('保存失败');
@@ -180,7 +137,7 @@ const AdminGallery: React.FC = () => {
       for (const photo of albumPhotos) {
         await api.gallery.update(photo.id, { albumId: undefined, album: undefined });
       }
-      fetchAlbums();
+      refreshAlbums();
     } catch (err) {
       console.error('Failed to delete album:', err);
       alert('删除失败');
@@ -226,8 +183,8 @@ const AdminGallery: React.FC = () => {
         } as GalleryImage);
       }
       setIsPhotoModalOpen(false);
-      fetchPhotos(selectedAlbum?.id);
-      fetchAlbums(); // 更新相册计数
+      refreshPhotos();
+      refreshAlbums(); // 更新相册计数
     } catch (err) {
       console.error('Failed to save photo:', err);
       alert('保存失败');
@@ -240,8 +197,8 @@ const AdminGallery: React.FC = () => {
     
     try {
       await api.gallery.delete(photoId);
-      fetchPhotos(selectedAlbum?.id);
-      fetchAlbums();
+      refreshPhotos();
+      refreshAlbums();
     } catch (err) {
       console.error('Failed to delete photo:', err);
       alert('删除失败');

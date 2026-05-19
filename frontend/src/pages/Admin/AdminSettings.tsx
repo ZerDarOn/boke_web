@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
+import { useSiteSettings, useSaveSiteConfig } from '../../hooks/queries/settings';
 import { 
   Settings, Save, Globe, User, Mail, Image, Type, 
   Layout, Link, Loader2, X, Check, RefreshCw, FileText 
@@ -192,62 +193,34 @@ const defaultConfig: SiteConfig = {
 
 const AdminSettings: React.FC = () => {
   const [config, setConfig] = useState<SiteConfig>(defaultConfig);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'hero' | 'contact' | 'theme' | 'copy'>('general');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [editingHero, setEditingHero] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadConfig();
-  }, []);
+  const { data: serverConfig, isLoading: loadingQuery, refetch } = useSiteSettings();
+  const saveSiteConfig = useSaveSiteConfig();
 
-  const loadConfig = async () => {
-    try {
-      setLoading(true);
-      // 从 API 获取配置
-      const result = await api.settings.getAll();
-      if (result.success && result.data) {
-        setConfig({ ...defaultConfig, ...result.data });
-        // 更新本地缓存
-        localStorage.setItem('site_config', JSON.stringify(result.data));
-      } else {
-        // API 失败时尝试从 localStorage 加载
-        const saved = localStorage.getItem('site_config');
-        if (saved) {
-          setConfig({ ...defaultConfig, ...JSON.parse(saved) });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load config:', error);
-      // 出错时尝试从 localStorage 加载
-      const saved = localStorage.getItem('site_config');
-      if (saved) {
-        setConfig({ ...defaultConfig, ...JSON.parse(saved) });
-      }
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (serverConfig) {
+      setConfig({ ...defaultConfig, ...serverConfig });
+      localStorage.setItem('site_config', JSON.stringify(serverConfig));
     }
-  };
+  }, [serverConfig]);
+
+  const loading = loadingQuery;
+  const saving = saveSiteConfig.isPending;
+
+  const loadConfig = () => refetch();
 
   const saveConfig = async () => {
-    setSaving(true);
     try {
-      // 保存到后端 API
-      const result = await api.settings.saveSiteConfig(config);
-      if (result.success) {
-        // 同时保存到 localStorage 作为缓存
-        localStorage.setItem('site_config', JSON.stringify(config));
-        setMessage({ type: 'success', text: '设置已保存到服务器！所有设备将同步更新' });
-        setTimeout(() => setMessage(null), 5000);
-      } else {
-        setMessage({ type: 'error', text: result.error || '保存失败' });
-      }
-    } catch (error) {
-      console.error('Save config error:', error);
-      setMessage({ type: 'error', text: '保存失败，请检查网络连接' });
-    } finally {
-      setSaving(false);
+      await saveSiteConfig.mutateAsync(config);
+      localStorage.setItem('site_config', JSON.stringify(config));
+      setMessage({ type: 'success', text: '设置已保存到服务器！所有设备将同步更新' });
+      setTimeout(() => setMessage(null), 5000);
+    } catch (err) {
+      const text = err instanceof Error ? err.message : '保存失败，请检查网络连接';
+      setMessage({ type: 'error', text });
     }
   };
 

@@ -4,73 +4,17 @@
  */
 
 import { API_BASE_URL } from './apiConfig';
+import {
+  apiRequest,
+  apiFetch,
+  getAuthHeaders,
+  getAuthToken,
+  setAuthToken,
+  type ApiResponse,
+} from './api/request';
 
-/**
- * API Response Wrapper
- */
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-  meta?: {
-    page?: number;
-    limit?: number;
-    total?: number;
-    totalPages?: number;
-  };
-}
-
-/**
- * Generic API Request Handler
- */
-async function apiRequest<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<ApiResponse<T>> {
-  try {
-    const url = `${API_BASE_URL}${endpoint}`;
-    
-    // Properly merge headers without overwriting
-    const mergedHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    
-    // Add custom headers from options
-    if (options?.headers) {
-      const customHeaders = options.headers as Record<string, string>;
-      Object.entries(customHeaders).forEach(([key, value]) => {
-        mergedHeaders[key] = value;
-      });
-    }
-    
-    const response = await fetch(url, {
-      ...options,
-      headers: mergedHeaders,
-    });
-
-    // Handle 204 No Content (common for DELETE operations)
-    if (response.status === 204) {
-      return { success: true };
-    }
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: data.message || data.error || `HTTP ${response.status}: ${response.statusText}`,
-      };
-    }
-
-    return data as ApiResponse<T>;
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
+export type { ApiResponse };
+export { apiRequest, apiFetch, getAuthHeaders, getAuthToken, setAuthToken };
 
 // ==================== Auth ====================
 
@@ -105,45 +49,19 @@ export const authApi = {
     return apiRequest<LoginResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
+      auth: false,
     });
   },
 
   me: async () => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!getAuthToken()) {
       return { success: false, error: 'No token found' };
     }
-    
-    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    const data = await response.json();
-    
-    if (!response.ok) {
-      return { success: false, error: data.message || 'Failed to get user info' };
-    }
-
-    return { success: true, data: data.data as User };
+    return apiRequest<User>('/api/auth/me');
   },
 
   logout: async () => {
-    const token = localStorage.getItem('auth_token');
-    
-    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      return { success: false, error: 'Failed to logout' };
-    }
-
-    return { success: true };
+    return apiRequest<void>('/api/auth/logout', { method: 'POST' });
   },
 };
 
@@ -1340,12 +1258,6 @@ export interface SiteConfig {
   };
   heroBackgrounds: any[];
 }
-
-// Helper to get auth headers
-const getAuthHeaders = (): Record<string, string> => {
-  const token = localStorage.getItem('auth_token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
-};
 
 export const settingsApi = {
   // GET /api/settings - 获取所有站点配置

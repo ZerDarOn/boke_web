@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../../lib/api';
+import React, { useState } from 'react';
+import {
+  useAdminActivitiesConfig,
+  useSaveAdminActivities,
+  type AdminActivity,
+} from '../../hooks/queries/settings';
 import { Search, Plus, Edit, Trash2, Loader2, X, Save, Activity, CheckCircle, Clock, AlertCircle, Database } from 'lucide-react';
 import { LATEST_ACTIVITIES } from '../../constants';
 
-interface Activity {
-  id: string;
-  project: string;
-  title: string;
-  tags: string[];
-  status: 'DONE' | 'IN_PROGRESS' | 'PLANNED';
-  date: string;
-}
+type Activity = AdminActivity;
 
 const STATUS_OPTIONS = [
   { value: 'DONE', label: '已完成', icon: CheckCircle, color: 'text-green-500', bgColor: 'bg-green-500' },
@@ -19,11 +16,11 @@ const STATUS_OPTIONS = [
 ];
 
 const AdminActivities: React.FC = () => {
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { data: activities = [], isLoading: loading, error: queryError } = useAdminActivitiesConfig();
+  const saveActivitiesMutation = useSaveAdminActivities();
+  const saving = saveActivitiesMutation.isPending;
+  const error = queryError?.message ?? null;
   const [searchTerm, setSearchTerm] = useState('');
-  const [error, setError] = useState<string | null>(null);
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,56 +32,6 @@ const AdminActivities: React.FC = () => {
     status: 'DONE',
     date: new Date().toISOString().split('T')[0]
   });
-
-  useEffect(() => {
-    fetchActivities();
-  }, []);
-
-  const fetchActivities = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      // 从 site_config 获取最新动态
-      const result = await api.settings.getByKey('activities');
-      if (result.success && result.data?.value) {
-        const parsedActivities = typeof result.data.value === 'string' 
-          ? JSON.parse(result.data.value) 
-          : result.data.value;
-        const activities = Array.isArray(parsedActivities) ? parsedActivities : [];
-        
-        // 如果数据为空数组，自动初始化默认数据
-        if (activities.length === 0) {
-          const defaultActivities = LATEST_ACTIVITIES.map(a => ({
-            ...a,
-            status: a.status as 'DONE' | 'IN_PROGRESS' | 'PLANNED'
-          }));
-          await saveActivities(defaultActivities);
-          setActivities(defaultActivities);
-        } else {
-          setActivities(activities);
-        }
-      } else {
-        // 如果没有配置，使用默认数据初始化
-        const defaultActivities = LATEST_ACTIVITIES.map(a => ({
-          ...a,
-          status: a.status as 'DONE' | 'IN_PROGRESS' | 'PLANNED'
-        }));
-        await saveActivities(defaultActivities);
-        setActivities(defaultActivities);
-      }
-    } catch (error) {
-      console.error('Failed to fetch activities:', error);
-      setError('获取最新动态失败');
-      // 出错时也尝试使用默认数据
-      const defaultActivities = LATEST_ACTIVITIES.map(a => ({
-        ...a,
-        status: a.status as 'DONE' | 'IN_PROGRESS' | 'PLANNED'
-      }));
-      setActivities(defaultActivities);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // 从默认数据重新初始化（覆盖当前数据）
   const handleReinitialize = async () => {
@@ -102,22 +49,12 @@ const AdminActivities: React.FC = () => {
   };
 
   const saveActivities = async (newActivities: Activity[]) => {
-    setSaving(true);
     try {
-      const result = await api.settings.update('activities', newActivities);
-      if (result.success) {
-        setActivities(newActivities);
-        return true;
-      } else {
-        alert(result.error || '保存失败');
-        return false;
-      }
-    } catch (error) {
-      console.error('Failed to save activities:', error);
+      await saveActivitiesMutation.mutateAsync(newActivities);
+      return true;
+    } catch {
       alert('保存失败');
       return false;
-    } finally {
-      setSaving(false);
     }
   };
 

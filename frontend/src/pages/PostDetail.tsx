@@ -5,6 +5,10 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import { useQueryClient } from '@tanstack/react-query';
+import { usePost, usePostNavList } from '../hooks/queries/posts';
+import { queryKeys } from '../hooks/api/query-keys';
+import { postsApi } from '../lib/api';
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,13 +29,14 @@ import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
 import { SEO } from '../components/SEO';
-import { postsApi, Post } from '../lib/api';
+import type { Post } from '../lib/api';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [post, setPost] = useState<Post | null>(null);
-  const [allPosts, setAllPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: post, isLoading: loading, refetch } = usePost(id);
+  const { data: navList = [] } = usePostNavList();
+  const allPosts = navList as Post[];
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = React.useState(0);
   const [showCopyAlert, setShowCopyAlert] = React.useState(false);
@@ -96,41 +101,13 @@ const PostDetail: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Fetch post from API
   useEffect(() => {
-    const fetchPost = async () => {
-      setLoading(true);
-      setNeedPassword(false);
-      setPasswordError('');
-      try {
-        // Fetch all posts first (for prev/next navigation)
-        const allResult = await postsApi.getAll();
-        if (allResult.success && allResult.data) {
-          setAllPosts(allResult.data);
-        }
-
-        // Try to fetch current post from API
-        const result = await postsApi.getById(id!);
-        if (result.success && result.data) {
-          // Check if password is required
-          if ((result.data as any).needPassword) {
-            setPost(result.data);
-            setNeedPassword(true);
-          } else {
-            setPost(result.data);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch post:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchPost();
+    setNeedPassword(false);
+    setPasswordError('');
+    if (post?.needPassword) {
+      setNeedPassword(true);
     }
-  }, [id]);
+  }, [post?.id, post?.needPassword]);
 
   // Verify password
   const handleVerifyPassword = async () => {
@@ -142,13 +119,10 @@ const PostDetail: React.FC = () => {
     try {
       const result = await postsApi.verifyPassword(post.id, password);
       if (result.success && result.data?.success) {
-        // Refetch the post to get full content
-        const postResult = await postsApi.getById(id!);
-        if (postResult.success && postResult.data) {
-          setPost(postResult.data);
-          setNeedPassword(false);
-          setPassword('');
-        }
+        await queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(id!) });
+        await refetch();
+        setNeedPassword(false);
+        setPassword('');
       } else {
         setPasswordError('密码错误');
       }

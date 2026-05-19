@@ -1,31 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { diaryApi, Diary } from '../lib/api';
+import React from 'react';
+import { useDiaryList } from '../hooks/queries/diary';
 import { usePageCopy } from '../hooks/useSiteConfig';
 import { Loader2 } from 'lucide-react';
 
 const ShadowFragments: React.FC = () => {
   const pageCopy = usePageCopy();
-  const [entries, setEntries] = useState<Diary[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // 从 API 获取日记列表
-  useEffect(() => {
-    const fetchDiaries = async () => {
-      setLoading(true);
-      try {
-        const result = await diaryApi.getAll({ limit: 5, type: 'SHORT' });
-        if (result.success && result.data) {
-          setEntries(result.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch diaries:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDiaries();
-  }, []);
+  const { data: entries = [], isLoading: loading } = useDiaryList({ limit: 5, type: 'SHORT' });
 
   // 格式化日期显示
   const formatDate = (dateString: string) => {

@@ -1,50 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../../lib/api';
-import type { DashboardStats } from '../../lib/api';
+import React from 'react';
 import { Loader2, FileText, Rocket, Tv, Camera, Database } from 'lucide-react';
 import useActivities from '../../hooks/useActivities';
-
-interface DashboardStats {
-  totalPosts: number;
-  totalProjects: number;
-  totalAnime: number;
-  totalDiaries: number;
-  totalGalleryImages: number;
-  totalUsers: number;
-  totalComments: number;
-  pageViews: number;
-  uniqueVisitors: number;
-}
+import { useDashboardStats } from '../../hooks/queries/dashboard';
 
 const AdminDashboard: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: stats, isLoading: loading, error: queryError, refetch } = useDashboardStats();
+  const error = queryError?.message ?? null;
   const { activities } = useActivities({ limit: 4 });
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const statsResult = await api.dashboard.getStats();
-
-      if (statsResult.success && statsResult.data) {
-        setStats(statsResult.data);
-      } else {
-        setError(statsResult.error || 'Failed to fetch dashboard stats');
-      }
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-      setError('Failed to fetch dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -64,7 +26,7 @@ const AdminDashboard: React.FC = () => {
           ERROR: {error}
         </p>
         <button
-          onClick={fetchData}
+          onClick={() => refetch()}
           className="mt-2 text-sm text-red-600 dark:text-red-300 underline"
         >
           重试

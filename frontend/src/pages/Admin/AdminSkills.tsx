@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { api, Skill } from '../../lib/api';
+import { useSkillsList } from '../../hooks/queries/skills';
 import VisualEditor from '../../components/VisualEditor';
 import { AlertCircle, Loader2, Plus, RefreshCw } from 'lucide-react';
 
@@ -14,32 +15,12 @@ interface SkillNode {
 }
 
 const AdminSkills: React.FC = () => {
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: skills = [], isLoading: loading, error: queryError, refetch } = useSkillsList();
+  const error = queryError?.message ?? null;
   const [saving, setSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
-  useEffect(() => {
-    loadSkills();
-  }, []);
-
-  const loadSkills = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.skills.getAll();
-      if (result.success && result.data) {
-        setSkills(result.data);
-      } else {
-        setError(result.error || 'Failed to load skills');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadSkills = () => refetch();
 
   const transformSkillsToNodes = (): SkillNode[] => {
     return skills.map(skill => ({

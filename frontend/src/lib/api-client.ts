@@ -2,7 +2,7 @@
  * Enhanced API Client with Error Handling
  */
 
-import { apiRequest as baseApiRequest } from './api';
+import { apiRequest as baseApiRequest } from './api/request';
 import {
   ApiRequestError,
   NetworkError,

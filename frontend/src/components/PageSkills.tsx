@@ -1,55 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TRANSLATIONS } from '../constants';
 import { Zap, Database, Cpu, ExternalLink, X, Code, Server, PenTool, Loader2 } from 'lucide-react';
-import { api, SkillGroup, Project } from '../lib/api';
+import type { Skill, Project } from '../lib/api';
+import { useSkillGroups } from '../hooks/queries/skills';
+import { useProjectsList } from '../hooks/queries/projects';
 
 interface PageSkillsProps {
 }
 
 const PageSkills: React.FC<PageSkillsProps> = () => {
   const [activeSkill, setActiveSkill] = useState<string | null>(null);
-  const [skillGroups, setSkillGroups] = useState<{ category: string; skills: Skill[] }[]>([]);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
+  const { data: skillGroups = [], isLoading: skillsLoading, error: skillsError } = useSkillGroups();
+  const { data: allProjects = [], isLoading: projectsLoading } = useProjectsList();
+  const loading = skillsLoading || projectsLoading;
+  const error = skillsError?.message ?? null;
+
   const lang = 'ZH';
   const t = TRANSLATIONS['ZH'];
-  
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [skillsResult, projectsResult] = await Promise.all([
-          api.skills.getGroups(),
-          api.projects.getAll()
-        ]);
-        
-        if (skillsResult.success && skillsResult.data) {
-          // 转换后端返回的 { items: Skill[] } 为 { skills: Skill[] }
-          const groups = skillsResult.data.map(group => ({
-            category: group.category,
-            skills: group.items
-          }));
-          setSkillGroups(groups);
-        } else {
-          setError(skillsResult.error || 'Failed to fetch skills');
-        }
-        
-        if (projectsResult.success && projectsResult.data) {
-          setAllProjects(projectsResult.data);
-        }
-      } catch (err) {
-        setError('Failed to fetch skills data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
   
   // 获取相关项目
   const relatedProjects = activeSkill ? allProjects.filter(project =>

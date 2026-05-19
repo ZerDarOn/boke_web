@@ -1,5 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { api } from '../../../lib/api';
+import {
+  useHistoryItems,
+  useCreateHistoryItem,
+  useUpdateHistoryItem,
+  useDeleteHistoryItem,
+} from '../../../hooks/queries/history';
 import { Plus, Edit, Trash2, Clock, Eye, Loader2, X, Save, History, ArrowUp, ArrowDown } from 'lucide-react';
 
 /**
@@ -7,41 +13,22 @@ import { Plus, Edit, Trash2, Clock, Eye, Loader2, X, Save, History, ArrowUp, Arr
  * 管理前台时间线中显示的历史项目
  */
 const AdminHistory: React.FC = () => {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editingItem, setEditingItem] = useState<any>(null);
-  const [formData, setFormData] = useState<any>({});
+  const { data: items = [], isLoading: loading, error: queryError, refetch } = useHistoryItems();
+  const error = queryError?.message ?? null;
+  const createItem = useCreateHistoryItem();
+  const updateItem = useUpdateHistoryItem();
+  const deleteItem = useDeleteHistoryItem();
+
+  const [editingItem, setEditingItem] = useState<Record<string, unknown> | null>(null);
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchItems();
-  }, []);
-
-  const fetchItems = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.history.getAll();
-      if (result.success && result.data) {
-        setItems(result.data);
-      } else {
-        setError(result.error || '获取失败');
-      }
-    } catch (err) {
-      setError('获取数据失败');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isSubmitting = createItem.isPending || updateItem.isPending;
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定要删除吗？')) return;
     try {
-      await api.history.delete(id);
-      setItems(items.filter(item => item.id !== id));
-    } catch (error) {
+      await deleteItem.mutateAsync(id);
+    } catch {
       alert('删除失败');
     }
   };
@@ -72,46 +59,41 @@ const AdminHistory: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!String(formData.title ?? '').trim()) {
+      alert('请填写标题');
+      return;
+    }
+    if (!String(formData.date ?? '').trim()) {
+      alert('请填写日期');
+      return;
+    }
+    if (!String(formData.role ?? '').trim()) {
+      alert('请填写角色');
+      return;
+    }
+    if (!String(formData.description ?? '').trim()) {
+      alert('请填写描述');
+      return;
+    }
+
+    const tagsRaw = formData.tags;
+    const submitData = {
+      ...formData,
+      tags:
+        typeof tagsRaw === 'string'
+          ? tagsRaw.split(',').map((t) => t.trim()).filter(Boolean)
+          : tagsRaw,
+    };
+
     try {
-      setIsSubmitting(true);
-      
-      // 验证必填字段
-      if (!formData.title?.trim()) {
-        alert('请填写标题');
-        setIsSubmitting(false);
-        return;
-      }
-      if (!formData.date?.trim()) {
-        alert('请填写日期');
-        setIsSubmitting(false);
-        return;
-      }
-      if (!formData.role?.trim()) {
-        alert('请填写角色');
-        setIsSubmitting(false);
-        return;
-      }
-      if (!formData.description?.trim()) {
-        alert('请填写描述');
-        setIsSubmitting(false);
-        return;
-      }
-      
-      const submitData = {
-        ...formData,
-        tags: formData.tags ? formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
-      };
-      if (editingItem) {
-        await api.history.update(editingItem.id, submitData);
+      if (editingItem?.id) {
+        await updateItem.mutateAsync({ id: String(editingItem.id), data: submitData });
       } else {
-        await api.history.create(submitData);
+        await createItem.mutateAsync(submitData);
       }
-      await fetchItems();
       handleCloseModal();
-    } catch (error) {
+    } catch {
       alert('保存失败');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -121,7 +103,7 @@ const AdminHistory: React.FC = () => {
     const prevItem = items[index - 1];
     try {
       await api.history.reorder(currentItem.id, prevItem.order - 1);
-      await fetchItems();
+      await refetch();
     } catch (error) {
       alert('排序失败');
     }
@@ -133,7 +115,7 @@ const AdminHistory: React.FC = () => {
     const nextItem = items[index + 1];
     try {
       await api.history.reorder(currentItem.id, nextItem.order + 1);
-      await fetchItems();
+      await refetch();
     } catch (error) {
       alert('排序失败');
     }
@@ -156,7 +138,7 @@ const AdminHistory: React.FC = () => {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
         <p className="text-red-600 dark:text-red-300 font-mono text-sm">ERROR: {error}</p>
-        <button onClick={fetchItems} className="mt-2 text-sm text-red-600 dark:text-red-300 underline">重试</button>
+        <button onClick={() => refetch()} className="mt-2 text-sm text-red-600 dark:text-red-300 underline">重试</button>
       </div>
     );
   }

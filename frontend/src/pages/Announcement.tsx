@@ -1,33 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Info, AlertTriangle, CheckCircle, AlertCircle, Calendar, Loader2 } from 'lucide-react';
-import { api, Announcement } from '../lib/api';
+import type { Announcement } from '../lib/api';
+import { useAnnouncements } from '../hooks/queries/announcements';
 
 const AnnouncementPage: React.FC = () => {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchAnnouncements = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await api.announcements.getAll();
-        if (result.success && result.data) {
-          setAnnouncements(result.data);
-        } else {
-          setError(result.error || 'Failed to fetch announcements');
-        }
-      } catch (err) {
-        setError('Failed to fetch announcements');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAnnouncements();
-  }, []);
+  const { data: announcements = [], isLoading: loading, error: queryError } = useAnnouncements();
+  const error = queryError?.message ?? null;
 
   const getTypeIcon = (type: Announcement['type']) => {
     switch (type) {

@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Disc, Radio, MapPin, Briefcase, Trophy, Flag, GitCommit, LayoutList, FileText, Loader2, Code, Star, Globe, Zap, Heart } from 'lucide-react';
-import { api, TimelineEvent, CurrentStatus, HistoryItem } from '../lib/api';
+import type { TimelineEvent, CurrentStatus, HistoryItem } from '../lib/api';
+import { useTimelineList } from '../hooks/queries/timeline';
+import { useActiveCurrentStatus } from '../hooks/queries/current-status';
+import { useActiveHistoryItems } from '../hooks/queries/history';
 
 // 图标映射
 const iconMap: Record<string, React.ElementType> = {
@@ -18,51 +21,11 @@ const iconMap: Record<string, React.ElementType> = {
 
 const PageTimeline: React.FC = () => {
   const [viewMode, setViewMode] = useState<'timeline' | 'history'>('timeline');
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [currentStatus, setCurrentStatus] = useState<CurrentStatus | null>(null);
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // 并行获取所有数据
-        const [timelineResult, statusResult, historyResult] = await Promise.all([
-          api.timeline.getAll(),
-          api.currentStatus.getActive(),
-          api.history.getAll({ active: true }),
-        ]);
-
-        // 更新时间线事件 - 使用真实数据，空就显示空
-        if (timelineResult.success && timelineResult.data) {
-          setEvents(timelineResult.data);
-        }
-
-        // 更新当前状态 - 使用真实数据，失败或为空时设为 null
-        if (statusResult.success && statusResult.data) {
-          setCurrentStatus(statusResult.data);
-        } else {
-          setCurrentStatus(null);
-        }
-
-        // 更新历史项目 - 使用真实数据，空就显示空
-        if (historyResult.success && historyResult.data) {
-          setHistoryItems(historyResult.data);
-        }
-      } catch (err) {
-        // 出错时设置为空，让用户看到空状态提示
-        setHistoryItems([]);
-        setCurrentStatus(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const { data: events = [], isLoading: timelineLoading, error: timelineError } = useTimelineList();
+  const { data: currentStatus = null, isLoading: statusLoading } = useActiveCurrentStatus();
+  const { data: historyItems = [], isLoading: historyLoading } = useActiveHistoryItems();
+  const loading = timelineLoading || statusLoading || historyLoading;
+  const error = timelineError?.message ?? null;
 
   return (
     <div className="w-full bg-white dark:bg-ink p-6 md:p-12 min-h-[800px] flex flex-col items-center relative">

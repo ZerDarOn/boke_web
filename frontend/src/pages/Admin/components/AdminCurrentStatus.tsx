@@ -1,5 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { api } from '../../../lib/api';
+import {
+  useCurrentStatusList,
+  useCreateCurrentStatus,
+  useUpdateCurrentStatus,
+  useDeleteCurrentStatus,
+} from '../../../hooks/queries/current-status';
 import { Plus, Edit, Trash2, Clock, Loader2, X, Save, Radio } from 'lucide-react';
 
 /**
@@ -7,41 +13,22 @@ import { Plus, Edit, Trash2, Clock, Loader2, X, Save, Radio } from 'lucide-react
  * 管理前台时间线中显示的当前状态
  */
 const AdminCurrentStatus: React.FC = () => {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editingItem, setEditingItem] = useState<any>(null);
-  const [formData, setFormData] = useState<any>({});
+  const { data: items = [], isLoading: loading, error: queryError, refetch } = useCurrentStatusList();
+  const error = queryError?.message ?? null;
+  const createItem = useCreateCurrentStatus();
+  const updateItem = useUpdateCurrentStatus();
+  const deleteItem = useDeleteCurrentStatus();
+
+  const [editingItem, setEditingItem] = useState<Record<string, unknown> | null>(null);
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchItems();
-  }, []);
-
-  const fetchItems = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.currentStatus.getAll();
-      if (result.success && result.data) {
-        setItems(result.data);
-      } else {
-        setError(result.error || '获取失败');
-      }
-    } catch (err) {
-      setError('获取数据失败');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isSubmitting = createItem.isPending || updateItem.isPending;
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定要删除吗？')) return;
     try {
-      await api.currentStatus.delete(id);
-      setItems(items.filter(item => item.id !== id));
-    } catch (error) {
+      await deleteItem.mutateAsync(id);
+    } catch {
       alert('删除失败');
     }
   };
@@ -70,26 +57,22 @@ const AdminCurrentStatus: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      setIsSubmitting(true);
-      if (editingItem) {
-        await api.currentStatus.update(editingItem.id, formData);
+      if (editingItem?.id) {
+        await updateItem.mutateAsync({ id: String(editingItem.id), data: formData });
       } else {
-        await api.currentStatus.create(formData);
+        await createItem.mutateAsync(formData);
       }
-      await fetchItems();
       handleCloseModal();
-    } catch (error) {
+    } catch {
       alert('保存失败');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   const handleActivate = async (id: string) => {
     try {
       await api.currentStatus.activate(id);
-      await fetchItems();
-    } catch (error) {
+      await refetch();
+    } catch {
       alert('激活失败');
     }
   };
@@ -109,7 +92,7 @@ const AdminCurrentStatus: React.FC = () => {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
         <p className="text-red-600 dark:text-red-300 font-mono text-sm">ERROR: {error}</p>
-        <button onClick={fetchItems} className="mt-2 text-sm text-red-600 dark:text-red-300 underline">重试</button>
+        <button onClick={() => refetch()} className="mt-2 text-sm text-red-600 dark:text-red-300 underline">重试</button>
       </div>
     );
   }

@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { api } from '../../lib/api';
+import { getAuthHeaders } from '../../lib/api/request';
+import {
+  useAnimeList,
+  useCreateAnime,
+  useUpdateAnime,
+  useDeleteAnime,
+} from '../../hooks/queries/anime';
 import { Search, Plus, Edit, Trash2, Heart, Star, Filter, Loader2, X, Save, Upload, Image as ImageIcon, XCircle } from 'lucide-react';
 
 interface Anime {
@@ -22,61 +29,39 @@ interface Anime {
 }
 
 const AdminAnime: React.FC = () => {
-  const [animeList, setAnimeList] = useState<Anime[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED'>('all');
   const [favoriteFilter, setFavoriteFilter] = useState<'all' | 'favorite' | 'not-favorite'>('all');
-  const [error, setError] = useState<string | null>(null);
+
+  const listParams = useMemo(() => {
+    const params: Record<string, unknown> = { limit: 500 };
+    if (statusFilter !== 'all') params.status = statusFilter;
+    if (favoriteFilter === 'favorite') params.favorite = true;
+    if (favoriteFilter === 'not-favorite') params.favorite = false;
+    return params;
+  }, [statusFilter, favoriteFilter]);
+
+  const { data: animeList = [], isLoading: loading, error: queryError, refetch } = useAnimeList(listParams);
+  const error = queryError?.message ?? null;
+  const createAnime = useCreateAnime();
+  const updateAnime = useUpdateAnime();
+  const deleteAnime = useDeleteAnime();
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnime, setEditingAnime] = useState<Anime | null>(null);
   const [formData, setFormData] = useState<Partial<Anime>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmitting = createAnime.isPending || updateAnime.isPending;
 
   // Image upload states
   const [uploading, setUploading] = useState(false);
   const [coverPreview, setCoverPreview] = useState<string>('');
 
-  useEffect(() => {
-    fetchAnime();
-  }, [statusFilter, favoriteFilter]);
-
-  const fetchAnime = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params: any = {};
-      if (statusFilter !== 'all') {
-        params.status = statusFilter;
-      }
-      if (favoriteFilter === 'favorite') {
-        params.favorite = true;
-      } else if (favoriteFilter === 'not-favorite') {
-        params.favorite = false;
-      }
-      
-      const result = await api.anime.getAll(params);
-      if (result.success && result.data) {
-        setAnimeList(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch anime');
-      }
-    } catch (error) {
-      console.error('Failed to fetch anime:', error);
-      setError('Failed to fetch anime');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`确定要删除动漫 "${title}" 吗？`)) return;
     
     try {
-      await api.anime.delete(id);
-      setAnimeList(animeList.filter(a => a.id !== id));
+      await deleteAnime.mutateAsync(id);
     } catch (error) {
       console.error('Failed to delete anime:', error);
       alert('删除失败');
@@ -120,41 +105,26 @@ const AdminAnime: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     try {
       if (editingAnime) {
-        // Update
-        const result = await api.anime.update(editingAnime.id, formData);
-        if (result.success) {
-          setAnimeList(animeList.map(a => a.id === editingAnime.id ? { ...a, ...formData } : a));
-          handleCloseModal();
-        } else {
-          alert('更新失败: ' + result.error);
-        }
+        await updateAnime.mutateAsync({ id: editingAnime.id, data: formData });
       } else {
-        // Create
-        const result = await api.anime.create(formData as any);
-        if (result.success && result.data) {
-          setAnimeList([result.data, ...animeList]);
-          handleCloseModal();
-        } else {
-          alert('创建失败: ' + result.error);
-        }
+        await createAnime.mutateAsync(formData);
       }
-    } catch (error) {
-      console.error('Submit error:', error);
-      alert('操作失败');
-    } finally {
-      setIsSubmitting(false);
+      handleCloseModal();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '操作失败';
+      alert(editingAnime ? `更新失败: ${message}` : `创建失败: ${message}`);
     }
   };
 
   const handleToggleFavorite = async (id: string) => {
+    const item = (animeList as Anime[]).find((a) => a.id === id);
+    if (!item) return;
     try {
-      const result = await fetch(`${api.anime.getById(id)}/favorite`, { method: 'POST' });
-      setAnimeList(animeList.map(a => a.id === id ? { ...a, favorite: !a.favorite } : a));
-    } catch (error) {
-      console.error('Failed to toggle favorite:', error);
+      await updateAnime.mutateAsync({ id, data: { favorite: !item.favorite } });
+    } catch {
+      console.error('Failed to toggle favorite');
     }
   };
 
@@ -183,15 +153,9 @@ const AdminAnime: React.FC = () => {
       formData.append('image', file);
 
       // 获取认证 token
-      const token = localStorage.getItem('auth_token');
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
       const response = await fetch(`${getApiBaseUrl()}/api/upload/image/anime`, {
         method: 'POST',
-        headers,
+        headers: getAuthHeaders(),
         body: formData,
       });
 
@@ -268,7 +232,7 @@ const AdminAnime: React.FC = () => {
           ERROR: {error}
         </p>
         <button
-          onClick={fetchAnime}
+          onClick={() => refetch()}
           className="mt-2 text-sm text-red-600 dark:text-red-300 underline"
         >
           重试

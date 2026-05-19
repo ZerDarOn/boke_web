@@ -1,35 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { api, NetworkNode } from '../../lib/api';
+import { useNetworkNodes } from '../../hooks/queries/network';
 import VisualEditor from '../../components/VisualEditor';
 import { AlertCircle, Loader2, Plus, RefreshCw } from 'lucide-react';
 
 const AdminNetwork: React.FC = () => {
-  const [nodes, setNodes] = useState<NetworkNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: nodes = [], isLoading: loading, error: queryError, refetch } = useNetworkNodes();
+  const error = queryError?.message ?? null;
   const [saving, setSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
-  useEffect(() => {
-    loadNodes();
-  }, []);
-
-  const loadNodes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.network.getAll();
-      if (result.success && result.data) {
-        setNodes(result.data);
-      } else {
-        setError(result.error || 'Failed to load network nodes');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadNodes = () => refetch();
 
   const handleAddNode = async (data: Partial<NetworkNode>) => {
     if (isAdding) return;

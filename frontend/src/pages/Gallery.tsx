@@ -1,41 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Camera, Calendar, MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { api, GalleryImage, Album } from '../lib/api';
-import LazyImage from '../components/LazyImage';
+import { Calendar, MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { useGalleryAlbums } from '../hooks/queries/gallery';
 
 const Gallery: React.FC = () => {
-  const [albums, setAlbums] = useState<Album[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const fetchAlbums = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await api.gallery.getAll();
-        if (result.success && result.data) {
-          // 从图片列表中提取相册（去重）
-          const albumMap = new Map<string, Album>();
-          result.data.forEach(photo => {
-            if (photo.album) {
-              albumMap.set(photo.album.id, photo.album);
-            }
-          });
-          setAlbums(Array.from(albumMap.values()));
-        } else {
-          setError(result.error || 'Failed to fetch gallery');
-        }
-      } catch (err) {
-        setError('Failed to fetch gallery');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchAlbums();
-  }, []);
+  const { data: albums = [], isLoading: loading, error: queryError } = useGalleryAlbums();
+  const error = queryError?.message ?? null;
   
   const formatDate = (date: string) => {
     const d = new Date(date);

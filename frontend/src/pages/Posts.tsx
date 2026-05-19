@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, memo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { TRANSLATIONS } from '../constants';
 import { ArrowRight, LayoutList, LayoutGrid, Filter, X, Loader2 } from 'lucide-react';
-import { api, Post as ApiPost } from '../lib/api';
+import type { Post as ApiPost } from '../lib/api';
+import { usePostsList, usePostCategories, usePostTags } from '../hooks/queries/posts';
 import { PostListSkeleton } from '../components/Skeleton';
 
 // 分类类型定义
@@ -80,97 +81,47 @@ export default function Posts() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   
-  // 从 API 获取的数据
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // 从 API 获取的分类列表
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
-  
   const categoryParam = searchParams.get('category');
   const tagParam = searchParams.get('tag');
-  
+
+  const {
+    data: postsRaw,
+    isLoading: loading,
+    error: postsError,
+  } = usePostsList({
+    category: categoryParam || undefined,
+    tag: tagParam || undefined,
+  });
+
+  const { data: categories = [], isLoading: loadingCategories } = usePostCategories();
+  const { data: tagsRaw } = usePostTags();
+
+  const posts = useMemo(
+    () => (postsRaw ?? []).map(mapPostType),
+    [postsRaw]
+  );
+
+  const error = postsError?.message ?? null;
+
+  const allTags = useMemo(() => {
+    if (!tagsRaw) return [];
+    return tagsRaw.map((tag: string | { name: string }) =>
+      typeof tag === 'string' ? tag : tag.name
+    );
+  }, [tagsRaw]);
+
   useEffect(() => {
     setSelectedCategory(categoryParam);
     setSelectedTag(tagParam);
   }, [categoryParam, tagParam]);
-  
-  // 从 API 获取文章列表
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const result = await api.posts.getAll({
-          category: categoryParam || undefined,
-          tag: tagParam || undefined,
-        });
-        
-        if (result.success && result.data) {
-          setPosts(result.data.map(mapPostType));
-        } else {
-          setError(result.error || 'Failed to fetch posts');
-        }
-      } catch (err) {
-        setError('Failed to fetch posts');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchPosts();
-  }, [categoryParam, tagParam]);
-  
+
   const filteredPosts = useMemo(() => {
-    return posts.filter(post => {
+    return posts.filter((post) => {
       if (selectedCategory && post.category !== selectedCategory) return false;
       if (selectedTag && !post.tags.includes(selectedTag)) return false;
       return true;
     });
   }, [posts, selectedCategory, selectedTag]);
-  
-  // 从 API 获取标签列表
-  const [allTags, setAllTags] = useState<string[]>([]);
-
-  // 从 API 获取分类和标签
-  useEffect(() => {
-    const fetchData = async () => {
-      // 获取标签
-      const fetchTags = async () => {
-        try {
-          const result = await api.posts.getTags();
-          if (result.success && result.data) {
-            setAllTags(result.data.map((tag: any) => tag.name));
-          }
-        } catch (err) {
-          console.error('Failed to fetch tags');
-        }
-      };
-
-      // 获取分类
-      const fetchCategories = async () => {
-        setLoadingCategories(true);
-        try {
-          const result = await api.posts.getCategories();
-          if (result.success && result.data) {
-            setCategories(result.data);
-          }
-        } catch (err) {
-          console.error('Failed to fetch categories');
-        } finally {
-          setLoadingCategories(false);
-        }
-      };
-
-      fetchTags();
-      fetchCategories();
-    };
-
-    fetchData();
-  }, []);
 
   const lang: 'EN' | 'ZH' = 'ZH';
   const t = TRANSLATIONS[lang];

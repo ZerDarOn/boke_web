@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { TRANSLATIONS } from '../constants';
 import { ArrowUpRight, Github, ExternalLink, Box, Activity, Layers, Tag, Loader2 } from 'lucide-react';
-import { api, Project } from '../lib/api';
+import { useProjectsList } from '../hooks/queries/projects';
 
 interface PageProjectsProps {
 }
@@ -11,30 +11,8 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
   const lang = 'ZH';
   const t = TRANSLATIONS['ZH'];
   
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const fetchProjects = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await api.projects.getAll();
-        if (result.success && result.data) {
-          setProjects(result.data);
-        } else {
-          setError(result.error || 'Failed to fetch projects');
-        }
-      } catch (err) {
-        setError('Failed to fetch projects');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProjects();
-  }, []);
+  const { data: projects = [], isLoading: loading, error: queryError } = useProjectsList();
+  const error = queryError?.message ?? null;
   
   const primaryProjects = projects.filter(p => p.featured);
   const otherProjects = projects.filter(p => !p.featured);
