@@ -1,35 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Sun, CloudRain, ArrowRight, Loader2 } from 'lucide-react';
-import { api, Diary } from '../lib/api';
+import { useDiaryList } from '../hooks/queries/diary';
 import { usePageCopy } from '../hooks/useSiteConfig';
 
 const MineDiary: React.FC = () => {
-  const [diaries, setDiaries] = useState<Diary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: diaries = [], isLoading: loading, error: queryError } = useDiaryList();
+  const error = queryError?.message ?? null;
   const pageCopy = usePageCopy();
-  
-  useEffect(() => {
-    const fetchDiaries = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await api.diary.getAll();
-        if (result.success && result.data) {
-          setDiaries(result.data);
-        } else {
-          setError(result.error || 'Failed to fetch diaries');
-        }
-      } catch (err) {
-        setError('Failed to fetch diaries');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchDiaries();
-  }, []);
   
   const shortDiaries = diaries.filter(d => d.type === 'SHORT');
   const longDiaries = diaries.filter(d => d.type === 'LONG');

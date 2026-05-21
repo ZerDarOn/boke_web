@@ -29,10 +29,10 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, Hash, Bell, Activity, ChevronRight, Loader2 } from 'lucide-react';
-import { api } from '../lib/api';
+import { usePostCategories, usePostTags } from '../hooks/queries/posts';
 import { useSiteConfig } from '../hooks/useSiteConfig';
 import useActivities from '../hooks/useActivities';
 
@@ -62,51 +62,32 @@ const MobileBottomBar: React.FC = () => {
   
   const { activities } = useActivities({ limit: 3 });
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: categoriesRaw, isLoading: categoriesLoading } = usePostCategories();
+  const { data: tagsRaw, isLoading: tagsLoading } = usePostTags();
+  const loading = categoriesLoading || tagsLoading;
   const [expandedSection, setExpandedSection] = useState<'categories' | 'tags' | 'activities' | null>(null);
 
-  /* --------
-   * 数据获取
-   * 组件挂载时从API获取分类、标签、动态数据
-   * -------- */
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        const [categoriesRes, tagsRes] = await Promise.all([
-          api.posts.getCategories(),
-          api.posts.getTags(),
-        ]);
+  const categories = useMemo((): Category[] => {
+    if (!categoriesRaw?.length) return [];
+    const totalCount = categoriesRaw.reduce((sum, cat) => sum + (cat.count || 0), 0);
+    return [
+      { name: 'ALL', count: totalCount },
+      ...categoriesRaw.map((cat) => ({
+        name: cat.name,
+        count: cat.count || 0,
+      })),
+    ];
+  }, [categoriesRaw]);
 
-        if (categoriesRes.success && categoriesRes.data) {
-          const totalCount = categoriesRes.data.reduce((sum: number, cat: any) => sum + (cat.count || 0), 0);
-          setCategories([
-            { name: 'ALL', count: totalCount },
-            ...categoriesRes.data.map((cat: any) => ({
-              name: cat.name,
-              count: cat.count || 0,
-            })),
-          ]);
-        }
-
-        if (tagsRes.success && tagsRes.data) {
-          setTags(tagsRes.data.map((tag: any) => ({
-            name: tag.name,
-            count: tag.count || 0,
-          })).slice(0, 10));
-        }
-      } catch (error) {
-        console.error('Failed to fetch mobile bottom bar data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const tags = useMemo((): Tag[] => {
+    if (!tagsRaw) return [];
+    return tagsRaw
+      .map((tag) => ({
+        name: tag.name,
+        count: tag.count || 0,
+      }))
+      .slice(0, 10);
+  }, [tagsRaw]);
 
   /* --------
    * 折叠控制函数

@@ -1,46 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { User, X, Share2, Loader2, Filter } from 'lucide-react';
-import { api, UniverseNode } from '../lib/api';
+import type { UniverseNode } from '../lib/api';
+import { useUniverseData } from '../hooks/queries/universe';
 
 type FilterType = 'all' | 'skill' | 'person';
 
 const UniverseMap: React.FC = () => {
   const [activeNodeId, setActiveNodeId] = useState<string | null>('self');
-  const [nodes, setNodes] = useState<UniverseNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
+  const { data: nodes = [], isLoading: loading, error: queryError } = useUniverseData(filter);
+  const error = queryError?.message ?? null;
 
-  // 根据筛选器获取对应坐标的数据
   useEffect(() => {
-    const fetchUniverse = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // 根据筛选模式传递不同的 mode 参数
-        // all -> 使用宇宙图专用坐标
-        // skill -> 使用技能表坐标
-        // person -> 使用人脉表坐标
-        const result = await api.universe.getAll(filter);
-        if (result.success && result.data) {
-          setNodes(result.data);
-          // 默认选择自己节点
-          const selfNode = result.data.find(n => n.type === 'self');
-          if (selfNode) {
-            setActiveNodeId(selfNode.id);
-          }
-        } else {
-          setError(result.error || 'Failed to fetch universe');
-        }
-      } catch (err) {
-        setError('Failed to fetch universe');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUniverse();
-  }, [filter]);
+    const selfNode = nodes.find((n) => n.type === 'self');
+    if (selfNode) {
+      setActiveNodeId(selfNode.id);
+    }
+  }, [filter, nodes]);
 
   const getNode = (id: string) => nodes.find(n => n.id === id);
   const activeNode = activeNodeId ? getNode(activeNodeId) : null;

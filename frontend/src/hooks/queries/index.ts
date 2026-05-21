@@ -14,3 +14,6 @@ export * from './universe';
 export * from './settings';
 export * from './current-status';
 export * from './history';
+export * from './files';
+export * from './search';
+export * from './export';

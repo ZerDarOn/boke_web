@@ -23,7 +23,7 @@
  * @created 移动端兼容性优化
  * ============================================================================
  */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import Navigation from './Navigation';
 import Sidebar from './Sidebar';
@@ -33,7 +33,7 @@ import MobileBottomBar from './MobileBottomBar';
 import { Search, X, Loader2, AlertCircle } from 'lucide-react';
 import { useLang } from '../contexts/LangContext';
 import { useSiteConfig } from '../hooks/useSiteConfig';
-import { api } from '../lib/api';
+import { useLayoutSearch } from '../hooks/queries/search';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -71,104 +71,29 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   
   const location = useLocation();
 
-  // API 搜索结果状态
-  const [searchResults, setSearchResults] = useState({
-    posts: [] as any[],
-    projects: [] as any[],
-    diaries: [] as any[],
-    announcements: [] as any[],
-    anime: [] as any[],
-    gallery: [] as any[],
-  });
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const {
+    data: searchResults = {
+      posts: [],
+      projects: [],
+      diaries: [],
+      announcements: [],
+      anime: [],
+      gallery: [],
+    },
+    isFetching: isSearching,
+    error: searchQueryError,
+    isFetched: hasSearched,
+    refetch: refetchSearch,
+  } = useLayoutSearch(debouncedSearchQuery);
+  const searchError = searchQueryError?.message ?? null;
 
-  // API 搜索逻辑 - 带防抖
-  const performSearch = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults({ posts: [], projects: [], diaries: [], announcements: [], anime: [], gallery: [] });
-      setHasSearched(false);
-      return;
-    }
-
-    setIsSearching(true);
-    setHasSearched(true);
-    setSearchError(null);
-
-    try {
-      // 并行请求所有搜索
-      const [postsRes, projectsRes, diariesRes, announcementsRes, animeRes, galleryRes] = await Promise.all([
-        api.posts.getAll({ search: query, limit: 5 }),
-        api.projects.getAll({ search: query, limit: 5 }),
-        api.diary.getAll({ limit: 5 }), // 日记 API 可能不支持搜索，先获取后过滤
-        api.announcements.getAll(), // 公告获取后过滤
-        api.anime.getAll({ limit: 5 }), // 动漫获取后过滤
-        api.gallery.getAll({ limit: 5 }), // 相册获取后过滤
-      ]);
-
-      // 客户端过滤日记内容
-      const filteredDiaries = (diariesRes.data || []).filter((d: any) =>
-        d.content?.toLowerCase().includes(query.toLowerCase()) ||
-        d.title?.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 5);
-
-      // 客户端过滤公告
-      const filteredAnnouncements = (announcementsRes.data || []).filter((a: any) =>
-        a.title?.toLowerCase().includes(query.toLowerCase()) ||
-        a.content?.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 5);
-
-      // 客户端过滤动漫
-      const filteredAnime = (animeRes.data || []).filter((a: any) =>
-        a.title?.toLowerCase().includes(query.toLowerCase()) ||
-        a.studios?.some((s: string) => s.toLowerCase().includes(query.toLowerCase()))
-      ).slice(0, 5);
-
-      // 客户端过滤相册
-      const filteredGallery = (galleryRes.data || []).filter((g: any) =>
-        g.title?.toLowerCase().includes(query.toLowerCase()) ||
-        g.tags?.some((tag: string) => tag.toLowerCase().includes(query.toLowerCase()))
-      ).slice(0, 5);
-
-      setSearchResults({
-        posts: postsRes.data || [],
-        projects: projectsRes.data || [],
-        diaries: filteredDiaries,
-        announcements: filteredAnnouncements,
-        anime: filteredAnime,
-        gallery: filteredGallery,
-      });
-     } catch (error) {
-      console.error('Search error:', error);
-      setSearchError('搜索失败，请重试');
-    } finally {
-      setIsSearching(false);
-    }
-  }, []);
-
-  // 搜索防抖
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    if (searchQuery.trim()) {
-      searchTimeoutRef.current = setTimeout(() => {
-        performSearch(searchQuery);
-      }, 300); // 300ms 防抖
-    } else {
-      setSearchResults({ posts: [], projects: [], diaries: [], announcements: [], anime: [], gallery: [] });
-      setHasSearched(false);
-    }
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery, performSearch]);
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // 滚动监听
   useEffect(() => {
@@ -275,7 +200,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                      <p className="font-mono text-sm tracking-widest">SEARCH.ERROR</p>
                      <p className="text-xs">{searchError}</p>
                      <button
-                       onClick={() => { setSearchError(null); performSearch(searchQuery); }}
+                       onClick={() => refetchSearch()}
                        className="text-xs text-neon hover:text-neon/80 underline"
                      >
                        重试

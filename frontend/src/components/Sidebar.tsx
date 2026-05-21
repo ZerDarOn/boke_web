@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, Github, Twitter, Hash, Loader2 } from 'lucide-react';
-import { api } from '../lib/api';
+import { usePostCategories, usePostTags } from '../hooks/queries/posts';
 import { useSiteConfig } from '../hooks/useSiteConfig';
 
 // 分类和标签的类型定义
@@ -47,68 +47,37 @@ const Sidebar: React.FC = () => {
   const tagParam = new URLSearchParams(location.search).get('tag');
   const config = useSiteConfig();
 
-  // 状态管理
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: categoriesRaw,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = usePostCategories();
+  const { data: tagsRaw, isLoading: tagsLoading, error: tagsError } = usePostTags();
 
-  // 从 API 获取分类和标签
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const loading = categoriesLoading || tagsLoading;
+  const error = categoriesError?.message ?? tagsError?.message ?? null;
 
-        // 并行请求分类和标签
-        const [categoriesRes, tagsRes] = await Promise.all([
-          api.posts.getCategories(),
-          api.posts.getTags(),
-        ]);
+  const categories = useMemo((): Category[] => {
+    if (!categoriesRaw?.length) return [];
+    const categoryList = categoriesRaw.map((cat) => ({
+      name: cat.name,
+      count: cat.count || 0,
+      icon: getCategoryIcon(cat.name),
+    }));
+    const totalCount = categoryList.reduce((sum, cat) => sum + cat.count, 0);
+    return [
+      { name: 'ALL', count: totalCount, icon: CATEGORY_ICONS['ALL'] },
+      ...categoryList,
+    ];
+  }, [categoriesRaw]);
 
-        // 处理分类数据
-        if (categoriesRes.success && categoriesRes.data) {
-          const categoryList = categoriesRes.data.map(cat => ({
-            name: cat.name,
-            count: cat.count || 0,
-            icon: getCategoryIcon(cat.name),
-          }));
-
-          // 添加 "ALL" 分类作为第一项
-          const totalCount = categoryList.reduce((sum, cat) => sum + cat.count, 0);
-          const allCategory: Category = {
-            name: 'ALL',
-            count: totalCount,
-            icon: CATEGORY_ICONS['ALL'],
-          };
-
-          setCategories([allCategory, ...categoryList]);
-        } else {
-          console.error('获取分类失败:', categoriesRes.error);
-          setError('获取分类失败');
-        }
-
-        // 处理标签数据
-        if (tagsRes.success && tagsRes.data) {
-          const tagList = tagsRes.data.map(tag => ({
-            name: tag.name,
-            count: tag.count || 0,
-          }));
-          setTags(tagList);
-        } else {
-          console.error('获取标签失败:', tagsRes.error);
-          setError('获取标签失败');
-        }
-      } catch (err) {
-        console.error('获取数据失败:', err);
-        setError('加载数据失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const tags = useMemo((): Tag[] => {
+    if (!tagsRaw) return [];
+    return tagsRaw.map((tag) => ({
+      name: tag.name,
+      count: tag.count || 0,
+    }));
+  }, [tagsRaw]);
 
   return (
     <aside className="hidden lg:flex flex-col gap-6 w-64 flex-shrink-0 sticky top-24 h-fit z-20">

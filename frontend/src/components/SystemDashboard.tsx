@@ -1,59 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Database, Activity, Camera, Book, ArrowUpRight, MessageSquare, Heart, Star, PieChart, Loader2, Terminal, Lock } from 'lucide-react';
-import { api } from '../lib/api';
 import { maintenanceApi } from '../lib/maintenance';
-import type { DashboardStats, Post, Project, ContentDistribution } from '../lib/api';
+import {
+  useDashboardStats,
+  useDashboardPopular,
+  useDashboardContentDistribution,
+} from '../hooks/queries/dashboard';
 import { useLang } from '../contexts/LangContext';
 
 const SystemDashboard: React.FC = () => {
   const { t } = useLang();
-  
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
+  const { data: popularContent, isLoading: popularLoading } = useDashboardPopular();
+  const { data: contentDistribution, isLoading: distributionLoading } = useDashboardContentDistribution();
+  const loading = statsLoading || popularLoading || distributionLoading;
+  const error = statsError?.message ?? null;
   const [maintenanceMode, setMaintenanceMode] = useState(false);
-  
-  // Stats data
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [popularContent, setPopularContent] = useState<{ posts: Post[]; projects: Project[] } | null>(null);
-  const [contentDistribution, setContentDistribution] = useState<ContentDistribution[] | null>(null);
-  
-  // Fetch data function
-  const fetchData = async () => {
-    try {
-      const [statsResult, popularResult, distributionResult] = await Promise.all([
-        api.dashboard.getStats(),
-        api.dashboard.getPopular(),
-        api.dashboard.getContentDistribution()
-      ]);
-      
-      if (statsResult.success && statsResult.data) {
-        setStats(statsResult.data);
-      }
-      if (popularResult.success && popularResult.data) {
-        setPopularContent(popularResult.data);
-      }
-      if (distributionResult.success && distributionResult.data) {
-        const colors = ['bg-neon', 'bg-pink-400', 'bg-amber-500', 'bg-purple-500', 'bg-blue-500', 'bg-green-500'];
-        const distributionWithColors = distributionResult.data.map((item, idx) => ({
-          ...item,
-          color: colors[idx % colors.length]
-        }));
-        setContentDistribution(distributionWithColors);
-      }
-    } catch (err) {
-      setError('Failed to fetch dashboard data');
-    }
-  };
-  
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      setError(null);
-      await fetchData();
-      setLoading(false);
-    };
-    
     const checkMaintenanceMode = async () => {
       try {
         const response = await maintenanceApi.getStatus();
@@ -62,8 +27,6 @@ const SystemDashboard: React.FC = () => {
         console.error('Failed to check maintenance mode:', err);
       }
     };
-    
-    fetchDashboardData();
     checkMaintenanceMode();
   }, []);
   return (

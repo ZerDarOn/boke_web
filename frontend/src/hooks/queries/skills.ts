@@ -32,6 +32,15 @@ export function useSkillGroups() {
   });
 }
 
+/** 技能节点图（Profile 等） */
+export function useSkillNodes() {
+  return useQuery({
+    queryKey: [...queryKeys.skills.all, 'nodes'],
+    queryFn: () => unwrapApi(skillsApi.getAll()),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 export function useCreateSkill() {
   return useAdminResourceCreate(rootKey, skillsApi.create!);
 }

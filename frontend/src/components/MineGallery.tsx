@@ -1,36 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { api, GalleryImage } from '../lib/api';
+import { useGalleryImages } from '../hooks/queries/gallery';
 import { Camera, MapPin, Calendar, Loader2 } from 'lucide-react';
 
 const MineGallery: React.FC = () => {
-  const [images, setImages] = useState<GalleryImage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchImages = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const result = await api.gallery.getAll();
-        if (result.success && result.data) {
-          // 限制显示前 6 张图片
-          setImages(result.data.slice(0, 6));
-        } else {
-          setError(result.error || 'Failed to fetch gallery');
-        }
-      } catch (err) {
-        console.error('Failed to fetch gallery:', err);
-        setError('Failed to fetch gallery');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchImages();
-  }, []);
+  const { data: allImages = [], isLoading: loading, error: queryError } = useGalleryImages();
+  const images = useMemo(() => allImages.slice(0, 6), [allImages]);
+  const error = queryError?.message ?? null;
 
   const formatDate = (date: string) => {
     const d = new Date(date);

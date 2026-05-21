@@ -22,6 +22,17 @@ export function useShortDiaryList() {
   return useDiaryList({ type: 'SHORT', limit: 200 });
 }
 
+export function useLongDiaryNavList() {
+  return useQuery({
+    queryKey: [...queryKeys.diary.all, 'long-nav'],
+    queryFn: async () => {
+      const all = await unwrapApi(diaryApi.getAll());
+      return all.filter((d) => d.type === 'LONG');
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useDiaryEntry(id: string | undefined) {
   return useQuery({
     queryKey: queryKeys.diary.detail(id ?? ''),

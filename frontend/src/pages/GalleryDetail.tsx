@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, GalleryImage, Album } from '../lib/api';
+import type { GalleryImage } from '../lib/api';
+import { useGalleryImages } from '../hooks/queries/gallery';
 import {
   Calendar,
   Camera,
@@ -18,41 +19,14 @@ const ITEMS_PER_PAGE = 8;
 
 const GalleryDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [album, setAlbum] = useState<Album | null>(null);
-  const [allPhotos, setAllPhotos] = useState<GalleryImage[]>([]);
+  const { data: allPhotos = [], isLoading: loading, error: queryError } = useGalleryImages({
+    albumId: id,
+  });
+  const album = useMemo(() => allPhotos[0]?.album ?? null, [allPhotos]);
+  const error = queryError?.message ?? null;
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryImage | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [commentInput, setCommentInput] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const fetchAlbum = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await api.gallery.getAll({ albumId: id });
-        if (result.success && result.data) {
-          // 提取相册信息
-          if (result.data.length > 0 && result.data[0].album) {
-            setAlbum(result.data[0].album);
-          }
-          setAllPhotos(result.data);
-          setCurrentPage(1);
-        } else {
-          setError(result.error || 'Failed to fetch album');
-        }
-      } catch (err) {
-        setError('Failed to fetch album');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (id) {
-      fetchAlbum();
-    }
-  }, [id]);
 
   useEffect(() => {
     setCurrentPage(1);

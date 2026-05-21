@@ -1,29 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { projectsApi, Project } from '../lib/api';
+import React from 'react';
+import type { Project } from '../lib/api';
+import { useProjectsList } from '../hooks/queries/projects';
 import { Terminal, Cpu, Layers, ExternalLink, Loader2 } from 'lucide-react';
 
 const Arsenal: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // 从 API 获取项目列表
-  useEffect(() => {
-    const fetchProjects = async () => {
-      setLoading(true);
-      try {
-        const result = await projectsApi.getAll({ featured: true, limit: 6 });
-        if (result.success && result.data) {
-          setProjects(result.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch projects:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProjects();
-  }, []);
+  const { data: projects = [], isLoading: loading } = useProjectsList({
+    featured: true,
+    limit: 6,
+  });
 
   // 根据项目ID或类型返回对应的图标
   const getProjectIcon = (project: Project, index: number) => {

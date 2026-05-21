@@ -17,47 +17,14 @@ import {
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
-import { announcementsApi } from '../lib/api';
+import { useAnnouncement, useAnnouncements } from '../hooks/queries/announcements';
 
 const AnnouncementDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
-  const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-   useEffect(() => {
-    const fetchAnnouncement = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        // 获取所有公告（用于上一篇/下一篇导航）
-        const allResult = await announcementsApi.getAll();
-        if (allResult.success && allResult.data) {
-          setAllAnnouncements(allResult.data);
-        }
-
-        // 从 API 获取当前公告
-        const result = await announcementsApi.getById(id!);
-        if (result.success && result.data) {
-          setAnnouncement(result.data);
-        } else {
-          setError(result.error || '公告不存在');
-        }
-      } catch (err: any) {
-        console.error('Failed to fetch announcement:', err);
-        setError('获取公告失败，请重试');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchAnnouncement();
-    }
-  }, [id]);
+  const { data: announcement, isLoading: loading, error: queryError } = useAnnouncement(id);
+  const { data: allAnnouncements = [] } = useAnnouncements();
+  const error = queryError?.message ?? null;
 
   // 公告类型映射
   const getTypeConfig = (type: Announcement['type']) => {

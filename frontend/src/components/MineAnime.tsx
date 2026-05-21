@@ -1,34 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PlayCircle, CheckCircle, PauseCircle, XCircle, Heart, HeartOff, Loader2 } from 'lucide-react';
-import { api, Anime } from '../lib/api';
+import { useAnimeList } from '../hooks/queries/anime';
 
 const MineAnime: React.FC = () => {
   const [filter, setFilter] = useState<'FAVORITE' | 'ALL' | 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED'>('ALL');
-  const [animeList, setAnimeList] = useState<Anime[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const fetchAnime = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await api.anime.getAll();
-        if (result.success && result.data) {
-          setAnimeList(result.data);
-        } else {
-          setError(result.error || 'Failed to fetch anime');
-        }
-      } catch (err) {
-        setError('Failed to fetch anime');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchAnime();
-  }, []);
+  const { data: animeList = [], isLoading: loading, error: queryError } = useAnimeList();
+  const error = queryError?.message ?? null;
   
   const filteredList = animeList.filter(item => {
     if (filter === 'ALL') return true;

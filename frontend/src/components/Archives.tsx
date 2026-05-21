@@ -1,40 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { postsApi } from '../lib/api';
+import { usePostsList } from '../hooks/queries/posts';
 import { ArrowRight, LayoutList, LayoutGrid, Loader2 } from 'lucide-react';
-
-interface PostWithSlug {
-  id: string;
-  slug: string;
-  title: string;
-  date: string;
-  category: string;
-  excerpt: string;
-}
 
 const Archives: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [posts, setPosts] = useState<PostWithSlug[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // 从 API 获取文章列表
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      try {
-        const result = await postsApi.getAll({ limit: 6 });
-        if (result.success && result.data) {
-          setPosts(result.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch posts for Archives:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPosts();
-  }, []);
+  const { data: posts = [], isLoading: loading } = usePostsList({ limit: 6 });
 
   // 格式化日期显示
   const formatDate = (dateString: string) => {

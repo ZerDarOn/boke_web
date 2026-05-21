@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { postsApi, Post } from '../lib/api';
+import type { Post } from '../lib/api';
+import { usePostsList } from '../hooks/queries/posts';
 import { ArrowRight, List, GitCommit, Folder, Loader2, Lock } from 'lucide-react';
 
 // Visual helper for category colors (moved outside component)
@@ -26,27 +27,7 @@ const formatDate = (dateString: string) => {
 
 const TimelineArchives: React.FC = () => {
   const [viewMode, setViewMode] = useState<'timeline' | 'list'>('timeline');
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // 从 API 获取文章列表
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      try {
-        const result = await postsApi.getAll({ limit: 100 });
-        if (result.success && result.data) {
-          setPosts(result.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch posts:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPosts();
-  }, []);
+  const { data: posts = [], isLoading: loading } = usePostsList({ limit: 100 });
 
   // Group posts by year
   const postsByYear = useMemo(() => {

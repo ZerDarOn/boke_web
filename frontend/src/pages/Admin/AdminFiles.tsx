@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { api, FileItem, FileContent } from '../../lib/api';
+import React, { useState, useRef } from 'react';
+import { api, FileItem } from '../../lib/api';
+import { useFilesList } from '../../hooks/queries/files';
 import {
   FileText,
   File,
@@ -31,9 +32,8 @@ interface FileEditorData {
 }
 
 const AdminFiles: React.FC = () => {
-  const [files, setFiles] = useState<FileItem[]>([]);
   const [currentPath, setCurrentPath] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const { data: files = [], isLoading: loading, refetch: refetchFiles } = useFilesList(currentPath);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -56,26 +56,9 @@ const AdminFiles: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    loadFiles();
-  }, [currentPath]);
-
-  const loadFiles = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.files.getAll(currentPath);
-      if (result.success && result.data) {
-        setFiles(result.data);
-      } else {
-        setError(result.error || 'Failed to load files');
-      }
-    } catch (error) {
-      console.error('Failed to load files:', error);
-      setError('Failed to load files');
-    } finally {
-      setLoading(false);
-    }
+  const refreshFiles = async () => {
+    setError(null);
+    await refetchFiles();
   };
 
   const handleCreate = () => {
@@ -142,7 +125,7 @@ const AdminFiles: React.FC = () => {
     try {
       const result = await api.files.removePassword(file.path);
       if (result.success) {
-        await loadFiles();
+        await refreshFiles();
       } else {
         setError(result.error || 'Failed to remove password');
       }
@@ -159,7 +142,7 @@ const AdminFiles: React.FC = () => {
       setIsSubmitting(true);
       const result = await api.files.delete(selectedFile.path);
       if (result.success) {
-        await loadFiles();
+        await refreshFiles();
         setIsModalOpen(false);
       } else {
         setError(result.error || 'Failed to delete file');
@@ -181,7 +164,7 @@ const AdminFiles: React.FC = () => {
         const fullPath = formData.path + formData.name;
         const result = await api.files.create(fullPath, 'file', formData.content);
         if (result.success) {
-          await loadFiles();
+          await refreshFiles();
           setIsModalOpen(false);
         } else {
           setError(result.error || 'Failed to create file');
@@ -190,7 +173,7 @@ const AdminFiles: React.FC = () => {
         const fullPath = formData.path + formData.name;
         const result = await api.files.create(fullPath, 'directory');
         if (result.success) {
-          await loadFiles();
+          await refreshFiles();
           setIsModalOpen(false);
         } else {
           setError(result.error || 'Failed to create directory');
@@ -198,7 +181,7 @@ const AdminFiles: React.FC = () => {
       } else if (modalType === 'edit') {
         const result = await api.files.updateContent(formData.path, formData.content);
         if (result.success) {
-          await loadFiles();
+          await refreshFiles();
           setIsModalOpen(false);
         } else {
           setError(result.error || 'Failed to update file');
@@ -210,7 +193,7 @@ const AdminFiles: React.FC = () => {
         }
         const result = await api.files.setPassword(passwordData.path, passwordData.password);
         if (result.success) {
-          await loadFiles();
+          await refreshFiles();
           setIsModalOpen(false);
         } else {
           setError(result.error || 'Failed to set password');
@@ -263,7 +246,7 @@ const AdminFiles: React.FC = () => {
 
       const result = await api.files.upload(currentPath, uploadedFiles);
       if (result.success) {
-        await loadFiles();
+        await refreshFiles();
       } else {
         setError(result.error || 'Failed to upload files');
       }
@@ -351,7 +334,7 @@ const AdminFiles: React.FC = () => {
       setIsImporting(true);
       const result = await api.files.importFiles(file, currentPath);
       if (result.success) {
-        await loadFiles();
+        await refreshFiles();
         setSelectedPaths(new Set());
       } else {
         setError(result.error || '导入失败');

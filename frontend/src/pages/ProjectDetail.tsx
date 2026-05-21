@@ -23,47 +23,16 @@ import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
 import { useLang } from '../contexts/LangContext';
-import { api, Project } from '../lib/api';
+import type { Project } from '../lib/api';
+import { useProject, useProjectsList } from '../hooks/queries/projects';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useLang();
   const [theme, setTheme] = React.useState<'light' | 'dark'>('light');
-  const [project, setProject] = useState<Project | null>(null);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [projectResult, allResult] = await Promise.all([
-          api.projects.getById(id!),
-          api.projects.getAll()
-        ]);
-        
-        if (projectResult.success && projectResult.data) {
-          setProject(projectResult.data);
-        } else {
-          setError(projectResult.error || 'Failed to fetch project');
-        }
-        
-        if (allResult.success && allResult.data) {
-          setAllProjects(allResult.data);
-        }
-      } catch (err) {
-        setError('Failed to fetch project data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (id) {
-      fetchData();
-    }
-  }, [id]);
+  const { data: project, isLoading: loading, error: queryError } = useProject(id);
+  const { data: allProjects = [] } = useProjectsList();
+  const error = queryError?.message ?? null;
 
   useEffect(() => {
     const checkTheme = () => {

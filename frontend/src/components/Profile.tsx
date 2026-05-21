@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { api, Skill } from '../lib/api';
+import React from 'react';
+import { useSkillNodes } from '../hooks/queries/skills';
 
 interface SkillNode {
   id: string;
@@ -11,30 +11,8 @@ interface SkillNode {
 }
 
 const Profile: React.FC = () => {
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadSkills();
-  }, []);
-
-  const loadSkills = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await api.skills.getAll();
-      if (result.success && result.data) {
-        setSkills(result.data);
-      } else {
-        setError(result.error || 'Failed to load skills');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: skills = [], isLoading: loading, error: queryError } = useSkillNodes();
+  const error = queryError?.message ?? null;
 
   // Transform API skills to skill nodes
   const skillNodes: SkillNode[] = skills.map(skill => ({

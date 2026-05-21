@@ -14,14 +14,13 @@ import {
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
-import { diaryApi } from '../lib/api';
+import { useDiaryEntry, useLongDiaryNavList } from '../hooks/queries/diary';
 
 const DiaryDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [diary, setDiary] = useState<Diary | null>(null);
-  const [allLongDiaries, setAllLongDiaries] = useState<Diary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: diary, isLoading: loading, error: queryError } = useDiaryEntry(id);
+  const { data: allLongDiaries = [] } = useLongDiaryNavList();
+  const error = queryError?.message ?? null;
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showCopyAlert, setShowCopyAlert] = useState(false);
 
@@ -57,39 +56,6 @@ const DiaryDetail: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch diary from API
-  useEffect(() => {
-    const fetchDiary = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Fetch all diaries first (for prev/next navigation)
-        const allResult = await diaryApi.getAll();
-        if (allResult.success && allResult.data) {
-          const longDiaries = allResult.data.filter(d => d.type === 'LONG');
-          setAllLongDiaries(longDiaries);
-        }
-
-        // Fetch current diary from API
-        const result = await diaryApi.getById(id!);
-        if (result.success && result.data) {
-          setDiary(result.data);
-        } else {
-          setError(result.error || '日记不存在');
-        }
-      } catch (err: any) {
-        console.error('Failed to fetch diary:', err);
-        setError('获取日记失败，请重试');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchDiary();
-    }
-  }, [id]);
 
   if (loading) {
     return (

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { API_BASE_URL } from '../../lib/apiConfig';
+import { useExportStats } from '../../hooks/queries/export';
+import { getAuthToken } from '../../lib/api/request';
 import {
   Download,
   FileText,
@@ -16,49 +18,12 @@ import {
   Megaphone
 } from 'lucide-react';
 
-interface ExportStats {
-  posts: number;
-  projects: number;
-  anime: number;
-  diaries: number;
-  timeline: number;
-  skills: number;
-  gallery: number;
-  announcements: number;
-  total: number;
-}
-
 const ContentExport: React.FC = () => {
-  const [stats, setStats] = useState<ExportStats | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { data: stats, isLoading: loading, error: statsQueryError, refetch } = useExportStats();
   const [exporting, setExporting] = useState<string | null>(null);
   const [downloadImages, setDownloadImages] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/export/stats`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setStats(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch stats');
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch stats:', err);
-      setError(err.message || 'Failed to fetch stats');
-    }
-  };
+  const statsError = statsQueryError?.message ?? null;
 
   const handleExport = async (type: string) => {
     setExporting(type);
@@ -69,10 +34,9 @@ const ContentExport: React.FC = () => {
         ? `${API_BASE_URL}/api/export/all?downloadImages=${downloadImages}`
         : `${API_BASE_URL}/api/export/${type}?downloadImages=${downloadImages}`;
 
+      const token = getAuthToken();
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (!response.ok) {
@@ -237,7 +201,7 @@ const ContentExport: React.FC = () => {
       </div>
 
       {/* 错误提示 */}
-      {error && (
+      {(error || statsError) && (
         <div className="bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 p-4 flex items-start gap-3">
           <AlertCircle size={20} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">

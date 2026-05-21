@@ -4,7 +4,7 @@ import SimpleComments from '../components/GiscusComments';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
-import { api, Anime } from '../lib/api';
+import { useAnimeItem, useAnimeList } from '../hooks/queries/anime';
 import {
   ArrowLeft,
   ArrowRight,
@@ -24,10 +24,9 @@ import {
 
 const AnimeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [anime, setAnime] = useState<Anime | null>(null);
-  const [allAnime, setAllAnime] = useState<Anime[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: anime, isLoading: loading, error: queryError } = useAnimeItem(id);
+  const { data: allAnime = [] } = useAnimeList();
+  const error = queryError?.message ?? null;
   const [scrollProgress, setScrollProgress] = useState(0);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
@@ -41,37 +40,6 @@ const AnimeDetail: React.FC = () => {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [animeResult, allResult] = await Promise.all([
-          api.anime.getById(id!),
-          api.anime.getAll()
-        ]);
-        
-        if (animeResult.success && animeResult.data) {
-          setAnime(animeResult.data);
-        } else {
-          setError(animeResult.error || 'Failed to fetch anime');
-        }
-        
-        if (allResult.success && allResult.data) {
-          setAllAnime(allResult.data);
-        }
-      } catch (err) {
-        setError('Failed to fetch anime data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (id) {
-      fetchData();
-    }
-  }, [id]);
 
   useEffect(() => {
     const checkTheme = () => {

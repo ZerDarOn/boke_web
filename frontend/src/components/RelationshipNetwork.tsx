@@ -1,37 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { User, X, Share2, Loader2 } from 'lucide-react';
-import { api, NetworkNode } from '../lib/api';
+import { useNetworkNodes } from '../hooks/queries/network';
 
 const RelationshipNetwork: React.FC = () => {
   const [activeNodeId, setActiveNodeId] = useState<string | null>('me');
-  const [nodes, setNodes] = useState<NetworkNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
+  const { data: nodes = [], isLoading: loading, error: queryError } = useNetworkNodes();
+  const error = queryError?.message ?? null;
+
   useEffect(() => {
-    const fetchNetwork = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await api.network.getAll();
-        if (result.success && result.data) {
-          setNodes(result.data);
-          // 默认选择第一个节点作为中心
-          if (result.data.length > 0) {
-            setActiveNodeId(result.data[0].id);
-          }
-        } else {
-          setError(result.error || 'Failed to fetch network');
-        }
-      } catch (err) {
-        setError('Failed to fetch network');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchNetwork();
-  }, []);
+    if (nodes.length > 0) {
+      setActiveNodeId(nodes[0].id);
+    }
+  }, [nodes]);
   
   const getNode = (id: string) => nodes.find(n => n.id === id);
   const activeNode = activeNodeId ? getNode(activeNodeId) : null;
