@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import type { Announcement } from '../types';
+import type { Announcement } from '../lib/api';
 import {
   Info,
   AlertTriangle,

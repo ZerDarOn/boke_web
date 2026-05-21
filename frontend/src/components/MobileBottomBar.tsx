@@ -82,9 +82,9 @@ const MobileBottomBar: React.FC = () => {
   const tags = useMemo((): Tag[] => {
     if (!tagsRaw) return [];
     return tagsRaw
-      .map((tag) => ({
-        name: tag.name,
-        count: tag.count || 0,
+      .map((tag: string | { name: string; count?: number }) => ({
+        name: typeof tag === 'string' ? tag : tag.name,
+        count: typeof tag === 'string' ? 0 : tag.count || 0,
       }))
       .slice(0, 10);
   }, [tagsRaw]);

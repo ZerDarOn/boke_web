@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import type { Diary } from '../types';
+import type { Diary } from '../lib/api';
 import ReactMarkdown from 'react-markdown';
 import {
   ArrowLeft,

@@ -52,7 +52,7 @@ const MineGallery: React.FC = () => {
             {images.map((img) => (
                 <Link
                    key={img.id}
-                   to={`/gallery/${img.id}`}
+                   to={img.album?.id ? `/gallery/${img.album.id}` : '/gallery'}
                    className="break-inside-avoid block relative group bg-white dark:bg-[#111] border border-gray-100 dark:border-white/5 p-3 shadow-sm hover:shadow-xl dark:hover:border-neon/50 transition-all duration-500 cursor-pointer overflow-hidden"
                 >
                     {/* Image Container */}
@@ -105,7 +105,7 @@ const MineGallery: React.FC = () => {
                                  </span>
                                )}
                            </div>
-                       }
+                       </div>
 
                        <div className="font-mono text-xs text-gray-300 dark:text-gray-600 group-hover:text-ink dark:group-hover:text-white font-bold">
                            #{img.id}

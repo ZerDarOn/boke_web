@@ -14,6 +14,8 @@ export function useProjectsList(params?: {
   page?: number;
   limit?: number;
   status?: string;
+  featured?: boolean;
+  search?: string;
 }) {
   return useQuery({
     queryKey: queryKeys.projects.list(params),

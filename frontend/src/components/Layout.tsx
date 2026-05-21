@@ -288,7 +288,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <h3 className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-2 px-2 border-l-2 border-orange-400/50">GALLERY ({searchResults.gallery.length})</h3>
                         <div className="grid gap-2">
                           {searchResults.gallery.map((img: any) => (
-                            <Link key={img.id} to={`/gallery/${img.id}`} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
+                            <Link key={img.id} to={img.album?.id ? `/gallery/${img.album.id}` : '/gallery'} onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="p-3 hover:bg-white/5 border border-transparent hover:border-white/10 rounded cursor-pointer flex justify-between items-center group transition-all">
                               <span className="text-gray-300 group-hover:text-white font-sans">{img.title}</span>
                               <span className="text-[10px] text-gray-600 font-mono border border-gray-800 px-1 rounded">{img.tags?.[0] || 'PHOTO'}</span>
                             </Link>
