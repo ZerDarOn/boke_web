@@ -25,7 +25,7 @@ export function QueryClientProvider({ children }: QueryClientProviderProps) {
   return (
     <BaseQueryClientProvider client={queryClient}>
       {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </BaseQueryClientProvider>
   );
 }

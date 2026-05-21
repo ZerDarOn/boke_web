@@ -8,9 +8,11 @@ const RelationshipNetwork: React.FC = () => {
   const error = queryError?.message ?? null;
 
   useEffect(() => {
-    if (nodes.length > 0) {
-      setActiveNodeId(nodes[0].id);
-    }
+    if (nodes.length === 0) return;
+    setActiveNodeId((prev) => {
+      if (prev && nodes.some((n) => n.id === prev)) return prev;
+      return nodes[0].id;
+    });
   }, [nodes]);
   
   const getNode = (id: string) => nodes.find(n => n.id === id);

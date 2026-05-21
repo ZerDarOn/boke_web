@@ -105,9 +105,7 @@ export default function Posts() {
 
   const allTags = useMemo(() => {
     if (!tagsRaw) return [];
-    return tagsRaw.map((tag: string | { name: string }) =>
-      typeof tag === 'string' ? tag : tag.name
-    );
+    return tagsRaw.map((tag) => tag.name);
   }, [tagsRaw]);
 
   useEffect(() => {

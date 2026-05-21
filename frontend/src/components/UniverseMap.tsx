@@ -12,11 +12,12 @@ const UniverseMap: React.FC = () => {
   const error = queryError?.message ?? null;
 
   useEffect(() => {
-    const selfNode = nodes.find((n) => n.type === 'self');
-    if (selfNode) {
-      setActiveNodeId(selfNode.id);
-    }
-  }, [filter, nodes]);
+    setActiveNodeId((prev) => {
+      if (prev && nodes.some((n) => n.id === prev)) return prev;
+      const selfNode = nodes.find((n) => n.type === 'self');
+      return selfNode?.id ?? prev;
+    });
+  }, [nodes, filter]);
 
   const getNode = (id: string) => nodes.find(n => n.id === id);
   const activeNode = activeNodeId ? getNode(activeNodeId) : null;

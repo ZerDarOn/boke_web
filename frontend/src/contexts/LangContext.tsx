@@ -5,7 +5,7 @@ type Lang = 'EN' | 'ZH';
 
 interface LangContextType {
   lang: Lang;
-  setLang: (lang: Lang) => void;
+  setLang: React.Dispatch<React.SetStateAction<Lang>>;
   t: typeof TRANSLATIONS[Lang];
 }
 

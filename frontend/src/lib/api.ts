@@ -124,12 +124,12 @@ export const postsApi = {
 
   // GET /api/posts/categories - 获取分类列表
   getCategories: async () => {
-    return apiRequest<string[]>(`/api/posts/categories`);
+    return apiRequest<{ name: string; count: number }[]>(`/api/posts/categories`);
   },
 
   // GET /api/posts/tags - 获取标签列表
   getTags: async () => {
-    return apiRequest<string[]>(`/api/posts/tags`);
+    return apiRequest<{ name: string; count: number }[]>(`/api/posts/tags`);
   },
 
   // GET /api/posts/:id - 获取文章详情
@@ -931,9 +931,13 @@ export const announcementsApi = {
 export interface SearchResult {
   posts?: Post[];
   projects?: Project[];
-  anime?: Anime[];
+  announcements?: Announcement[];
+  diaries?: Diary[];
+  /** @deprecated 旧字段，与 diaries 二选一 */
   diary?: Diary[];
-  totalResults: number;
+  anime?: Anime[];
+  gallery?: GalleryImage[];
+  totalResults?: number;
 }
 
 export const searchApi = {

@@ -42,7 +42,7 @@ interface LayoutProps {
 // Hero 状态 Context，用于跨页面同步
 export const HeroContext = React.createContext<{
   bgIndex: number;
-  setBgIndex: (index: number) => void;
+  setBgIndex: React.Dispatch<React.SetStateAction<number>>;
 }>({
   bgIndex: 0,
   setBgIndex: () => {},
