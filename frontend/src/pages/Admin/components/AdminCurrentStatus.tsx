@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { api } from '../../../lib/api';
+import { api, type CurrentStatus } from '../../../lib/api';
 import {
   useCurrentStatusList,
   useCreateCurrentStatus,
@@ -20,7 +20,7 @@ const AdminCurrentStatus: React.FC = () => {
   const deleteItem = useDeleteCurrentStatus();
 
   const [editingItem, setEditingItem] = useState<Record<string, unknown> | null>(null);
-  const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [formData, setFormData] = useState<Partial<CurrentStatus>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const isSubmitting = createItem.isPending || updateItem.isPending;
 

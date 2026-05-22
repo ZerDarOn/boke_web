@@ -119,8 +119,8 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
       if (updatedNode && onUpdateNode) {
         await onUpdateNode(draggingNode, {
           x: updatedNode.x,
-          y: updatedNode.y
-        });
+          y: updatedNode.y,
+        } as Partial<T>);
       }
     }
     
@@ -191,14 +191,12 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
         category: (editingNode as any).category,
         rank: (editingNode as any).rank,
         connections: (editingNode as any).connections,
-        // 图片
         avatar: (editingNode as any).avatar,
         image: (editingNode as any).image,
-        // 按钮配置
         buttonEnabled: (editingNode as any).buttonEnabled,
         buttonLabel: (editingNode as any).buttonLabel,
         buttonLink: (editingNode as any).buttonLink,
-      });
+      } as unknown as Partial<T>);
       setSelectedNode(editingNode);
       alert('保存成功！');
     } catch (error) {
@@ -268,7 +266,7 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
       return colors[networkNode.type as keyof typeof colors] || colors.minor;
     } else {
       // 技能节点：优先使用 nodeType，否则根据 level 决定大小
-      const nodeType = skillNode.nodeType || skillNode.type;
+      const nodeType = skillNode.nodeType;
       if (nodeType === 'core') {
         return 'w-24 h-24 bg-ink shadow-[0_0_30px_rgba(16,185,129,0.3)]';
       } else if (nodeType === 'major') {
@@ -282,7 +280,7 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
         4: 'w-18 h-18 bg-pink-100 dark:bg-pink-900',
         5: 'w-20 h-20 bg-red-100 dark:bg-red-900'
       };
-      return levels[skillNode.level || 1];
+      return levels[(skillNode.level || 1) as keyof typeof levels];
     }
   };
 
@@ -554,7 +552,7 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
                 <ImageUpload
                   value={type === 'network' ? (editingNode as any).avatar : (editingNode as any).image}
                   onChange={(url) => handleEditingNodeChange(type === 'network' ? 'avatar' : 'image', url)}
-                  type={type}
+                  type={type === 'network' ? 'network' : 'skill'}
                   size={80}
                 />
               </div>

@@ -5,7 +5,7 @@ import { Mail, Github, Video, MessageCircle, Copy, Check } from 'lucide-react';
 import { usePageCopy } from '../hooks/useSiteConfig';
 
 const About: React.FC = () => {
-  const lang: 'EN' | 'ZH' = 'ZH';
+  const lang = 'ZH' as 'EN' | 'ZH';
   const t = TRANSLATIONS[lang];
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const pageCopy = usePageCopy();

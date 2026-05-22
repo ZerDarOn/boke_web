@@ -54,7 +54,7 @@ const AdminGallery: React.FC = () => {
     tags: []
   });
 
-  const refreshAlbums = () => rerefreshAlbums();
+  const refreshAlbums = () => refetchAlbums();
   const refreshPhotos = () => refetchPhotos();
 
   // 进入相册

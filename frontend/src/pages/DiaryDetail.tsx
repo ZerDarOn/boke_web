@@ -129,7 +129,7 @@ const DiaryDetail: React.FC = () => {
       <div className="mb-6 relative z-10">
         <BreadcrumbNav items={[
           { label: '日记', href: '/diary' },
-          { label: diary.title }
+          { label: diary.title ?? '日记' }
         ]} />
       </div>
 
@@ -321,8 +321,8 @@ const DiaryDetail: React.FC = () => {
 
       <div className="mb-12">
         <PrevNextNavigation
-          prev={prevDiary ? { id: prevDiary.id, title: prevDiary.title, href: `/diary/${prevDiary.id}`, date: prevDiary.date } : null}
-          next={nextDiary ? { id: nextDiary.id, title: nextDiary.title, href: `/diary/${nextDiary.id}`, date: nextDiary.date } : null}
+          prev={prevDiary ? { id: prevDiary.id, title: prevDiary.title ?? '', href: `/diary/${prevDiary.id}`, date: prevDiary.date } : null}
+          next={nextDiary ? { id: nextDiary.id, title: nextDiary.title ?? '', href: `/diary/${nextDiary.id}`, date: nextDiary.date } : null}
         />
       </div>
 

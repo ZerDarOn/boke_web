@@ -40,7 +40,7 @@ const MaintenancePanel: React.FC = () => {
         response = await maintenanceApi.getLogs(selectedCategory, token);
       }
       
-      if (response.success) {
+      if (response.success && response.data) {
         setLogs(response.data.logs);
         setFilteredLogs(response.data.logs);
       }
@@ -57,7 +57,7 @@ const MaintenancePanel: React.FC = () => {
     
     try {
       const response = await maintenanceApi.getCategories(token);
-      if (response.success) {
+      if (response.success && response.data) {
         setCategories(response.data.categories);
       }
     } catch (err) {

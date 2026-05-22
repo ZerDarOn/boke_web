@@ -37,6 +37,7 @@ interface Post {
   id: string;
   title: string;
   slug: string;
+  content?: string;
   category: string;
   isPublished: boolean;
   viewCount: number;

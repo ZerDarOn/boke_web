@@ -92,7 +92,7 @@ const GalleryDetail: React.FC = () => {
     setCommentInput('');
   };
 
-  const getAspectRatio = (aspect: GalleryItem['aspect']) => {
+  const getAspectRatio = (aspect: GalleryImage['aspect']) => {
     switch (aspect) {
       case 'portrait':
         return 'aspect-[3/4]';

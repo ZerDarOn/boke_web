@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { API_BASE_URL } from '../../lib/apiConfig';
+import { getAuthToken } from '../../lib/api/request';
 import { useDropzone } from 'react-dropzone';
 import {
   Upload,
@@ -26,6 +27,13 @@ interface ImportResult {
   }>;
 }
 
+interface FilePreview {
+  file: File;
+  content: string;
+  frontMatter: Record<string, unknown> | null;
+  error: string | null;
+}
+
 const ContentImport: React.FC = () => {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -39,6 +47,9 @@ const ContentImport: React.FC = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewFiles, setPreviewFiles] = useState<FilePreview[]>([]);
+  const [importingFiles, setImportingFiles] = useState<Set<string>>(new Set());
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
 
   const onDropSingle = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
@@ -56,7 +67,7 @@ const ContentImport: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
           content,
@@ -81,7 +92,7 @@ const ContentImport: React.FC = () => {
             success: 1,
             failed: 0,
             skipped: 0,
-            details: [{ file: file.name, saved: result.data }]
+            details: [{ file: file.name, saved: result.data, message: '导入成功' }]
           });
         }
       } else {
@@ -132,7 +143,7 @@ const ContentImport: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
           files: filesWithContent,
@@ -220,7 +231,7 @@ const ContentImport: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
           files: filesWithContent,
@@ -305,7 +316,7 @@ const ContentImport: React.FC = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+              'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify({
               zipData: base64,
@@ -402,24 +413,6 @@ const ContentImport: React.FC = () => {
     maxSize: 10 * 1024 * 1024 // 10MB for ZIP, 1MB for MD files
   });
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.md')) {
-      alert('只支持 Markdown 文件');
-      return;
-    }
-
-    if (file.size > 1 * 1024 * 1024) {
-      alert('文件大小不能超过 1MB');
-      return;
-    }
-
-    setSelectedFile(file);
-    onDrop([file]);
-  };
-
   const handleReset = () => {
     setResults({ success: 0, failed: 0, skipped: 0 });
     setShowDetails(false);
@@ -451,31 +444,26 @@ const ContentImport: React.FC = () => {
             try {
               const yamlContent = frontMatterMatch[1];
               // 简单解析 YAML（实际应该使用 js-yaml）
-              frontMatter = yamlContent.split('\n').reduce((acc: any, line) => {
+              frontMatter = yamlContent.split('\n').reduce((acc: Record<string, unknown>, line) => {
                 const match = line.match(/^(\w+):\s*(.*)$/);
                 if (match) {
-                  const [_, key, value] = match;
-                  let parsedValue = value.trim();
-                  
-                  // 处理数组
-                  if (parsedValue.startsWith('[') && parsedValue.endsWith(']')) {
-                    parsedValue = parsedValue.slice(1, -1).split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-                  }
-                  // 处理布尔值
-                  else if (parsedValue === 'true') {
+                  const [, key, value] = match;
+                  let parsedValue: unknown = value.trim();
+
+                  if (typeof parsedValue === 'string' && parsedValue.startsWith('[') && parsedValue.endsWith(']')) {
+                    parsedValue = parsedValue.slice(1, -1).split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
+                  } else if (parsedValue === 'true') {
                     parsedValue = true;
                   } else if (parsedValue === 'false') {
                     parsedValue = false;
-                  }
-                  // 处理字符串
-                  else if (parsedValue.startsWith('"') && parsedValue.endsWith('"')) {
+                  } else if (typeof parsedValue === 'string' && parsedValue.startsWith('"') && parsedValue.endsWith('"')) {
                     parsedValue = parsedValue.slice(1, -1);
                   }
-                  
+
                   acc[key] = parsedValue;
                 }
                 return acc;
-              }, {});
+              }, {} as Record<string, unknown>);
 
               body = content.replace(frontMatterMatch[0], '');
             } catch {
@@ -531,11 +519,6 @@ const ContentImport: React.FC = () => {
     setImportingFiles(new Set());
   };
 
-  /**
-   * 切换文件选择状态
-   */
-  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
-
   const toggleSelect = (index: number) => {
     const newSelected = new Set(selectedIndices);
     if (newSelected.has(index)) {
@@ -552,6 +535,16 @@ const ContentImport: React.FC = () => {
     } else {
       setSelectedIndices(new Set(previewFiles.map((_, i) => i)));
     }
+  };
+
+  const fmString = (fm: Record<string, unknown> | null, key: string) => {
+    const v = fm?.[key];
+    return typeof v === 'string' ? v : undefined;
+  };
+
+  const fmTags = (fm: Record<string, unknown> | null) => {
+    const v = fm?.tags;
+    return Array.isArray(v) ? v.map(String) : [];
   };
 
   return (
@@ -662,8 +655,7 @@ const ContentImport: React.FC = () => {
                 <span>选择文件夹</span>
                 <input
                   type="file"
-                  webkitdirectory
-                  directory
+                  {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
                   disabled={importing}
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
@@ -773,9 +765,9 @@ const ContentImport: React.FC = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <FileText size={16} className="text-gray-500" />
                         <span className="font-medium text-ink dark:text-paper">{preview.file.name}</span>
-                        {preview.frontMatter?.type && (
+                        {fmString(preview.frontMatter, 'type') && (
                           <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
-                            {preview.frontMatter.type}
+                            {fmString(preview.frontMatter, 'type')}
                           </span>
                         )}
                       </div>
@@ -787,27 +779,27 @@ const ContentImport: React.FC = () => {
                       {preview.frontMatter ? (
                         <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                           <div className="grid grid-cols-2 gap-2 text-xs">
-                            {preview.frontMatter.title && (
+                            {fmString(preview.frontMatter, 'title') && (
                               <div>
                                 <span className="text-gray-500">标题:</span>
                                 <span className="ml-2 font-medium text-ink dark:text-paper truncate">
-                                  {preview.frontMatter.title}
+                                  {fmString(preview.frontMatter, 'title')}
                                 </span>
                               </div>
                             )}
-                            {preview.frontMatter.category && (
+                            {fmString(preview.frontMatter, 'category') && (
                               <div>
                                 <span className="text-gray-500">分类:</span>
                                 <span className="ml-2 font-medium text-ink dark:text-paper">
-                                  {preview.frontMatter.category}
+                                  {fmString(preview.frontMatter, 'category')}
                                 </span>
                               </div>
                             )}
-                            {preview.frontMatter.tags && preview.frontMatter.tags.length > 0 && (
+                            {fmTags(preview.frontMatter).length > 0 && (
                               <div>
                                 <span className="text-gray-500">标签:</span>
                                 <div className="ml-2 flex flex-wrap gap-1">
-                                  {preview.frontMatter.tags.map((tag: string) => (
+                                  {fmTags(preview.frontMatter).map((tag) => (
                                     <span key={tag} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs">
                                       {tag}
                                     </span>
@@ -815,19 +807,19 @@ const ContentImport: React.FC = () => {
                                 </div>
                               </div>
                             )}
-                            {preview.frontMatter.date && (
+                            {fmString(preview.frontMatter, 'date') && (
                               <div>
                                 <span className="text-gray-500">日期:</span>
                                 <span className="ml-2 font-medium text-ink dark:text-paper">
-                                  {new Date(preview.frontMatter.date).toLocaleDateString('zh-CN')}
+                                  {new Date(fmString(preview.frontMatter, 'date')!).toLocaleDateString('zh-CN')}
                                 </span>
                               </div>
                             )}
-                            {preview.frontMatter.excerpt && (
+                            {fmString(preview.frontMatter, 'excerpt') && (
                               <div className="col-span-2">
                                 <span className="text-gray-500">摘要:</span>
                                 <p className="ml-2 text-ink dark:text-paper mt-1 line-clamp-2">
-                                  {preview.frontMatter.excerpt}
+                                  {fmString(preview.frontMatter, 'excerpt')}
                                 </p>
                               </div>
                             )}

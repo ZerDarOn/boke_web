@@ -12,7 +12,8 @@ import {
   FileText,
   Wrench,
   Zap,
-  Home
+  Home,
+  ArrowRight,
 } from 'lucide-react';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
@@ -191,7 +192,7 @@ const AnnouncementDetail: React.FC = () => {
                   附件
                 </h3>
                 <div className="space-y-2">
-                  {announcement.attachments.map((attachment, index) => (
+                  {announcement.attachments.map((attachment: { name: string; url: string; size?: string }, index: number) => (
                     <a
                       key={index}
                       href={attachment.url}

@@ -241,13 +241,17 @@ const AdminSettings: React.FC = () => {
   };
 
   const updateHeroContent = (heroId: string, lang: 'ZH' | 'EN', field: string, value: string) => {
+    const contentKey = lang === 'ZH' ? 'contentZH' : 'contentEN';
     setConfig(prev => ({
       ...prev,
-      heroBackgrounds: prev.heroBackgrounds.map(h => 
-        h.id === heroId 
-          ? { ...h, [`content${lang}`]: { ...h[`content${lang}` as keyof typeof h], [field]: value } }
-          : h
-      )
+      heroBackgrounds: prev.heroBackgrounds.map(h => {
+        if (h.id !== heroId) return h;
+        const prevContent = h[contentKey];
+        return {
+          ...h,
+          [contentKey]: { ...prevContent, [field]: value },
+        };
+      }),
     }));
   };
 

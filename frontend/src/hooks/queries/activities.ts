@@ -35,9 +35,10 @@ export function useActivities(limit?: number) {
         }
       }
 
-      const timeline = await unwrapApi(api.timeline.getAll({ limit: limit || 5 }));
-      if (timeline.length > 0) {
-        return timeline.map((item) => ({
+      const timeline = await unwrapApi(api.timeline.getAll());
+      const sliced = timeline.slice(0, limit || 5);
+      if (sliced.length > 0) {
+        return sliced.map((item) => ({
           id: item.id,
           project: 'Timeline',
           title: item.title,

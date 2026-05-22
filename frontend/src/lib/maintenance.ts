@@ -4,11 +4,11 @@
 
 import { API_BASE_URL } from './apiConfig';
 
-interface MaintenanceLoginRequest {
+export interface MaintenanceLoginRequest {
   password: string;
 }
 
-interface MaintenanceLoginResponse {
+export interface MaintenanceLoginResponse {
   token: string;
   expiry: number;
   maintenanceMode: boolean;
@@ -16,6 +16,12 @@ interface MaintenanceLoginResponse {
 
 interface MaintenanceStatusResponse {
   enabled: boolean;
+}
+
+interface MaintenanceApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
 }
 
 interface LogsResponse {
@@ -93,7 +99,7 @@ export const maintenanceApi = {
     );
 
     const data = await response.json();
-    return data as LogsResponse;
+    return data as MaintenanceApiResponse<LogsResponse>;
   },
 
   /**
@@ -110,7 +116,7 @@ export const maintenanceApi = {
     );
 
     const data = await response.json();
-    return data as LogCategoriesResponse;
+    return data as MaintenanceApiResponse<LogCategoriesResponse>;
   },
 
   /**
@@ -127,7 +133,7 @@ export const maintenanceApi = {
     );
 
     const data = await response.json();
-    return data as LogsResponse;
+    return data as MaintenanceApiResponse<LogsResponse>;
   },
 
   /**
@@ -144,7 +150,7 @@ export const maintenanceApi = {
     );
 
     const data = await response.json();
-    return data as LogsResponse;
+    return data as MaintenanceApiResponse<LogsResponse>;
   },
 
   /**

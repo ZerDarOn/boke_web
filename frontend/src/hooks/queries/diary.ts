@@ -10,7 +10,7 @@ import {
 
 const rootKey = queryKeys.diary.all;
 
-export function useDiaryList(params?: { page?: number; limit?: number; type?: string }) {
+export function useDiaryList(params?: { page?: number; limit?: number; type?: 'SHORT' | 'LONG' }) {
   return useQuery({
     queryKey: queryKeys.diary.list(params),
     queryFn: () => unwrapApi(diaryApi.getAll(params)),

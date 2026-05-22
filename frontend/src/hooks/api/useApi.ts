@@ -39,17 +39,19 @@ export function useApiMutation<TData, TVariables = unknown>(
   const queryClient = useQueryClient();
   const { invalidateKeys, ...mutationOptions } = options ?? {};
 
+  const { onSuccess: userOnSuccess, ...restMutationOptions } = mutationOptions;
+
   return useMutation<TData, Error, TVariables>({
+    ...restMutationOptions,
     mutationFn: async (variables) => ensureApiData(await mutationFn(variables)),
-    onSuccess: async (data, variables, context) => {
+    onSuccess: async (data, variables, onMutateResult, context) => {
       if (invalidateKeys?.length) {
         await Promise.all(
           invalidateKeys.map((key) => queryClient.invalidateQueries({ queryKey: key }))
         );
       }
-      await mutationOptions.onSuccess?.(data, variables, context);
+      await userOnSuccess?.(data, variables, onMutateResult, context);
     },
-    ...mutationOptions,
   });
 }
 

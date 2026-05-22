@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL } from './apiConfig';
+import type { PhotoComment } from '../types';
 import {
   apiRequest,
   apiFetch,
@@ -1017,7 +1018,7 @@ export const filesApi = {
     if (password) queryParams.append('password', password);
 
     const url = `${API_BASE_URL}/api/files/download?${queryParams}`;
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
 
     const response = await fetch(url, {
       headers: token ? { 'Authorization': `Bearer ${token}` } : {},
@@ -1091,7 +1092,7 @@ export const filesApi = {
 
   // POST /api/files/upload - 上传文件（需要认证）
   upload: async (path: string, files: Array<{ name: string; content: string; type: string }>) => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -1122,7 +1123,7 @@ export const filesApi = {
 
   // POST /api/files/export - 批量导出文件（需要认证）
   exportFiles: async (paths: string[]) => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -1160,7 +1161,7 @@ export const filesApi = {
 
   // POST /api/files/import - 批量导入文件（需要认证）
   importFiles: async (file: File, targetPath: string = '') => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
 
     const formData = new FormData();
     formData.append('file', file);
@@ -1328,5 +1329,4 @@ export const api = {
   files: filesApi,
 };
 
-// 导出 API 基础 URL 函数供其他模块使用
-export { getApiBaseUrl };
+export { getApiBaseUrl } from './apiConfig';

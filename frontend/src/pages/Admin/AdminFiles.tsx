@@ -220,11 +220,11 @@ const AdminFiles: React.FC = () => {
 
     try {
       // 将文件转换为 base64 格式
-      const fileArray = [];
+      const fileArray: Promise<{ name: string; content: string; type: string }>[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
-        const filePromise = new Promise((resolve, reject) => {
+        const filePromise = new Promise<{ name: string; content: string; type: string }>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = (e) => {
             const result = e.target?.result as string;
@@ -232,7 +232,6 @@ const AdminFiles: React.FC = () => {
               name: file.name,
               content: result.split(',')[1], // 移除 base64 前缀
               type: 'file',
-              size: file.size,
             });
           };
           reader.onerror = reject;

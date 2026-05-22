@@ -17,6 +17,7 @@ interface SkillNode {
 const AdminSkills: React.FC = () => {
   const { data: skills = [], isLoading: loading, error: queryError, refetch } = useSkillsList();
   const error = queryError?.message ?? null;
+  const [actionError, setActionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -41,7 +42,7 @@ const AdminSkills: React.FC = () => {
 
     try {
       setIsAdding(true);
-      setError(null);
+      setActionError(null);
 
       const newSkillData = {
         name: data.label || 'New Skill',
@@ -60,10 +61,10 @@ const AdminSkills: React.FC = () => {
         await loadSkills();
         alert('技能添加成功！');
       } else {
-        setError(result.error || 'Failed to create skill');
+        setActionError(result.error || 'Failed to create skill');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setActionError(err instanceof Error ? err.message : 'Unknown error');
       alert('添加失败，请重试');
     } finally {
       setIsAdding(false);
@@ -72,7 +73,7 @@ const AdminSkills: React.FC = () => {
 
   const handleUpdateNode = async (id: string, updates: any) => {
     try {
-      setError(null);
+      setActionError(null);
 
       const skillUpdates: Partial<Skill> = {
         name: updates.label,
@@ -89,26 +90,26 @@ const AdminSkills: React.FC = () => {
       if (result.success) {
         await loadSkills();
       } else {
-        setError(result.error || 'Failed to update skill');
+        setActionError(result.error || 'Failed to update skill');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setActionError(err instanceof Error ? err.message : 'Unknown error');
     }
   };
 
   const handleDeleteNode = async (id: string) => {
     try {
-      setError(null);
+      setActionError(null);
 
       const result = await api.skills.delete(id);
       if (result.success) {
         await loadSkills();
         alert('技能删除成功！');
       } else {
-        setError(result.error || 'Failed to delete skill');
+        setActionError(result.error || 'Failed to delete skill');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setActionError(err instanceof Error ? err.message : 'Unknown error');
       alert('删除失败，请重试');
     }
   };
@@ -116,7 +117,7 @@ const AdminSkills: React.FC = () => {
   const handleSaveAll = async (updatedNodes: SkillNode[]) => {
     try {
       setSaving(true);
-      setError(null);
+      setActionError(null);
 
       // 保存所有技能位置
       for (const node of updatedNodes) {
@@ -131,7 +132,7 @@ const AdminSkills: React.FC = () => {
 
       alert('所有位置保存成功！');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setActionError(err instanceof Error ? err.message : 'Unknown error');
       alert('保存失败，请重试');
     } finally {
       setSaving(false);
@@ -181,12 +182,12 @@ const AdminSkills: React.FC = () => {
         </div>
 
         {/* Error Message */}
-        {error && (
+        {(error || actionError) && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-400">
             <AlertCircle size={20} />
-            <span className="flex-1">{error}</span>
+            <span className="flex-1">{error || actionError}</span>
             <button
-              onClick={() => setError(null)}
+              onClick={() => { setActionError(null); refetch(); }}
               className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
             >
               ×

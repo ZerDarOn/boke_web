@@ -18,7 +18,7 @@ const AdminProjectsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [editingItem, setEditingItem] = useState<Project | null>(null);
-  const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [formData, setFormData] = useState<Partial<Project>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const isSubmitting = createProject.isPending || updateProject.isPending;
   const [editMode, setEditMode] = useState<'card' | 'detail'>('card');
@@ -57,7 +57,8 @@ const AdminProjectsPage: React.FC = () => {
   const handleSubmit = async () => {
     const submitData = { ...formData };
     if (submitData.featured !== undefined) {
-      submitData.featured = submitData.featured === 'true' || submitData.featured === true;
+      const featured = submitData.featured;
+      submitData.featured = featured === true || String(featured) === 'true';
     }
     try {
       if (editingItem) {

@@ -286,7 +286,7 @@ const ProjectDetail: React.FC = () => {
                             {children}
                           </li>
                         ),
-                        code: ({node, inline, className, children, ...props}) => {
+                        code: ({ className, children, ...props }) => {
                           return (
                             <code className={`bg-gray-100 dark:bg-white/10 text-ink dark:text-white px-2 py-1 rounded text-sm ${className || ''}`} {...props}>
                               {children}

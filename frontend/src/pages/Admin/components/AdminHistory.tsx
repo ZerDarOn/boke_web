@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { api } from '../../../lib/api';
+import { api, type HistoryItem } from '../../../lib/api';
 import {
   useHistoryItems,
   useCreateHistoryItem,
@@ -20,7 +20,8 @@ const AdminHistory: React.FC = () => {
   const deleteItem = useDeleteHistoryItem();
 
   const [editingItem, setEditingItem] = useState<Record<string, unknown> | null>(null);
-  const [formData, setFormData] = useState<Record<string, unknown>>({});
+  type HistoryForm = Omit<Partial<HistoryItem>, 'tags'> & { tags?: string | string[] };
+  const [formData, setFormData] = useState<HistoryForm>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const isSubmitting = createItem.isPending || updateItem.isPending;
 
@@ -77,12 +78,14 @@ const AdminHistory: React.FC = () => {
     }
 
     const tagsRaw = formData.tags;
-    const submitData = {
+    const submitData: Partial<HistoryItem> = {
       ...formData,
       tags:
         typeof tagsRaw === 'string'
           ? tagsRaw.split(',').map((t) => t.trim()).filter(Boolean)
-          : tagsRaw,
+          : Array.isArray(tagsRaw)
+            ? tagsRaw.map(String)
+            : [],
     };
 
     try {

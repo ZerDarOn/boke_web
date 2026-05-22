@@ -1,23 +1,30 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { api, NetworkNode } from '../../lib/api';
 import { useNetworkNodes } from '../../hooks/queries/network';
 import VisualEditor from '../../components/VisualEditor';
 import { AlertCircle, Loader2, Plus, RefreshCw } from 'lucide-react';
 
+type NetworkEditorNode = NetworkNode & { label: string };
+
 const AdminNetwork: React.FC = () => {
   const { data: nodes = [], isLoading: loading, error: queryError, refetch } = useNetworkNodes();
+  const editorNodes = useMemo<NetworkEditorNode[]>(
+    () => nodes.map((n) => ({ ...n, label: n.name })),
+    [nodes]
+  );
   const error = queryError?.message ?? null;
+  const [actionError, setActionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
   const loadNodes = () => refetch();
 
-  const handleAddNode = async (data: Partial<NetworkNode>) => {
+  const handleAddNode = async (data: Partial<NetworkEditorNode>) => {
     if (isAdding) return;
 
     try {
       setIsAdding(true);
-      setError(null);
+      setActionError(null);
 
       const newNodeData = {
         name: data.label || 'New Node',
@@ -34,10 +41,10 @@ const AdminNetwork: React.FC = () => {
         await loadNodes();
         alert('节点添加成功！');
       } else {
-        setError(result.error || 'Failed to create node');
+        setActionError(result.error || 'Failed to create node');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setActionError(err instanceof Error ? err.message : 'Unknown error');
       alert('添加失败，请重试');
     } finally {
       setIsAdding(false);
@@ -46,7 +53,7 @@ const AdminNetwork: React.FC = () => {
 
   const handleUpdateNode = async (id: string, updates: any) => {
     try {
-      setError(null);
+      setActionError(null);
 
       const nodeUpdates: Partial<NetworkNode> = {
         name: updates.label,
@@ -66,34 +73,34 @@ const AdminNetwork: React.FC = () => {
       if (result.success) {
         await loadNodes();
       } else {
-        setError(result.error || 'Failed to update node');
+        setActionError(result.error || 'Failed to update node');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setActionError(err instanceof Error ? err.message : 'Unknown error');
     }
   };
 
   const handleDeleteNode = async (id: string) => {
     try {
-      setError(null);
+      setActionError(null);
 
       const result = await api.network.delete(id);
       if (result.success) {
         await loadNodes();
         alert('节点删除成功！');
       } else {
-        setError(result.error || 'Failed to delete node');
+        setActionError(result.error || 'Failed to delete node');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setActionError(err instanceof Error ? err.message : 'Unknown error');
       alert('删除失败，请重试');
     }
   };
 
-  const handleSaveAll = async (updatedNodes: NetworkNode[]) => {
+  const handleSaveAll = async (updatedNodes: NetworkEditorNode[]) => {
     try {
       setSaving(true);
-      setError(null);
+      setActionError(null);
 
       // 保存所有节点位置
       for (const node of updatedNodes) {
@@ -108,14 +115,14 @@ const AdminNetwork: React.FC = () => {
 
       alert('所有位置保存成功！');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setActionError(err instanceof Error ? err.message : 'Unknown error');
       alert('保存失败，请重试');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleNodeClick = (node: NetworkNode) => {
+  const handleNodeClick = (node: NetworkEditorNode) => {
     console.log('Node clicked:', node);
   };
 
@@ -156,12 +163,12 @@ const AdminNetwork: React.FC = () => {
         </div>
 
         {/* Error Message */}
-        {error && (
+        {(error || actionError) && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-400">
             <AlertCircle size={20} />
-            <span className="flex-1">{error}</span>
+            <span className="flex-1">{error || actionError}</span>
             <button
-              onClick={() => setError(null)}
+              onClick={() => { setActionError(null); refetch(); }}
               className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
             >
               ×
@@ -194,7 +201,7 @@ const AdminNetwork: React.FC = () => {
         {nodes.length > 0 && (
           <VisualEditor
             type="network"
-            nodes={nodes}
+            nodes={editorNodes}
             onSave={handleSaveAll}
             onAddNode={handleAddNode}
             onUpdateNode={handleUpdateNode}

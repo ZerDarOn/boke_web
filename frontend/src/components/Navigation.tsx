@@ -206,7 +206,7 @@ const Navigation: React.FC<NavigationProps> = ({
                         {item.hasDropdown && hoveredItem === item.label && (
                             <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-48 bg-[#1a1b26]/90 backdrop-blur-md border border-white/10 shadow-xl rounded-b-md overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200 z-50">
                                 {item.dropdownItems?.map((subItem, idx) => (
-                                    subItem.link ? (
+                                    ('link' in subItem && subItem.link) ? (
                                         <a
                                             key={idx}
                                             href={subItem.link}
@@ -220,7 +220,7 @@ const Navigation: React.FC<NavigationProps> = ({
                                     ) : (
                                         <Link
                                             key={idx}
-                                            to={subItem.path || '/'}
+                                            to={'path' in subItem ? subItem.path || '/' : '/'}
                                             className="flex items-center gap-2 px-4 py-3 text-xs text-gray-400 hover:text-white hover:bg-white/10 transition-colors border-l-2 border-transparent hover:border-neon"
                                             onClick={() => setHoveredItem(null)}
                                         >
@@ -375,7 +375,7 @@ const Navigation: React.FC<NavigationProps> = ({
                     {item.dropdownItems && (
                       <div className="pl-4 space-y-1">
                         {item.dropdownItems.map((subItem, idx) => (
-                          subItem.link ? (
+                          ('link' in subItem && subItem.link) ? (
                             <a
                               key={idx}
                               href={subItem.link}
@@ -390,7 +390,7 @@ const Navigation: React.FC<NavigationProps> = ({
                           ) : (
                             <Link
                               key={idx}
-                              to={subItem.path || '/'}
+                              to={'path' in subItem ? subItem.path || '/' : '/'}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                               onClick={() => setIsMobileMenuOpen(false)}
                             >

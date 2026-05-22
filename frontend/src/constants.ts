@@ -1,4 +1,19 @@
-import { BlogPost, DiaryEntry, Project, SkillNode, Activity, FileNode, RelationNode, AnimeItem, GalleryItem, TimelineEvent, SkillGroup } from './types';
+import {
+  BlogPost,
+  DiaryEntry,
+  Project,
+  SkillNode,
+  Activity,
+  FileNode,
+  RelationNode,
+  AnimeItem,
+  GalleryItem,
+  GalleryAlbum,
+  AnimeDetail,
+  LongFormDiary,
+  TimelineEvent,
+  SkillGroup,
+} from './types';
 
 export const BLOG_POSTS: BlogPost[] = [
   {
@@ -216,6 +231,7 @@ SVG 滤镜提供了 \`feTurbulence\` 和 \`feDisplacementMap\` 两个滤镜，�
   },
   {
     id: '04',
+    slug: 'post-04',
     title: 'React Server Components 深度解析',
     date: '2024.02.28',
     category: 'TECH',
@@ -393,6 +409,7 @@ RSC 不是银弹，但它代表了一种更合理的架构方向。它让我们�
   },
   {
     id: '05',
+    slug: 'post-05',
     title: '2023 年度总结：破碎与重组',
     date: '2023.12.31',
     category: 'LIFE',
@@ -490,6 +507,7 @@ RSC 不是银弹，但它代表了一种更合理的架构方向。它让我们�
   },
   {
     id: '06',
+    slug: 'post-06',
     title: 'Rust 所有权机制图解',
     date: '2023.10.15',
     category: 'TECH',

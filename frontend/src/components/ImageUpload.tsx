@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { getAuthToken } from '../lib/api/request';
 import AvatarCropper from './AvatarCropper';
 
 interface ImageUploadProps {
@@ -74,7 +75,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       const uploadType = uploadTypeMap[type];
 
       // 获取认证 token
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers: Record<string, string> = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;

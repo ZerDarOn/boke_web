@@ -143,6 +143,7 @@ export interface GalleryItem {
   date: string;
   location: string;
   aspect: ImageAspect;
+  description?: string;
   camera?: string;
   settings?: string;
   tags?: string[];
