@@ -50,6 +50,7 @@ const ContentImport: React.FC = () => {
   const [previewFiles, setPreviewFiles] = useState<FilePreview[]>([]);
   const [importingFiles, setImportingFiles] = useState<Set<string>>(new Set());
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [skipPreview, setSkipPreview] = useState(false);
 
   const onDropSingle = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
@@ -393,17 +394,40 @@ const ContentImport: React.FC = () => {
     }
   }, [conflictResolution]);
 
+  const filterMdFiles = (files: File[]) =>
+    files.filter((f) => f.name.toLowerCase().endsWith('.md'));
+
+  const directImportMdFiles = async (files: File[]) => {
+    const mdFiles = filterMdFiles(files);
+    if (mdFiles.length === 0) {
+      alert('未找到 Markdown 文件');
+      return;
+    }
+    if (mdFiles.length === 1) {
+      await onDropSingle([mdFiles[0]]);
+    } else if (mdFiles.length <= 10) {
+      await onDropBatch(mdFiles);
+    } else {
+      await onDropFolder(mdFiles);
+    }
+  };
+
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop: (acceptedFiles) => {
-      if (!showPreview) {
-        if (acceptedFiles.length === 1 && acceptedFiles[0].name.endsWith('.zip')) {
-          onDropZip(acceptedFiles);
-        } else if (acceptedFiles.length === 1) {
-          onDropSingle(acceptedFiles);
-        } else {
-          onDropBatch(acceptedFiles);
-        }
+      if (acceptedFiles.length === 1 && acceptedFiles[0].name.endsWith('.zip')) {
+        onDropZip(acceptedFiles);
+        return;
       }
+      const mdFiles = filterMdFiles(acceptedFiles);
+      if (mdFiles.length === 0) {
+        if (acceptedFiles.length > 0) alert('仅支持 .md 或 .zip 文件');
+        return;
+      }
+      if (skipPreview) {
+        void directImportMdFiles(mdFiles);
+        return;
+      }
+      void handlePreview(mdFiles);
     },
     accept: {
       'text/markdown': ['.md'],
@@ -427,11 +451,21 @@ const ContentImport: React.FC = () => {
   const handlePreview = async (files: File[]) => {
     if (!files || files.length === 0) return;
 
+    let mdFiles = filterMdFiles(files);
+    if (mdFiles.length > 50) {
+      alert('一次最多预览 50 个 Markdown 文件，已截取前 50 个');
+      mdFiles = mdFiles.slice(0, 50);
+    }
+    if (mdFiles.length === 0) {
+      alert('未找到 Markdown 文件');
+      return;
+    }
+
     setImporting(true);
     setPreviewFiles([]);
 
     const previews: FilePreview[] = await Promise.all(
-      files.map(async (file) => {
+      mdFiles.map(async (file) => {
         try {
           const content = await file.text();
           
@@ -489,6 +523,7 @@ const ContentImport: React.FC = () => {
     );
 
     setPreviewFiles(previews);
+    setSelectedIndices(new Set(previews.map((_, i) => i)));
     setShowPreview(true);
     setImporting(false);
   };
@@ -599,7 +634,7 @@ const ContentImport: React.FC = () => {
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               支持 .md 文件，每个文件最大 1MB
-              {importMode === 'batch' && '，一次最多导入 10 个文件'}
+              {skipPreview ? '（已开启：跳过预览）' : '（默认先预览再导入）'}
             </p>
           </div>
 
@@ -617,7 +652,8 @@ const ContentImport: React.FC = () => {
                         alert('文件大小不能超过 1MB');
                         return;
                       }
-                      onDropSingle([file]);
+                      if (skipPreview) void directImportMdFiles([file]);
+                      else void handlePreview([file]);
                     }
                   }}
                   disabled={importing}
@@ -643,7 +679,8 @@ const ContentImport: React.FC = () => {
                       alert('有文件大小超过 1MB');
                       return;
                     }
-                    onDropBatch(files);
+                    if (skipPreview) void directImportMdFiles(files);
+                    else void handlePreview(files);
                   }}
                   disabled={importing}
                   className="hidden"
@@ -658,10 +695,13 @@ const ContentImport: React.FC = () => {
                   {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
                   disabled={importing}
                   onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 0) {
-                      onDropFolder(files);
+                    const files = filterMdFiles(Array.from(e.target.files || []));
+                    if (files.length === 0) {
+                      alert('文件夹内未找到 Markdown 文件');
+                      return;
                     }
+                    if (skipPreview) void directImportMdFiles(files);
+                    else void handlePreview(files);
                   }}
                   className="hidden"
                 />
@@ -724,6 +764,17 @@ const ContentImport: React.FC = () => {
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {importing ? '导入中...' : '导入选中文件'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowPreview(false);
+                void directImportMdFiles(previewFiles.map((p) => p.file));
+              }}
+              disabled={importing || previewFiles.length === 0}
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm disabled:opacity-50"
+            >
+              全部直接导入
             </button>
             <button
               onClick={() => setShowPreview(false)}
@@ -885,6 +936,18 @@ const ContentImport: React.FC = () => {
               </label>
             </div>
           </div>
+
+          <label className="inline-flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={skipPreview}
+              onChange={(e) => setSkipPreview(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="text-sm text-ink dark:text-paper">
+              跳过预览，选择或拖拽后直接导入
+            </span>
+          </label>
         </div>
       </div>
 

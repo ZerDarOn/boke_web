@@ -1,9 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import {
   ArrowLeft,
@@ -23,26 +19,18 @@ import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
 import { useLang } from '../contexts/LangContext';
+import MarkdownRenderer from '../components/MarkdownRenderer';
+import { projectMarkdownComponents } from '../components/markdown/contentMarkdownComponents';
 import type { Project } from '../lib/api';
 import { useProject, useProjectsList } from '../hooks/queries/projects';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useLang();
-  const [theme, setTheme] = React.useState<'light' | 'dark'>('light');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const { data: project, isLoading: loading, error: queryError } = useProject(id);
   const { data: allProjects = [] } = useProjectsList();
   const error = queryError?.message ?? null;
-
-  useEffect(() => {
-    const checkTheme = () => {
-      setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-    };
-    checkTheme();
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -53,9 +41,10 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const copyToClipboard = (code: string) => {
+  const copyToClipboard = (code: string, language: string) => {
     navigator.clipboard.writeText(code);
-    alert('命令已复制到剪贴板');
+    setCopiedCode(language);
+    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   const getStatusText = (status: string) => {
@@ -252,56 +241,13 @@ const ProjectDetail: React.FC = () => {
                 </div>
 
                 <div className="relative z-10">
-                  <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeRaw]}
-                      components={{
-                        h1: ({children}) => (
-                          <h1 className="text-3xl md:text-4xl font-serif font-bold text-ink dark:text-white mt-8 mb-4 pb-2 border-b-2 border-neon/30 scroll-mt-24">
-                            {children}
-                          </h1>
-                        ),
-                        h2: ({children}) => (
-                          <h2 className="text-2xl md:text-3xl font-serif font-bold text-ink dark:text-white mt-6 mb-3 pb-2 border-b border-gray-200 dark:border-white/10 scroll-mt-24">
-                            {children}
-                          </h2>
-                        ),
-                        h3: ({children}) => (
-                          <h3 className="text-xl md:text-2xl font-serif font-bold text-ink dark:text-white mt-5 mb-2 scroll-mt-20">
-                            {children}
-                          </h3>
-                        ),
-                        p: ({children}) => (
-                          <p className="text-base leading-relaxed text-ink dark:text-gray-200 mb-4">
-                            {children}
-                          </p>
-                        ),
-                        ul: ({children}) => (
-                          <ul className="space-y-2 mb-4 ml-6 list-disc marker:text-neon">
-                            {children}
-                          </ul>
-                        ),
-                        li: ({children}) => (
-                          <li className="text-base leading-relaxed text-ink dark:text-gray-200 pl-2">
-                            {children}
-                          </li>
-                        ),
-                        code: ({ className, children, ...props }) => {
-                          return (
-                            <code className={`bg-gray-100 dark:bg-white/10 text-ink dark:text-white px-2 py-1 rounded text-sm ${className || ''}`} {...props}>
-                              {children}
-                            </code>
-                          );
-                        },
-                        pre: ({children}) => (
-                          <pre className="bg-gray-900 dark:bg-[#0a0a0a] text-gray-100 rounded-lg p-4 overflow-x-auto">
-                            {children}
-                          </pre>
-                        ),
-                      }}
-                  >
-                    {project.readme}
-                  </ReactMarkdown>
+                  <MarkdownRenderer
+                    content={project.readme}
+                    onCopyCode={copyToClipboard}
+                    copiedCode={copiedCode}
+                    rehypePlugins={[rehypeRaw]}
+                    components={projectMarkdownComponents}
+                  />
                 </div>
               </div>
             </div>

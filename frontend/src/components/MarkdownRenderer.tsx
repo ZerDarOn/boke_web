@@ -4,12 +4,15 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 
+/** 按需加载语言定义，避免打包全部 Prism 语言 */
 const SyntaxHighlighter = lazy(() =>
-  import('react-syntax-highlighter').then((mod) => ({ default: mod.Prism }))
+  import('react-syntax-highlighter/dist/esm/prism-async-light').then((mod) => ({
+    default: mod.default,
+  }))
 );
 
-const oneDarkPromise = import('react-syntax-highlighter/dist/esm/styles/prism').then(
-  (mod) => mod.oneDark
+const oneDarkPromise = import('react-syntax-highlighter/dist/esm/styles/prism/one-dark').then(
+  (mod) => mod.default
 );
 
 type MarkdownRendererProps = {

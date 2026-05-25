@@ -82,13 +82,32 @@ export default defineConfig(({ mode }) => {
       build: {
         rollupOptions: {
           output: {
-            manualChunks: {
-              'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-              'ui-vendor': ['lucide-react'],
-              'query-vendor': ['@tanstack/react-query'],
-              'markdown-vendor': ['react-markdown', 'remark-gfm', 'rehype-raw', 'rehype-slug', 'rehype-toc'],
-              'syntax-vendor': ['react-syntax-highlighter'],
-            }
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                if (
+                  id.includes('react-syntax-highlighter') ||
+                  id.includes('refractor')
+                ) {
+                  return 'syntax-vendor';
+                }
+                if (
+                  id.includes('react-dom') ||
+                  id.includes('react-router') ||
+                  (id.includes('/react/') && !id.includes('react-syntax'))
+                ) {
+                  return 'react-vendor';
+                }
+                if (id.includes('lucide-react')) return 'ui-vendor';
+                if (id.includes('@tanstack/react-query')) return 'query-vendor';
+                if (
+                  id.includes('react-markdown') ||
+                  id.includes('remark-') ||
+                  id.includes('rehype-')
+                ) {
+                  return 'markdown-vendor';
+                }
+              }
+            },
           }
         },
         chunkSizeWarningLimit: 1000,

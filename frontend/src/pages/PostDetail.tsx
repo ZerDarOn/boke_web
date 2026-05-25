@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
-import type { Components } from 'react-markdown';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePost, usePostNavList } from '../hooks/queries/posts';
 import { queryKeys } from '../hooks/api/query-keys';
@@ -25,64 +24,8 @@ import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
 import { SEO } from '../components/SEO';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import { postMarkdownComponents } from '../components/markdown/contentMarkdownComponents';
 import type { Post } from '../lib/api';
-
-const postMarkdownComponents: Components = {
-  h1: ({ children }) => {
-    const id = String(children).toLowerCase().replace(/[^\w\u4e00-\u9fa5\s-]/g, '').replace(/\s+/g, '-');
-    return (
-      <h1 id={id} className="text-3xl md:text-4xl font-serif font-bold text-ink dark:text-white mt-8 mb-4 pb-2 border-b-2 border-neon/30 scroll-mt-24">
-        {children}
-      </h1>
-    );
-  },
-  h2: ({ children }) => {
-    const id = String(children).toLowerCase().replace(/[^\w\u4e00-\u9fa5\s-]/g, '').replace(/\s+/g, '-');
-    return (
-      <h2 id={id} className="text-2xl md:text-3xl font-serif font-bold text-ink dark:text-white mt-6 mb-3 pb-2 border-b border-gray-200 dark:border-white/10 scroll-mt-24">
-        {children}
-      </h2>
-    );
-  },
-  h3: ({ children }) => {
-    const id = String(children).toLowerCase().replace(/[^\w\u4e00-\u9fa5\s-]/g, '').replace(/\s+/g, '-');
-    return (
-      <h3 id={id} className="text-xl md:text-2xl font-serif font-bold text-ink dark:text-white mt-5 mb-2 scroll-mt-24">
-        {children}
-      </h3>
-    );
-  },
-  p: ({ children }) => (
-    <p className="text-lg leading-relaxed text-ink dark:text-gray-200 mb-4">{children}</p>
-  ),
-  ul: ({ children }) => (
-    <ul className="space-y-2 mb-4 ml-6 list-disc marker:text-neon">{children}</ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="space-y-2 mb-4 ml-6 list-decimal marker:text-neon">{children}</ol>
-  ),
-  li: ({ children }) => (
-    <li className="text-base leading-relaxed text-ink dark:text-gray-200 pl-2">{children}</li>
-  ),
-  blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-neon pl-4 py-2 my-4 bg-gray-50/50 dark:bg-white/5 italic text-gray-700 dark:text-gray-300">
-      {children}
-    </blockquote>
-  ),
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      className="text-neon hover:text-neon/80 underline decoration-neon/30 hover:decoration-neon transition-all"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      {children}
-    </a>
-  ),
-  strong: ({ children }) => (
-    <strong className="font-bold text-ink dark:text-white">{children}</strong>
-  ),
-};
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
