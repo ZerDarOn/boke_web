@@ -19,5 +19,3 @@ export function useActivities(options: UseActivitiesOptions = {}) {
     },
   };
 }
-
-export default useActivities;
