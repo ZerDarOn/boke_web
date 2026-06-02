@@ -13,13 +13,10 @@ const AdminLogin: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    console.log('🔐 Login attempt started');
 
     try {
       setLoading(true);
-      console.log('📤 Calling login function...');
       await login(username, password);
-      console.log('✅ Login successful, redirecting...');
       navigate('/admin');
     } catch (err: any) {
       console.error('❌ Login failed:', err);

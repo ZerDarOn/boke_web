@@ -128,8 +128,6 @@ const AdminPosts: React.FC = () => {
       const imageMarkdown = `\n![${file.name}](${imageUrl})\n`;
       const currentContent = formData.content || '';
       handleInputChange('content', currentContent + imageMarkdown);
-
-      console.log('✅ 图片上传成功:', imageUrl);
     } catch (error) {
       console.error('❌ 图片上传失败:', error);
       const errorMessage = error instanceof Error ? error.message : '图片上传失败';

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { api } from '../../lib/api';
 import { getAuthHeaders } from '../../lib/api/request';
+import { API_BASE_URL } from '../../lib/apiConfig';
 import {
   useAnimeList,
   useCreateAnime,
@@ -153,7 +154,7 @@ const AdminAnime: React.FC = () => {
       formData.append('image', file);
 
       // 获取认证 token
-      const response = await fetch(`${getApiBaseUrl()}/api/upload/image/anime`, {
+      const response = await fetch(`${API_BASE_URL}/api/upload/image/anime`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: formData,
@@ -181,11 +182,6 @@ const AdminAnime: React.FC = () => {
   const handleRemoveCover = () => {
     handleInputChange('cover', '');
     setCoverPreview('');
-  };
-
-  const getApiBaseUrl = async () => {
-    const { API_BASE_URL } = await import('../../lib/apiConfig');
-    return API_BASE_URL;
   };
 
   const getStatusColor = (status: string) => {

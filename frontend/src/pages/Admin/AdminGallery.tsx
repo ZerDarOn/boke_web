@@ -232,7 +232,6 @@ const AdminGallery: React.FC = () => {
         setPhotoForm(prev => ({ ...prev, src: imageUrl }));
       }
 
-      console.log('✅ 图片上传成功:', imageUrl);
     } catch (error) {
       console.error('❌ 图片上传失败:', error);
       const errorMessage = error instanceof Error ? error.message : '图片上传失败';

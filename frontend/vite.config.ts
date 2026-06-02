@@ -85,10 +85,10 @@ export default defineConfig(({ mode }) => {
             manualChunks(id) {
               if (id.includes('node_modules')) {
                 if (
-                  id.includes('react-syntax-highlighter') ||
-                  id.includes('refractor')
+                  id.includes('react-syntax-highlighter') &&
+                  !id.includes('/refractor/')
                 ) {
-                  return 'syntax-vendor';
+                  return 'syntax-core';
                 }
                 if (
                   id.includes('react-dom') ||

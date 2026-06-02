@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import type { Diary } from '../lib/api';
 import ReactMarkdown from 'react-markdown';
@@ -15,13 +15,14 @@ import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
 import { useDiaryEntry, useLongDiaryNavList } from '../hooks/queries/diary';
+import { useScrollProgress } from '../hooks/useScrollProgress';
 
 const DiaryDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { data: diary, isLoading: loading, error: queryError } = useDiaryEntry(id);
   const { data: allLongDiaries = [] } = useLongDiaryNavList();
   const error = queryError?.message ?? null;
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const scrollProgress = useScrollProgress();
   const [showCopyAlert, setShowCopyAlert] = useState(false);
 
   const handleShare = async () => {
@@ -35,8 +36,8 @@ const DiaryDetail: React.FC = () => {
       try {
         await navigator.share(shareData);
         return;
-      } catch (err) {
-        console.log('Share canceled');
+      } catch {
+        /* 用户取消分享 */
       }
     }
 
@@ -44,18 +45,6 @@ const DiaryDetail: React.FC = () => {
     setShowCopyAlert(true);
     setTimeout(() => setShowCopyAlert(false), 2000);
   };
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      const scrolled = (winScroll / height) * 100;
-      setScrollProgress(scrolled);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
 
   if (loading) {
     return (

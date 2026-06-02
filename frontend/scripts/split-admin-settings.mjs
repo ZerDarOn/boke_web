@@ -1,4 +1,87 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import fs from 'fs';
+import path from 'path';
+
+const root = path.join(import.meta.dirname, '..', 'src', 'pages', 'Admin');
+const src = fs.readFileSync(path.join(root, 'AdminSettings.tsx'), 'utf8');
+const lines = src.split('\n');
+
+const siteConfigLines = lines.slice(9, 192);
+const defaultIdx = siteConfigLines.findIndex((l) => l.startsWith('const defaultConfig'));
+const siteConfigBody =
+  siteConfigLines[0].replace('interface SiteConfig', 'export interface SiteConfig') +
+  '\n' +
+  siteConfigLines.slice(1, defaultIdx).join('\n') +
+  '\n' +
+  siteConfigLines[defaultIdx].replace('const defaultConfig', 'export const defaultSiteConfig') +
+  '\n' +
+  siteConfigLines.slice(defaultIdx + 1).join('\n');
+
+const settingsDir = path.join(root, 'settings');
+fs.mkdirSync(settingsDir, { recursive: true });
+fs.writeFileSync(path.join(settingsDir, 'siteConfig.ts'), siteConfigBody + '\n');
+
+const tabProps = `import type { SiteConfig } from './siteConfig';
+
+export interface SettingsTabProps {
+  config: SiteConfig;
+  updateConfig: (path: string, value: unknown) => void;
+}
+`;
+
+fs.writeFileSync(path.join(settingsDir, 'types.ts'), tabProps);
+
+const tabs = [
+  { name: 'GeneralSettingsTab', start: 326, end: 468, imports: "import { User } from 'lucide-react';\nimport ImageUpload from '../../../components/ImageUpload';\n" },
+  { name: 'HeroSettingsTab', start: 472, end: 623, imports: "import { X } from 'lucide-react';\nimport type { SiteConfig } from './siteConfig';\n" },
+  { name: 'ContactSettingsTab', start: 627, end: 699, imports: "import { Mail, Link, Type, Globe, Image } from 'lucide-react';\n" },
+  { name: 'ThemeSettingsTab', start: 703, end: 791, imports: "import { RefreshCw } from 'lucide-react';\n" },
+  { name: 'CopySettingsTab', start: 795, end: 995, imports: "import { FileText, RefreshCw } from 'lucide-react';\nimport { defaultSiteConfig } from './siteConfig';\n" },
+];
+
+for (const tab of tabs) {
+  const inner = lines.slice(tab.start, tab.end).join('\n');
+  let propsType = 'SettingsTabProps';
+  let extraProps = '';
+  if (tab.name === 'HeroSettingsTab') {
+    propsType = 'HeroSettingsTabProps';
+    extraProps = `
+export interface HeroSettingsTabProps extends SettingsTabProps {
+  editingHero: string | null;
+  setEditingHero: (id: string | null) => void;
+  updateHeroContent: (heroId: string, lang: 'ZH' | 'EN', field: string, value: string) => void;
+  setConfig: React.Dispatch<React.SetStateAction<SiteConfig>>;
+}
+`;
+    fs.appendFileSync(
+      path.join(settingsDir, 'types.ts'),
+      extraProps
+    );
+  }
+
+  const heroDestruct =
+    tab.name === 'HeroSettingsTab'
+      ? '{ config, updateConfig, updateHeroContent, editingHero, setEditingHero, setConfig }'
+      : '{ config, updateConfig }';
+
+  const copyDefault =
+    tab.name === 'CopySettingsTab'
+      ? inner.replace('defaultConfig.pageCopy', 'defaultSiteConfig.pageCopy')
+      : inner;
+
+  const content = `import React from 'react';
+${tab.imports}
+import type { ${propsType}${tab.name === 'HeroSettingsTab' ? ', SettingsTabProps' : ''} } from './types';
+
+const ${tab.name}: React.FC<${propsType}> = (${heroDestruct}) => (
+${copyDefault.replace(/^\s{10}/gm, '')}
+);
+
+export default ${tab.name};
+`;
+  fs.writeFileSync(path.join(settingsDir, `${tab.name}.tsx`), content);
+}
+
+const shell = `import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useSiteSettings, useSaveSiteConfig } from '../../hooks/queries/settings';
 import {
   Settings, Save, Globe, Mail, Image, Layout, FileText,
@@ -111,9 +194,9 @@ const AdminSettings: React.FC = () => {
 
       {message && (
         <div
-          className={`p-4 rounded-lg flex items-center gap-2 ${
+          className={\`p-4 rounded-lg flex items-center gap-2 \${
             message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-          }`}
+          }\`}
         >
           {message.type === 'success' ? <Check size={18} /> : <X size={18} />}
           {message.text}
@@ -134,11 +217,11 @@ const AdminSettings: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+              className={\`flex items-center gap-2 px-6 py-4 font-medium transition-colors \${
                 activeTab === tab.id
                   ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
+              }\`}
             >
               <tab.icon size={18} />
               {tab.label}
@@ -169,3 +252,7 @@ const AdminSettings: React.FC = () => {
 };
 
 export default AdminSettings;
+`;
+
+fs.writeFileSync(path.join(root, 'AdminSettings.tsx'), shell);
+console.log('Split AdminSettings into settings/ tabs');

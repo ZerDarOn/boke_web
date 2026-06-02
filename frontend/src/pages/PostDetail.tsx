@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePost, usePostNavList } from '../hooks/queries/posts';
+import { useScrollProgress } from '../hooks/useScrollProgress';
+import { useThemeClass } from '../hooks/useThemeClass';
 import { queryKeys } from '../hooks/api/query-keys';
 import { postsApi } from '../lib/api';
 import {
@@ -34,9 +36,9 @@ const PostDetail: React.FC = () => {
   const { data: navList = [] } = usePostNavList();
   const allPosts = navList as Post[];
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
-  const [scrollProgress, setScrollProgress] = React.useState(0);
+  const scrollProgress = useScrollProgress();
+  const theme = useThemeClass();
   const [showCopyAlert, setShowCopyAlert] = React.useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [needPassword, setNeedPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -61,8 +63,8 @@ const PostDetail: React.FC = () => {
       try {
         await navigator.share(shareData);
         return;
-      } catch (err) {
-        console.log('Share canceled');
+      } catch {
+        /* 用户取消分享 */
       }
     }
 
@@ -75,27 +77,6 @@ const PostDetail: React.FC = () => {
     twitter: post ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(window.location.href)}` : '',
     weibo: post ? `http://service.weibo.com/share/share.php?title=${encodeURIComponent(post.title)}&url=${encodeURIComponent(window.location.href)}` : ''
   };
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      const scrolled = (winScroll / height) * 100;
-      setScrollProgress(scrolled);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const checkTheme = () => {
-      setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-    };
-    checkTheme();
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     setNeedPassword(false);

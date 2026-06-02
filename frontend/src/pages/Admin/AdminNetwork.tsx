@@ -122,8 +122,8 @@ const AdminNetwork: React.FC = () => {
     }
   };
 
-  const handleNodeClick = (node: NetworkEditorNode) => {
-    console.log('Node clicked:', node);
+  const handleNodeClick = (_node: NetworkEditorNode) => {
+    /* VisualEditor 节点点击占位，后续可接编辑面板 */
   };
 
   if (loading) {

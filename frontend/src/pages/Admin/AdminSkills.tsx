@@ -139,8 +139,8 @@ const AdminSkills: React.FC = () => {
     }
   };
 
-  const handleNodeClick = (node: SkillNode) => {
-    console.log('Skill clicked:', node);
+  const handleNodeClick = (_node: SkillNode) => {
+    /* VisualEditor 节点点击占位 */
   };
 
   if (loading) {

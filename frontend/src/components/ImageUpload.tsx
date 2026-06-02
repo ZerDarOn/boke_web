@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import { getAuthToken } from '../lib/api/request';
+import { API_BASE_URL } from '../lib/apiConfig';
 import AvatarCropper from './AvatarCropper';
 
 interface ImageUploadProps {
@@ -70,7 +71,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       formData.append('image', blob, 'avatar.png');
 
       // 上传到服务器
-      const { API_BASE_URL } = await import('../lib/apiConfig');
       const uploadTypeMap = { network: 'avatars', skill: 'skills', author: 'avatars' };
       const uploadType = uploadTypeMap[type];
 

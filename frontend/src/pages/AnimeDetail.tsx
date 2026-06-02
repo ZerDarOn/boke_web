@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import SimpleComments from '../components/GiscusComments';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 import PrevNextNavigation from '../components/PrevNextNavigation';
 import { useAnimeItem, useAnimeList } from '../hooks/queries/anime';
+import { useScrollProgress } from '../hooks/useScrollProgress';
+import { useThemeClass } from '../hooks/useThemeClass';
 import {
   ArrowLeft,
   ArrowRight,
@@ -27,29 +29,8 @@ const AnimeDetail: React.FC = () => {
   const { data: anime, isLoading: loading, error: queryError } = useAnimeItem(id);
   const { data: allAnime = [] } = useAnimeList();
   const error = queryError?.message ?? null;
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      const scrolled = (winScroll / height) * 100;
-      setScrollProgress(scrolled);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const checkTheme = () => {
-      setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-    };
-    checkTheme();
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
+  const scrollProgress = useScrollProgress();
+  const theme = useThemeClass();
 
   if (loading) {
     return (
