@@ -24,6 +24,8 @@ import { projectMarkdownComponents } from '../components/markdown/contentMarkdow
 import type { Project } from '../lib/api';
 import { useProject, useProjectsList } from '../hooks/queries/projects';
 
+const DETAIL_REHYPE_PLUGINS = [rehypeRaw];
+
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useLang();
@@ -245,7 +247,7 @@ const ProjectDetail: React.FC = () => {
                     content={project.readme}
                     onCopyCode={copyToClipboard}
                     copiedCode={copiedCode}
-                    rehypePlugins={[rehypeRaw]}
+                    rehypePlugins={DETAIL_REHYPE_PLUGINS}
                     components={projectMarkdownComponents}
                   />
                 </div>

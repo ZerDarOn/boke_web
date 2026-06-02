@@ -29,6 +29,8 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import { postMarkdownComponents } from '../components/markdown/contentMarkdownComponents';
 import type { Post } from '../lib/api';
 
+const DETAIL_REHYPE_PLUGINS = [rehypeRaw];
+
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
@@ -396,7 +398,7 @@ const PostDetail: React.FC = () => {
                     content={post.content}
                     onCopyCode={copyToClipboard}
                     copiedCode={copiedCode}
-                    rehypePlugins={[rehypeRaw]}
+                    rehypePlugins={DETAIL_REHYPE_PLUGINS}
                     components={postMarkdownComponents}
                   />
                 </div>

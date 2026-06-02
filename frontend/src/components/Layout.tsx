@@ -97,13 +97,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // 滚动监听
   useEffect(() => {
+    let rafId: number | null = null;
     const handleScroll = () => {
-      const currentScroll = window.scrollY;
-      setScrollY(currentScroll);
-      setShowScrollTop(currentScroll > 500);
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        const currentScroll = window.scrollY;
+        setScrollY((prev) => (prev === currentScroll ? prev : currentScroll));
+        const nextShow = currentScroll > 500;
+        setShowScrollTop((prev) => (prev === nextShow ? prev : nextShow));
+      });
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
   }, []);
 
   // ESC 键监听 - 关闭搜索
