@@ -6,7 +6,7 @@ interface UseActivitiesOptions {
   limit?: number;
 }
 
-export default function useActivities(options: UseActivitiesOptions = {}) {
+export function useActivities(options: UseActivitiesOptions = {}) {
   const { limit } = options;
   const { data, isLoading, error, refetch } = useActivitiesQuery(limit);
 
@@ -19,3 +19,5 @@ export default function useActivities(options: UseActivitiesOptions = {}) {
     },
   };
 }
+
+export default useActivities;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, FileText, Rocket, Tv, Camera, Database } from 'lucide-react';
-import useActivities from '../../hooks/useActivities';
+import { useActivities } from '../../hooks/useActivities';
 import { useDashboardStats } from '../../hooks/queries/dashboard';
 
 const AdminDashboard: React.FC = () => {

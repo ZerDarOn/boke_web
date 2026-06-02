@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Activity, Rss, ArrowRight, Copy, CheckCircle2, Clock, TrendingUp, ExternalLink } from 'lucide-react';
 import { usePageCopy } from '../hooks/useSiteConfig';
-import useActivities from '../hooks/useActivities';
+import { useActivities } from '../hooks/useActivities';
 
 const RightSidebar: React.FC = () => {
   const [rssCopied, setRssCopied] = useState(false);

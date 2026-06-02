@@ -34,7 +34,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { User, Hash, Bell, Activity, ChevronRight, Loader2 } from 'lucide-react';
 import { usePostCategories, usePostTags } from '../hooks/queries/posts';
 import { useSiteConfig } from '../hooks/useSiteConfig';
-import useActivities from '../hooks/useActivities';
+import { useActivities } from '../hooks/useActivities';
 
 /* ============================================================================
  * 类型定义
