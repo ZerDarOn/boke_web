@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Search, Palette, SidebarClose, SidebarOpen, Globe, Settings, ChevronDown, 
-  Github, Video, Book, Camera, Heart, Network, Code, Clock, UserCheck, RotateCcw, Moon, Sun, BookOpen,
+  Github, Video, Book, Camera, Heart, Network, Code, Clock, UserCheck, RotateCcw, Moon, Sun, BookOpen, Gamepad2,
   Menu, X
 } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
@@ -48,10 +48,32 @@ const Navigation: React.FC<NavigationProps> = ({
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const [showSettings, setShowSettings] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
   const t = TRANSLATIONS[lang];
+
+  // Konami Code: ↑ ↑ ↓ ↓ ← → ← → B A
+  useEffect(() => {
+    const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
+    let currentIndex = 0;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === konamiCode[currentIndex]) {
+        currentIndex++;
+        if (currentIndex === konamiCode.length) {
+          setShowSettings(prev => !prev);
+          currentIndex = 0;
+        }
+      } else {
+        currentIndex = 0;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // 根据当前路径获取激活的菜单项
   const getActiveItem = () => {
@@ -60,7 +82,7 @@ const Navigation: React.FC<NavigationProps> = ({
     if (path === '/archives') return t.ARCHIVES;
     if (path === '/dashboard') return t.DASHBOARD;
     if (path === '/about' || path === '/network') return t.ABOUT;
-    if (path === '/posts' || path === '/anime' || path === '/diary' || path === '/gallery') return t.MINE;
+    if (path === '/posts' || path === '/anime' || path === '/games' || path === '/diary' || path === '/gallery') return t.MINE;
     if (path === '/projects' || path === '/timeline' || path === '/skills') return t.OTHERS;
     return t.HOME;
   };
@@ -94,6 +116,7 @@ const Navigation: React.FC<NavigationProps> = ({
         dropdownItems: [
             { label: t.POSTS, icon: BookOpen, path: '/posts' },
             { label: lang === 'EN' ? 'Anime' : '追番', icon: Heart, path: '/anime' },
+            { label: lang === 'EN' ? 'Games' : '游戏', icon: Gamepad2, path: '/games' },
             { label: lang === 'EN' ? 'Diary' : '日记', icon: Book, path: '/diary' },
             { label: lang === 'EN' ? 'Gallery' : '相册', icon: Camera, path: '/gallery' }
         ]
@@ -336,7 +359,15 @@ const Navigation: React.FC<NavigationProps> = ({
                 )}
             </div>
             
-            <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"><Settings size={18} /></button>
+            {showSettings && (
+              <button 
+                onClick={() => window.location.href = '/admin/settings'}
+                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors animate-in fade-in zoom-in duration-200"
+                title="Settings"
+              >
+                <Settings size={18} />
+              </button>
+            )}
 
             <div className="w-[1px] h-6 bg-white/10 mx-1"></div>
 

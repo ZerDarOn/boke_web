@@ -354,7 +354,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <MobileBottomBar />
             </main>
 
-            <div className={`hidden xl:block ${isRightSidebarOpen ? '' : 'hidden'}`}>
+            <div className={`${isRightSidebarOpen ? 'hidden xl:block' : 'hidden'}`}>
               <RightSidebar />
             </div>
           </div>
