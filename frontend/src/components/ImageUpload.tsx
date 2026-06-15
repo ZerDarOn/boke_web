@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Crop } from 'lucide-react';
 import { getAuthToken } from '../lib/api/request';
 import { API_BASE_URL } from '../lib/apiConfig';
 import AvatarCropper from './AvatarCropper';
+import { useToastActions } from '../contexts/ToastContext';
 
 interface ImageUploadProps {
   value?: string; // 当前图片 URL
@@ -21,6 +22,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   label,
   placeholder = '点击上传图片',
 }) => {
+  const toast = useToastActions();
   const [showCropper, setShowCropper] = useState(false);
   const [tempImage, setTempImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -33,13 +35,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
     // 验证文件类型
     if (!file.type.startsWith('image/')) {
-      alert('请选择图片文件');
+      toast.warning('请选择图片文件');
       return;
     }
 
     // 验证文件大小 (最大 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('图片大小不能超过 5MB');
+      toast.warning('图片大小不能超过 5MB');
       return;
     }
 
@@ -91,14 +93,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       
       if (result.success && result.data?.originalUrl) {
         onChange(result.data.originalUrl);
+        toast.success('图片上传成功');
       } else {
-        // 如果上传失败，直接使用 base64
-        onChange(croppedImage);
+        toast.error(result.message || '上传失败，请重试');
       }
     } catch (error) {
       console.error('上传失败:', error);
-      // 上传失败时使用 base64
-      onChange(croppedImage);
+      toast.error('上传失败，请检查网络后重试');
     } finally {
       setUploading(false);
       setTempImage(null);
@@ -176,6 +177,18 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           >
             {value ? '更换图片' : '上传图片'}
           </button>
+
+          {value && (
+            <button
+              type="button"
+              onClick={() => { setTempImage(value); setShowCropper(true); }}
+              disabled={uploading}
+              className="px-3 py-1.5 text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1 disabled:opacity-50"
+            >
+              <Crop size={12} />
+              调整显示
+            </button>
+          )}
 
           {value && (
             <button
