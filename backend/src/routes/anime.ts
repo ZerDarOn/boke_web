@@ -3,6 +3,7 @@ import { AnimeService } from '../services/anime.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import {
   animeSchema,
   animeProgressSchema,
@@ -22,7 +23,8 @@ router.get('/', async (req, res) => {
     const { anime, total } = await AnimeService.findMany({
       pagination,
       status: req.query.status as string,
-      favorite: req.query.favorite === 'true',
+      // 仅在显式传入 favorite 参数时才按收藏过滤；缺省时不过滤（否则会误当成 favorite:false）
+      favorite: req.query.favorite !== undefined ? req.query.favorite === 'true' : undefined,
     });
 
     response.success(res, anime, undefined, createMeta(total, pagination));
@@ -45,7 +47,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/anime - 创建动漫
-router.post('/', validateBody(animeSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, validateBody(animeSchema), async (req, res) => {
   try {
     const anime = await AnimeService.create(req.body);
     response.created(res, anime);
@@ -55,7 +57,7 @@ router.post('/', validateBody(animeSchema), async (req, res) => {
 });
 
 // PUT /api/anime/:id - 更新动漫
-router.put('/:id', validateBody(animeSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, validateBody(animeSchema.partial()), async (req, res) => {
   try {
     const anime = await AnimeService.update(req.params.id, req.body);
     response.success(res, anime);
@@ -65,7 +67,7 @@ router.put('/:id', validateBody(animeSchema.partial()), async (req, res) => {
 });
 
 // PUT /api/anime/:id/progress - 更新观看进度
-router.put('/:id/progress', validateBody(animeProgressSchema), async (req, res) => {
+router.put('/:id/progress', authenticate, requireAdmin, validateBody(animeProgressSchema), async (req, res) => {
   try {
     const { episodes } = req.body;
     const anime = await AnimeService.updateProgress(req.params.id, episodes);
@@ -79,7 +81,7 @@ router.put('/:id/progress', validateBody(animeProgressSchema), async (req, res) 
 });
 
 // POST /api/anime/:id/score - 评分
-router.post('/:id/score', validateBody(animeScoreSchema), async (req, res) => {
+router.post('/:id/score', authenticate, requireAdmin, validateBody(animeScoreSchema), async (req, res) => {
   try {
     const { score } = req.body;
     const anime = await AnimeService.updateScore(req.params.id, score);
@@ -93,7 +95,7 @@ router.post('/:id/score', validateBody(animeScoreSchema), async (req, res) => {
 });
 
 // POST /api/anime/:id/favorite - 切换收藏
-router.post('/:id/favorite', async (req, res) => {
+router.post('/:id/favorite', authenticate, requireAdmin, async (req, res) => {
   try {
     const anime = await AnimeService.toggleFavorite(req.params.id);
     if (!anime) {
@@ -106,7 +108,7 @@ router.post('/:id/favorite', async (req, res) => {
 });
 
 // DELETE /api/anime/:id - 删除动漫
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     await AnimeService.delete(req.params.id);
     response.noContent(res);

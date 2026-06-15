@@ -3,6 +3,7 @@ import { ProjectService } from '../services/project.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { projectSchema } from '../schemas';
 import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 
@@ -50,7 +51,7 @@ router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'project' }), async (r
   }
 });
 
-router.post('/', validateBody(projectSchema), invalidateCache('projects:*'), async (req, res) => {
+router.post('/', authenticate, requireAdmin, validateBody(projectSchema), invalidateCache('projects:*'), async (req, res) => {
   try {
     const project = await ProjectService.create(req.body);
     response.created(res, project);
@@ -59,7 +60,7 @@ router.post('/', validateBody(projectSchema), invalidateCache('projects:*'), asy
   }
 });
 
-router.put('/:id', validateBody(projectSchema.partial()), invalidateCache('projects:*'), invalidateCache('project:*'), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, validateBody(projectSchema.partial()), invalidateCache('projects:*'), invalidateCache('project:*'), async (req, res) => {
   try {
     const project = await ProjectService.update(req.params.id, req.body);
     response.success(res, project);
@@ -68,7 +69,7 @@ router.put('/:id', validateBody(projectSchema.partial()), invalidateCache('proje
   }
 });
 
-router.delete('/:id', invalidateCache('projects:*'), invalidateCache('project:*'), async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, invalidateCache('projects:*'), invalidateCache('project:*'), async (req, res) => {
   try {
     await ProjectService.delete(req.params.id);
     response.noContent(res);

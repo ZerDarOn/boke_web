@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'path';
+import fs from 'fs';
 import { config } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logger.middleware';
@@ -42,6 +43,7 @@ const historyRoutes = require('./routes/history').default;
 const contentRoutes = require('./routes/content').default;
 const exportRoutes = require('./routes/export').default;
 const errorRoutes = require('./routes/error').default;
+const gameRoutes = require('./routes/game').default;
 const fileService = require('./services/file.service').default;
 
 const app = express();
@@ -72,7 +74,9 @@ app.use(helmet({
       frameAncestors: ["'none'"],
       formAction: ["'self'"],
       baseUri: ["'self'"],
-      upgradeInsecureRequests: [],
+      // 不启用 upgrade-insecure-requests：本站子资源要么同源、要么外链本身是 https，
+      // 强升会把 http(局域网/本地)访问时的 js/css 子请求升级成 https 而失败导致白屏。
+      upgradeInsecureRequests: null,
     },
   },
   // 防止点击劫持
@@ -200,7 +204,26 @@ app.use('/api/history', historyRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/error', errorRoutes);
+app.use('/api/games', gameRoutes);
 app.use('/rss.xml', rssRoutes);
+
+// 托管打包好的前端（单端口部署）：存在 frontend/dist 时，
+// 非 /api、/uploads、/rss 的 GET 请求一律返回 index.html，交给前端路由处理。
+// 这样直接访问/刷新 /admin/... 等前端路由不会 404。
+const frontendDist = path.join(process.cwd(), '..', 'frontend', 'dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/uploads') ||
+      req.path.startsWith('/rss')
+    ) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
 
 // 404 handler
 app.use(notFoundHandler);

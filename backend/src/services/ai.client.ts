@@ -177,6 +177,23 @@ class AIClient {
   }
 
   /**
+   * 对话式问答（博客 AI 助手 / 知识库）
+   * 代理到 Python AI 微服务的 /api/v1/ai/chat。
+   * 扩展点：在 ai-service 里接 LLM + 博客内容向量库(RAG) 即可让助手真正回答。
+   */
+  async chat(
+    message: string,
+    history: Array<{ role: string; content: string }> = []
+  ): Promise<{ reply: string; sources?: Array<{ title: string; url: string }> }> {
+    const response = await axios.post(
+      `${this.baseURL}/api/v1/ai/chat`,
+      { message, history },
+      { timeout: REQUEST_TIMEOUT }
+    );
+    return response.data;
+  }
+
+  /**
    * Get analytics overview
    */
   async getAnalyticsOverview(days = 30): Promise<any> {

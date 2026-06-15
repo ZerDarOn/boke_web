@@ -86,6 +86,31 @@ router.post('/sentiment', async (req, res) => {
   }
 });
 
+// POST /api/ai/chat - 博客 AI 助手对话
+router.post('/chat', async (req, res) => {
+  try {
+    const { message, history = [] } = req.body;
+    if (!message || typeof message !== 'string') {
+      return error(res, 'message is required', 400);
+    }
+
+    try {
+      const result = await aiClient.chat(message, history);
+      return success(res, result);
+    } catch {
+      // 扩展点：AI 服务 / 知识库尚未接入时的占位回复。
+      // 在 ai-service 实现 /api/v1/ai/chat（LLM + 博客内容 RAG）后，上面的调用会自动生效。
+      return success(res, {
+        reply:
+          '你好，我是这个博客的 AI 助手（骨架）🤖。\n对话与知识库能力还没接入——在 ai-service 里实现 /api/v1/ai/chat（接入 LLM + 博客内容向量库）后，我就能真正回答关于这个博客的问题了。',
+        sources: [],
+      });
+    }
+  } catch (err: any) {
+    return error(res, err.message, 500);
+  }
+});
+
 // GET /api/ai/analytics/overview - Get analytics overview
 router.get('/analytics/overview', async (req, res) => {
   try {

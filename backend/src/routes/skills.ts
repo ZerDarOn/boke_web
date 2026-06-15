@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { SkillService } from '../services/skill.service';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { skillSchema } from '../schemas';
 import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 
@@ -46,7 +47,7 @@ router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'skill' }), async (req
   }
 });
 
-router.post('/', validateBody(skillSchema), invalidateCache('skills:*'), async (req, res) => {
+router.post('/', authenticate, requireAdmin, validateBody(skillSchema), invalidateCache('skills:*'), async (req, res) => {
   try {
     const skill = await SkillService.create(req.body);
     response.created(res, skill);
@@ -55,7 +56,7 @@ router.post('/', validateBody(skillSchema), invalidateCache('skills:*'), async (
   }
 });
 
-router.put('/:id', validateBody(skillSchema.partial()), invalidateCache('skills:*'), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, validateBody(skillSchema.partial()), invalidateCache('skills:*'), async (req, res) => {
   try {
     const skill = await SkillService.update(req.params.id, req.body);
     response.success(res, skill);
@@ -64,7 +65,7 @@ router.put('/:id', validateBody(skillSchema.partial()), invalidateCache('skills:
   }
 });
 
-router.delete('/:id', invalidateCache('skills:*'), async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, invalidateCache('skills:*'), async (req, res) => {
   try {
     await SkillService.delete(req.params.id);
     response.noContent(res);

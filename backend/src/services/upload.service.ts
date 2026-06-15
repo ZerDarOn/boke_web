@@ -23,13 +23,13 @@ const ensureDir = (dir: string) => {
   }
 };
 
-// 生成文件 URL
+// 生成文件 URL：本地存储返回相对路径，避免写死 host/port 导致跨设备/跨端口加载不到
+// （前端与后端同源时直接命中；dev 分端口时由 vite 代理 /uploads 转发）
 export const getFileUrl = (filename: string, type: string = 'general'): string => {
   if (USE_MINIO) {
     return getMinIOFileUrl(filename, type);
   }
-  const baseUrl = process.env.API_URL || 'http://localhost:3001';
-  return `${baseUrl}/uploads/${type}/${filename}`;
+  return `/uploads/${type}/${filename}`;
 };
 
 // 处理图片上传（生成缩略图）

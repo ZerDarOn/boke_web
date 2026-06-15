@@ -3,6 +3,7 @@ import { DiaryService } from '../services/diary.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { diarySchema } from '../schemas';
 
 const router = Router();
@@ -40,7 +41,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/diary - 创建日记
-router.post('/', validateBody(diarySchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, validateBody(diarySchema), async (req, res) => {
   try {
     const diary = await DiaryService.create(req.body);
     response.created(res, diary);
@@ -50,7 +51,7 @@ router.post('/', validateBody(diarySchema), async (req, res) => {
 });
 
 // PUT /api/diary/:id - 更新日记
-router.put('/:id', validateBody(diarySchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, validateBody(diarySchema.partial()), async (req, res) => {
   try {
     const diary = await DiaryService.update(req.params.id, req.body);
     response.success(res, diary);
@@ -60,7 +61,7 @@ router.put('/:id', validateBody(diarySchema.partial()), async (req, res) => {
 });
 
 // DELETE /api/diary/:id - 删除日记
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     await DiaryService.delete(req.params.id);
     response.noContent(res);

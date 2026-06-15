@@ -509,3 +509,74 @@ model UniverseLayout {
   @@index([nodeType])
   @@map("universe_layouts")
 }
+
+// 游戏平台
+enum GamePlatform {
+  STEAM
+  EPIC
+  GOG
+  ITCH
+  NINTENDO_SWITCH
+  PLAYSTATION
+  XBOX
+  OTHER
+}
+
+// 游戏状态
+enum GameStatus {
+  WANT_TO_PLAY
+  PLAYING
+  COMPLETED
+  DROPPED
+  REPLAYING
+}
+
+// 游戏
+model Game {
+  id          String     @id @default(cuid())
+  title       String
+  cover       String
+  bannerImage String?
+  screenshots String[]
+
+  platform    GamePlatform  @default(STEAM)
+  platformId  String?
+  storeUrl    String?
+
+  genres      String[]
+  developer   String?
+  publisher   String?
+  releaseDate DateTime?
+  description String?
+
+  status      GameStatus    @default(WANT_TO_PLAY)
+  playtime    Int           @default(0)
+  score       Float?
+  favorite    Boolean       @default(false)
+  notes       String?
+  tags        String[]
+
+  achievementsTotal    Int @default(0)
+  achievementsUnlocked Int @default(0)
+
+  isHidden    Boolean   @default(true)
+  hideReason  String?
+
+  relatedPostIds    String[]
+  relatedProjectIds String[]
+  relatedDiaryIds   String[]
+
+  startDate   DateTime?
+  finishDate  DateTime?
+  lastPlayed  DateTime?
+  steamLastSync DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([favorite])
+  @@index([platform])
+  @@index([isHidden])
+  @@map("games")
+}

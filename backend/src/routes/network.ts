@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { NetworkService } from '../services/network.service';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { networkNodeSchema } from '../schemas';
 
 const router = Router();
@@ -40,7 +41,7 @@ router.get('/nodes/:id', async (req, res) => {
 });
 
 // POST /api/network/nodes - 创建节点
-router.post('/nodes', validateBody(networkNodeSchema), async (req, res) => {
+router.post('/nodes', authenticate, requireAdmin, validateBody(networkNodeSchema), async (req, res) => {
   try {
     const node = await NetworkService.create(req.body);
     response.created(res, node);
@@ -50,7 +51,7 @@ router.post('/nodes', validateBody(networkNodeSchema), async (req, res) => {
 });
 
 // PUT /api/network/nodes/:id - 更新节点
-router.put('/nodes/:id', validateBody(networkNodeSchema.partial()), async (req, res) => {
+router.put('/nodes/:id', authenticate, requireAdmin, validateBody(networkNodeSchema.partial()), async (req, res) => {
   try {
     const node = await NetworkService.update(req.params.id, req.body);
     response.success(res, node);
@@ -60,7 +61,7 @@ router.put('/nodes/:id', validateBody(networkNodeSchema.partial()), async (req, 
 });
 
 // DELETE /api/network/nodes/:id - 删除节点
-router.delete('/nodes/:id', async (req, res) => {
+router.delete('/nodes/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     await NetworkService.delete(req.params.id);
     response.noContent(res);

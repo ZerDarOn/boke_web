@@ -3,6 +3,7 @@ import { GalleryService } from '../services/gallery.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { galleryImageSchema, albumSchema, photoCommentSchema } from '../schemas';
 
 const router = Router();
@@ -63,7 +64,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/gallery - 上传照片
-router.post('/', validateBody(galleryImageSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, validateBody(galleryImageSchema), async (req, res) => {
   try {
     const image = await GalleryService.create(req.body);
     response.created(res, image);
@@ -73,7 +74,7 @@ router.post('/', validateBody(galleryImageSchema), async (req, res) => {
 });
 
 // POST /api/gallery/albums - 创建相册
-router.post('/albums', validateBody(albumSchema), async (req, res) => {
+router.post('/albums', authenticate, requireAdmin, validateBody(albumSchema), async (req, res) => {
   try {
     const album = await GalleryService.createAlbum(req.body);
     response.created(res, album);
@@ -93,7 +94,7 @@ router.post('/:id/comments', validateBody(photoCommentSchema), async (req, res) 
 });
 
 // DELETE /api/gallery/:id - 删除照片
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     await GalleryService.delete(req.params.id);
     response.noContent(res);

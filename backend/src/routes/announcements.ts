@@ -3,6 +3,7 @@ import { AnnouncementService } from '../services/announcement.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { announcementSchema } from '../schemas';
 
 const router = Router();
@@ -51,7 +52,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/announcements - 创建公告
-router.post('/', validateBody(announcementSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, validateBody(announcementSchema), async (req, res) => {
   try {
     const announcement = await AnnouncementService.create(req.body);
     response.created(res, announcement);
@@ -61,7 +62,7 @@ router.post('/', validateBody(announcementSchema), async (req, res) => {
 });
 
 // PUT /api/announcements/:id - 更新公告
-router.put('/:id', validateBody(announcementSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, validateBody(announcementSchema.partial()), async (req, res) => {
   try {
     const announcement = await AnnouncementService.update(req.params.id, req.body);
     response.success(res, announcement);
@@ -71,7 +72,7 @@ router.put('/:id', validateBody(announcementSchema.partial()), async (req, res) 
 });
 
 // DELETE /api/announcements/:id - 删除公告
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     await AnnouncementService.delete(req.params.id);
     response.noContent(res);

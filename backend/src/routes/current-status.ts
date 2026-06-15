@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { CurrentStatusService } from '../services/current-status.service';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { currentStatusSchema } from '../schemas';
 
 const router = Router();
@@ -53,7 +54,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/current-status - 创建状态
-router.post('/', validateBody(currentStatusSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, validateBody(currentStatusSchema), async (req, res) => {
   try {
     const status = await CurrentStatusService.create(req.body);
     response.created(res, status);
@@ -63,7 +64,7 @@ router.post('/', validateBody(currentStatusSchema), async (req, res) => {
 });
 
 // PUT /api/current-status/:id - 更新状态
-router.put('/:id', validateBody(currentStatusSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, validateBody(currentStatusSchema.partial()), async (req, res) => {
   try {
     const status = await CurrentStatusService.update(req.params.id, req.body);
     response.success(res, status);
@@ -73,7 +74,7 @@ router.put('/:id', validateBody(currentStatusSchema.partial()), async (req, res)
 });
 
 // DELETE /api/current-status/:id - 删除状态
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     await CurrentStatusService.delete(req.params.id);
     response.noContent(res);
@@ -83,7 +84,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // POST /api/current-status/:id/activate - 激活指定状态
-router.post('/:id/activate', async (req, res) => {
+router.post('/:id/activate', authenticate, requireAdmin, async (req, res) => {
   try {
     const status = await CurrentStatusService.setActive(req.params.id);
     response.success(res, status);

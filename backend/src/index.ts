@@ -200,6 +200,42 @@ async function ensurePrismaClient(): Promise<boolean> {
 }
 
 // Main startup
+
+/**
+ * Steam 库定时同步
+ * - 仅当 STEAM_API_KEY 和 STEAM_USER_ID 都配置时生效
+ * - 启动时执行一次，之后每 24 小时重复
+ * - 同步失败仅记录日志，不影响服务器运行
+ */
+function startSteamSyncSchedule(): void {
+  const steamApiKey = process.env.STEAM_API_KEY;
+  const steamUserId = process.env.STEAM_USER_ID;
+
+  if (!steamApiKey || !steamUserId) {
+    console.log('ℹ️  Steam sync skipped: STEAM_API_KEY / STEAM_USER_ID not configured.');
+    return;
+  }
+
+  const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+  const runSync = async () => {
+    try {
+      const { GameService } = await import('./services/game.service');
+      const result = await GameService.syncSteamLibrary(steamUserId, steamApiKey);
+      console.log(`🎮 Steam sync: ${result.created} created, ${result.updated} updated, ${result.total} total`);
+    } catch (err: any) {
+      console.error(`⚠️  Steam scheduled sync failed: ${err.message}`);
+    }
+  };
+
+  // 启动时执行一次
+  runSync();
+
+  // 定时执行
+  setInterval(runSync, SYNC_INTERVAL_MS);
+  console.log('🎮 Steam library sync scheduled (every 24h).');
+}
+
 async function main() {
   // 动态导入配置模块
   const { config, validateProductionEnv } = await import('./config/env');
@@ -262,6 +298,9 @@ async function main() {
 🔐 Admin Panel: ${config.FRONTEND_URL}/admin/login
 ════════════════════════════════════
       `);
+
+      // 启动 Steam 定时同步（仅在环境变量配置后生效）
+      startSteamSyncSchedule();
     });
 
     const gracefulShutdown = () => {

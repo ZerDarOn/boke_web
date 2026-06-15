@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { TimelineService } from '../services/timeline.service';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { timelineEventSchema } from '../schemas';
 
 const router = Router();
@@ -53,7 +54,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/timeline - 创建事件
-router.post('/', validateBody(timelineEventSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, validateBody(timelineEventSchema), async (req, res) => {
   try {
     const event = await TimelineService.create(req.body);
     response.created(res, event);
@@ -63,7 +64,7 @@ router.post('/', validateBody(timelineEventSchema), async (req, res) => {
 });
 
 // PUT /api/timeline/:id - 更新事件
-router.put('/:id', validateBody(timelineEventSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, validateBody(timelineEventSchema.partial()), async (req, res) => {
   try {
     const event = await TimelineService.update(req.params.id, req.body);
     response.success(res, event);
@@ -73,7 +74,7 @@ router.put('/:id', validateBody(timelineEventSchema.partial()), async (req, res)
 });
 
 // DELETE /api/timeline/:id - 删除事件
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     await TimelineService.delete(req.params.id);
     response.noContent(res);

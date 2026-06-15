@@ -145,12 +145,34 @@ export function sanitizeHTML(html: string): string {
  * 清理对象中的字符串字段
  */
 export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
+  // 数组：逐项净化字符串，保持数组类型
+  if (Array.isArray(obj)) {
+    return obj.map((item) => {
+      if (typeof item === 'string') {
+        return sanitizeString(item);
+      } else if (item !== null && typeof item === 'object') {
+        return sanitizeObject(item);
+      }
+      return item;
+    }) as unknown as T;
+  }
+
   const sanitized: Record<string, any> = { ...obj };
 
   for (const key of Object.keys(sanitized)) {
     const value = sanitized[key];
     if (typeof value === 'string') {
       sanitized[key] = sanitizeString(value);
+    } else if (Array.isArray(value)) {
+      // 数组：逐项净化，保持数组类型
+      sanitized[key] = value.map((item) => {
+        if (typeof item === 'string') {
+          return sanitizeString(item);
+        } else if (item !== null && typeof item === 'object') {
+          return sanitizeObject(item);
+        }
+        return item;
+      });
     } else if (typeof value === 'object' && value !== null) {
       sanitized[key] = sanitizeObject(value);
     }
@@ -200,29 +222,14 @@ export function sanitizeInput(
       return next();
     }
 
-    // 净化输入数据
+    // 净化输入数据（移除危险 HTML 标签/属性等）
     sanitizeRequestData(req);
 
-    // 检查 SQL 注入
-    const requestData = JSON.stringify({ ...req.body, ...req.query, ...req.params });
-    if (containsSQLInjection(requestData)) {
-      res.status(400).json({
-        success: false,
-        error: '请求包含非法字符或命令',
-        code: 1001,
-      });
-      return;
-    }
-
-    // 检查命令注入
-    if (containsCommandInjection(requestData)) {
-      res.status(400).json({
-        success: false,
-        error: '请求包含非法字符或命令',
-        code: 1001,
-      });
-      return;
-    }
+    // 注:已移除"SQL/命令注入"全量正则扫描。
+    // 原正则(如 /[;&|`$()]/、union/select/update 词匹配)会把正常内容
+    // (如 "数字编年史(2025)"、含 & 的 URL、英文词)全部误判为攻击并 400。
+    // 本项目用 Prisma 参数化查询(免疫 SQL 注入)、且不以用户输入执行 shell，
+    // 该检测纯属误伤、几乎不提供保护，故移除。XSS 由上面的 HTML 净化处理。
 
     next();
   } catch (error) {
@@ -280,7 +287,8 @@ export function addXSSProtectionHeaders(
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Content-Security-Policy', "default-src 'self'");
+  // 注:不再在此设置 CSP。原来的 "default-src 'self'" 会覆盖 helmet 的合理 CSP，
+  // 导致 data: 头像、外链图片(B站/Steam 封面)、内联样式等全部被拦。CSP 交给 app.ts 的 helmet 统一管理。
 
   next();
 }

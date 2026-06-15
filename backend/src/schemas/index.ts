@@ -13,6 +13,12 @@ export type AnnouncementType = 'INFO' | 'WARNING' | 'SUCCESS' | 'IMPORTANT';
 export type AccessLevel = 'PUBLIC' | 'PRIVATE' | 'PASSWORD';
 export type HistoryIcon = 'FileText' | 'Briefcase' | 'Code' | 'Star' | 'Trophy' | 'Globe' | 'Zap' | 'Heart';
 
+/**
+ * 可选 URL 字段：接受合法 URL 或空字符串（清空时）。
+ * null 由 validateBody 的 stripNulls 处理，这里无需考虑。
+ */
+const optionalUrl = z.union([z.string().url(), z.literal('')]).optional();
+
 export const registerSchema = z.object({
   username: z.string().min(3).max(50),
   email: z.string().email(),
@@ -34,9 +40,9 @@ export const updateUserSchema = z.object({
   displayName: z.string().max(100).optional(),
   bio: z.string().max(500).optional(),
   location: z.string().max(100).optional(),
-  website: z.string().url().optional(),
+  website: optionalUrl,
   github: z.string().max(100).optional(),
-  avatar: z.string().url().optional(),
+  avatar: optionalUrl,
 });
 
 export const postSchema = z.object({
@@ -61,10 +67,10 @@ export const projectSchema = z.object({
   type: z.string().min(1).max(50),
   tech: z.array(z.string()).optional(),
   status: z.enum(['ACTIVE', 'ARCHIVED', 'DEPLOYED'] as const).optional(),
-  link: z.string().url().optional(),
-  imageUrl: z.string().url().optional(),
-  githubUrl: z.string().url().optional(),
-  demoUrl: z.string().url().optional(),
+  link: optionalUrl,
+  imageUrl: optionalUrl,
+  githubUrl: optionalUrl,
+  demoUrl: optionalUrl,
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
   readme: z.string().optional(),
@@ -74,22 +80,22 @@ export const projectSchema = z.object({
 export const animeSchema = z.object({
   title: z.string().min(1).max(200),
   cover: z.string().min(1),
-  bannerImage: z.string().optional(),
+  bannerImage: z.string().nullish(),
   type: z.enum(['TV', 'OVA', 'Movie', 'Special', 'ONA'] as const).optional(),
   episodes: z.number().int().min(1),
-  aired: z.string().optional(),
+  aired: z.string().nullish(),
   studios: z.array(z.string()).optional(),
   genres: z.array(z.string()).optional(),
-  synopsis: z.string().optional(),
+  synopsis: z.string().nullish(),
   currentEp: z.number().int().min(0).optional(),
   status: z.enum(['WATCHING', 'COMPLETED', 'ON_HOLD', 'DROPPED'] as const).optional(),
-  score: z.number().min(0).max(10).optional(),
+  score: z.number().min(0).max(10).nullish(),
   favorite: z.boolean().optional(),
-  notes: z.string().optional(),
+  notes: z.string().nullish(),
   tags: z.array(z.string()).optional(),
-  startDate: z.coerce.date().optional(),
-  finishDate: z.coerce.date().optional(),
-  bilibiliUrl: z.string().url().optional(),
+  startDate: z.coerce.date().nullish(),
+  finishDate: z.coerce.date().nullish(),
+  bilibiliUrl: optionalUrl,
 });
 
 export const animeProgressSchema = z.object({
@@ -110,7 +116,7 @@ export const diarySchema = z.object({
   location: z.string().max(100).optional(),
   mood: z.string().max(50).optional(),
   weather: z.string().max(50).optional(),
-  coverImage: z.string().url().optional(),
+  coverImage: optionalUrl,
   date: z.coerce.date().optional(),
   tags: z.array(z.string()).optional(),
   readingTime: z.string().optional(),
@@ -189,7 +195,7 @@ export const networkNodeSchema = z.object({
   name: z.string().min(1).max(200),
   role: z.string().min(1).max(100).default('Collaborator'),
   description: z.string().max(500).default(''),
-  avatar: z.string().url().optional().or(z.literal('')),
+  avatar: optionalUrl.or(z.literal('')),
   x: z.number().default(0),
   y: z.number().default(0),
   type: z.enum(['core', 'major', 'minor'] as const).optional(),
@@ -226,6 +232,49 @@ export const announcementSchema = z.object({
   attachments: z.any().optional(),
 });
 
+export const gameSchema = z.object({
+  title: z.string().min(1).max(200),
+  cover: z.string().min(1),
+  bannerImage: z.string().optional(),
+  screenshots: z.array(z.string()).optional(),
+  platform: z.enum(['STEAM', 'EPIC', 'GOG', 'ITCH', 'NINTENDO_SWITCH', 'PLAYSTATION', 'XBOX', 'OTHER'] as const).optional(),
+  platformId: z.string().optional(),
+  storeUrl: optionalUrl,
+  genres: z.array(z.string()).optional(),
+  developer: z.string().optional(),
+  publisher: z.string().optional(),
+  releaseDate: z.coerce.date().optional(),
+  description: z.string().optional(),
+  status: z.enum(['WANT_TO_PLAY', 'PLAYING', 'COMPLETED', 'DROPPED', 'REPLAYING'] as const).optional(),
+  playtime: z.number().int().min(0).optional(),
+  score: z.number().min(0).max(10).optional(),
+  favorite: z.boolean().optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  achievementsTotal: z.number().int().min(0).optional(),
+  achievementsUnlocked: z.number().int().min(0).optional(),
+  isHidden: z.boolean().optional(),
+  hideReason: z.string().optional(),
+  relatedPostIds: z.array(z.string()).optional(),
+  relatedProjectIds: z.array(z.string()).optional(),
+  relatedDiaryIds: z.array(z.string()).optional(),
+  startDate: z.coerce.date().optional(),
+  finishDate: z.coerce.date().optional(),
+  lastPlayed: z.coerce.date().optional(),
+});
+
+export const gameScoreSchema = z.object({
+  score: z.number().min(0).max(10),
+});
+
+export const gameProgressSchema = z.object({
+  playtime: z.number().int().min(0),
+});
+
+export const gameAchievementsSchema = z.object({
+  unlocked: z.number().int().min(0),
+});
+
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
@@ -253,3 +302,7 @@ export type PhotoCommentInput = z.infer<typeof photoCommentSchema>;
 export type FileInput = z.infer<typeof fileSchema>;
 export type AnnouncementInput = z.infer<typeof announcementSchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;
+export type GameInput = z.infer<typeof gameSchema>;
+export type GameScoreInput = z.infer<typeof gameScoreSchema>;
+export type GameProgressInput = z.infer<typeof gameProgressSchema>;
+export type GameAchievementsInput = z.infer<typeof gameAchievementsSchema>;

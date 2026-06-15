@@ -66,10 +66,14 @@ export const config = {
             process.env.FRONTEND_URL || 'http://localhost:5173',
             'http://localhost:5173',
             'http://127.0.0.1:5173',
+            'http://localhost:3001',
+            'http://localhost:3002',
+            'http://localhost:3003',
+            'http://localhost:3004',
             // 开发环境：允许所有本地网络 IP 地址访问
-            'http://192.168.*:5173',
-            'http://10.*:5173',
-            'http://172.*:5173',
+            'http://192.168.*:*',
+            'http://10.*:*',
+            'http://172.*:*',
           ];
       
       // 添加 ALLOWED_ORIGINS 中的地址（包含隧道域名通配符）

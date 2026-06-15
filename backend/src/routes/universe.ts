@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { UniverseService } from '../services/universe.service';
 import * as response from '../utils/response';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -27,7 +28,7 @@ router.get('/connections', async (req, res) => {
 });
 
 // PUT /api/universe/layout - 更新宇宙图布局（全部模式专用坐标）
-router.put('/layout', async (req, res) => {
+router.put('/layout', authenticate, requireAdmin, async (req, res) => {
   try {
     const { nodeId, nodeType, x, y } = req.body;
     if (!nodeId || !nodeType || x === undefined || y === undefined) {
