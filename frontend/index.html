@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 不发送 Referer：允许加载 B站(i0.hdslb.com)等做了防盗链的图片 -->
+    <meta name="referrer" content="no-referrer" />
     
     <!-- SEO Meta Tags -->
     <title>INK.SPIRIT | Cyber-Ink Evolution - 个人博客</title>
@@ -32,46 +34,22 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;400;700&family=Noto+Serif+SC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
       :root {
-        --color-neon: #10b981;
-        --color-secondary: #8b5cf6;
+        --color-neon-hsl: 150 100% 40%;
+        --color-neon-dark-hsl: 150 100% 30%;
+        --color-secondary-hsl: 260 90% 65%;
+        --color-neon: hsl(150 100% 40%);
+        --color-secondary: hsl(260 90% 65%);
       }
 
-      body, a, button, input, textarea, select, .cursor-pointer {
+      /* 仅当自定义光标启用时(非触屏，由 CyberCursor 添加 .custom-cursor-on)才隐藏系统指针 */
+      .custom-cursor-on,
+      .custom-cursor-on a,
+      .custom-cursor-on button,
+      .custom-cursor-on input,
+      .custom-cursor-on textarea,
+      .custom-cursor-on select,
+      .custom-cursor-on .cursor-pointer {
         cursor: none !important;
-      }
-
-      #cursor-dot,
-      #cursor-outline {
-        position: fixed;
-        top: 0;
-        left: 0;
-        transform: translate(-50%, -50%);
-        border-radius: 50%;
-        z-index: 9999;
-        pointer-events: none;
-      }
-      #cursor-dot {
-        width: 8px;
-        height: 8px;
-        background-color: var(--color-neon);
-      }
-      #cursor-outline {
-        width: 40px;
-        height: 40px;
-        border: 1px solid var(--color-secondary);
-        opacity: 0.5;
-        transition: width 0.2s, height 0.2s, background-color 0.2s;
-      }
-
-      body:has(a:hover) #cursor-outline,
-      body:has(button:hover) #cursor-outline,
-      body:has(.cursor-pointer:hover) #cursor-outline,
-      body:has(input:hover) #cursor-outline {
-        width: 60px;
-        height: 60px;
-        background-color: rgba(255, 255, 255, 0.05);
-        border-color: var(--color-neon);
-        mix-blend-mode: difference;
       }
     </style>
     <style>
@@ -124,25 +102,6 @@
     <link rel="stylesheet" href="/src/index.css">
 </head>
   <body class="bg-paper text-ink antialiased overflow-x-hidden selection:bg-neon selection:text-white dark:bg-ink dark:text-paper transition-colors duration-300">
-    <div id="cursor-dot"></div>
-    <div id="cursor-outline"></div>
-    <script>
-        const dot = document.getElementById("cursor-dot");
-        const outline = document.getElementById("cursor-outline");
-
-        window.addEventListener("mousemove", (e) => {
-            const posX = e.clientX;
-            const posY = e.clientY;
-
-            dot.style.left = `${posX}px`;
-            dot.style.top = `${posY}px`;
-
-            outline.animate({
-                left: `${posX}px`,
-                top: `${posY}px`
-            }, { duration: 500, fill: "forwards" });
-        });
-    </script>
     <div id="root"></div>
   <script type="module" src="/src/index.tsx"></script>
 </body>

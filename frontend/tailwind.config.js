@@ -10,9 +10,10 @@ export default {
       colors: {
         ink: '#0a0a0a',
         paper: '#ffffff',
-        neon: '#10b981',
-        'neon-dark': '#059669',
-        secondary: '#8b5cf6',
+        // 主题色：引用 CSS 变量(HSL 通道)，支持 /透明度 修饰符，随主题栏实时变化
+        neon: 'hsl(var(--color-neon-hsl) / <alpha-value>)',
+        'neon-dark': 'hsl(var(--color-neon-dark-hsl) / <alpha-value>)',
+        secondary: 'hsl(var(--color-secondary-hsl) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['"Orbitron"', 'sans-serif'],

@@ -41,6 +41,11 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
         secure: false,
       },
+      '/uploads': {
+        target: `http://localhost:${backendPort}`,
+        changeOrigin: true,
+        secure: false,
+      },
       '/rss.xml': {
         target: `http://localhost:${backendPort}`,
         changeOrigin: true,
