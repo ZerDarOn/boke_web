@@ -3,6 +3,7 @@ import { api, Skill } from '../../lib/api';
 import { useSkillsList } from '../../hooks/queries/skills';
 import VisualEditor from '../../components/VisualEditor';
 import { AlertCircle, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { useToastActions } from '../../contexts/ToastContext';
 
 interface SkillNode {
   id: string;
@@ -15,6 +16,7 @@ interface SkillNode {
 }
 
 const AdminSkills: React.FC = () => {
+  const toast = useToastActions();
   const { data: skills = [], isLoading: loading, error: queryError, refetch } = useSkillsList();
   const error = queryError?.message ?? null;
   const [actionError, setActionError] = useState<string | null>(null);
@@ -59,13 +61,13 @@ const AdminSkills: React.FC = () => {
       const result = await api.skills.create(newSkillData);
       if (result.success && result.data) {
         await loadSkills();
-        alert('技能添加成功！');
+        toast.success('技能添加成功！');
       } else {
         setActionError(result.error || 'Failed to create skill');
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unknown error');
-      alert('添加失败，请重试');
+      toast.error('添加失败，请重试');
     } finally {
       setIsAdding(false);
     }
@@ -104,13 +106,13 @@ const AdminSkills: React.FC = () => {
       const result = await api.skills.delete(id);
       if (result.success) {
         await loadSkills();
-        alert('技能删除成功！');
+        toast.success('技能删除成功！');
       } else {
         setActionError(result.error || 'Failed to delete skill');
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unknown error');
-      alert('删除失败，请重试');
+      toast.error('删除失败，请重试');
     }
   };
 
@@ -130,10 +132,10 @@ const AdminSkills: React.FC = () => {
         }
       }
 
-      alert('所有位置保存成功！');
+      toast.success('所有位置保存成功！');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unknown error');
-      alert('保存失败，请重试');
+      toast.error('保存失败，请重试');
     } finally {
       setSaving(false);
     }

@@ -9,6 +9,8 @@ import {
   useDeleteAnime,
 } from '../../hooks/queries/anime';
 import { Search, Plus, Edit, Trash2, Heart, Star, Filter, Loader2, X, Save, Upload, Image as ImageIcon, XCircle } from 'lucide-react';
+import { useToastActions } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 interface Anime {
   id: string;
@@ -23,6 +25,7 @@ interface Anime {
   genres: string[];
   studios: string[];
   aired?: string;
+  bilibiliUrl?: string;
   startDate?: string;
   finishDate?: string;
   createdAt: string;
@@ -30,6 +33,8 @@ interface Anime {
 }
 
 const AdminAnime: React.FC = () => {
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED'>('all');
   const [favoriteFilter, setFavoriteFilter] = useState<'all' | 'favorite' | 'not-favorite'>('all');
@@ -59,13 +64,14 @@ const AdminAnime: React.FC = () => {
   const [coverPreview, setCoverPreview] = useState<string>('');
 
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`确定要删除动漫 "${title}" 吗？`)) return;
-    
+    if (!(await confirm({ message: `确定要删除动漫 "${title}" 吗？` }))) return;
+
     try {
       await deleteAnime.mutateAsync(id);
+      toast.success('删除成功');
     } catch (error) {
       console.error('Failed to delete anime:', error);
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -115,7 +121,7 @@ const AdminAnime: React.FC = () => {
       handleCloseModal();
     } catch (err) {
       const message = err instanceof Error ? err.message : '操作失败';
-      alert(editingAnime ? `更新失败: ${message}` : `创建失败: ${message}`);
+      toast.error(editingAnime ? `更新失败: ${message}` : `创建失败: ${message}`);
     }
   };
 
@@ -136,14 +142,14 @@ const AdminAnime: React.FC = () => {
     // 验证文件类型
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
-      alert('请选择有效的图片文件 (JPG/PNG/GIF/WebP)');
+      toast.warning('请选择有效的图片文件 (JPG/PNG/GIF/WebP)');
       return;
     }
 
     // 验证文件大小 (最大 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      alert('图片大小不能超过 5MB');
+      toast.warning('图片大小不能超过 5MB');
       return;
     }
 
@@ -173,7 +179,7 @@ const AdminAnime: React.FC = () => {
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('图片上传失败，请重试');
+      toast.error('图片上传失败，请重试');
     } finally {
       setUploading(false);
     }
@@ -569,6 +575,19 @@ const AdminAnime: React.FC = () => {
                       onChange={(e) => handleInputChange('studios', e.target.value.split(',').map(s => s.trim()))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       placeholder="Studio Ghibli, MAPPA"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      bilibili 链接（观看跳转）
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.bilibiliUrl || ''}
+                      onChange={(e) => handleInputChange('bilibiliUrl', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="https://www.bilibili.com/bangumi/play/ss..."
                     />
                   </div>
                 </div>

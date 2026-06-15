@@ -7,11 +7,15 @@ import {
   Camera, Folder, Image as ImageIcon, ArrowLeft,
   Grid, List, Eye, Calendar, MapPin
 } from 'lucide-react';
+import { useToastActions } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 // 相册类型扩展
 type GalleryView = 'albums' | 'photos';
 
 const AdminGallery: React.FC = () => {
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const [view, setView] = useState<GalleryView>('albums');
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   
@@ -121,16 +125,17 @@ const AdminGallery: React.FC = () => {
       }
       setIsModalOpen(false);
       refreshAlbums();
+      toast.success('保存成功');
     } catch (err) {
       console.error('Failed to save album:', err);
-      alert('保存失败');
+      toast.error('保存失败');
     }
   };
 
   // 删除相册
   const handleDeleteAlbum = async (albumId: string) => {
-    if (!confirm('确定要删除这个相册吗？相册内的照片将被移出相册。')) return;
-    
+    if (!(await confirm({ message: '确定要删除这个相册吗？相册内的照片将被移出相册。' }))) return;
+
     try {
       // 将该相册的所有照片移出相册
       const albumPhotos = photos.filter(p => p.albumId === albumId);
@@ -138,9 +143,10 @@ const AdminGallery: React.FC = () => {
         await api.gallery.update(photo.id, { albumId: undefined, album: undefined });
       }
       refreshAlbums();
+      toast.success('删除成功');
     } catch (err) {
       console.error('Failed to delete album:', err);
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -185,23 +191,25 @@ const AdminGallery: React.FC = () => {
       setIsPhotoModalOpen(false);
       refreshPhotos();
       refreshAlbums(); // 更新相册计数
+      toast.success('保存成功');
     } catch (err) {
       console.error('Failed to save photo:', err);
-      alert('保存失败');
+      toast.error('保存失败');
     }
   };
 
   // 删除照片
   const handleDeletePhoto = async (photoId: string) => {
-    if (!confirm('确定要删除这张照片吗？')) return;
-    
+    if (!(await confirm({ message: '确定要删除这张照片吗？' }))) return;
+
     try {
       await api.gallery.delete(photoId);
       refreshPhotos();
       refreshAlbums();
+      toast.success('删除成功');
     } catch (err) {
       console.error('Failed to delete photo:', err);
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -211,12 +219,12 @@ const AdminGallery: React.FC = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('请选择图片文件');
+      toast.warning('请选择图片文件');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      alert('图片大小不能超过 10MB');
+      toast.warning('图片大小不能超过 10MB');
       return;
     }
 
@@ -235,7 +243,7 @@ const AdminGallery: React.FC = () => {
     } catch (error) {
       console.error('❌ 图片上传失败:', error);
       const errorMessage = error instanceof Error ? error.message : '图片上传失败';
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploadingImage(false);
       // 清空 input 以便重复选择同一文件

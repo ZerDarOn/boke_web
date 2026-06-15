@@ -7,8 +7,12 @@ import {
   useDeleteProject,
 } from '../../hooks/queries/projects';
 import { Search, Plus, Edit, Trash2, Code, Loader2, X, Save, LayoutGrid, FileText, Rocket, Archive, CheckCircle2 } from 'lucide-react';
+import { useToastActions } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const AdminProjectsPage: React.FC = () => {
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const { data: items = [], isLoading: loading, error: queryError, refetch } = useProjectsList({ limit: 500 });
   const error = queryError?.message ?? null;
   const createProject = useCreateProject();
@@ -24,11 +28,12 @@ const AdminProjectsPage: React.FC = () => {
   const [editMode, setEditMode] = useState<'card' | 'detail'>('card');
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除吗？')) return;
+    if (!(await confirm({ message: '确定要删除吗？' }))) return;
     try {
       await deleteProject.mutateAsync(id);
+      toast.success('删除成功');
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -67,8 +72,9 @@ const AdminProjectsPage: React.FC = () => {
         await createProject.mutateAsync(submitData);
       }
       handleCloseModal();
+      toast.success(editingItem ? '更新成功' : '创建成功');
     } catch {
-      alert('保存失败');
+      toast.error('保存失败');
     }
   };
 

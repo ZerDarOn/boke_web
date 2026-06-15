@@ -8,6 +8,8 @@ import {
 } from '../../hooks/queries/posts';
 import { uploadImage } from '../../lib/upload';
 import { Search, Plus, Edit, Trash2, FileText, Clock, Eye, Heart, Loader2, X, Save, Image, Lock, Globe, Key } from 'lucide-react';
+import { useToastActions } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 // 简单的 Markdown 编辑器组件
 const SimpleMarkdownEditor: React.FC<{
@@ -49,6 +51,8 @@ interface Post {
 }
 
 const AdminPosts: React.FC = () => {
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
 
@@ -74,11 +78,12 @@ const AdminPosts: React.FC = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这篇文章吗？')) return;
+    if (!(await confirm({ message: '确定要删除这篇文章吗？' }))) return;
     try {
       await deletePost.mutateAsync(id);
+      toast.success('删除成功');
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -131,7 +136,7 @@ const AdminPosts: React.FC = () => {
     } catch (error) {
       console.error('❌ 图片上传失败:', error);
       const errorMessage = error instanceof Error ? error.message : '图片上传失败';
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploadingImage(false);
       // 清空 input 以便重复选择同一文件
@@ -148,9 +153,10 @@ const AdminPosts: React.FC = () => {
         await createPost.mutateAsync(formData as Parameters<typeof createPost.mutateAsync>[0]);
       }
       handleCloseModal();
+      toast.success(editingPost ? '更新成功' : '创建成功');
     } catch (err) {
       const message = err instanceof Error ? err.message : '操作失败';
-      alert(editingPost ? `更新失败: ${message}` : `创建失败: ${message}`);
+      toast.error(editingPost ? `更新失败: ${message}` : `创建失败: ${message}`);
     }
   };
 

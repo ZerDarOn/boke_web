@@ -5,6 +5,7 @@ export * from './activities';
 export * from './gallery';
 export * from './diary';
 export * from './anime';
+export * from './games';
 export * from './announcements';
 export * from './dashboard';
 export * from './skills';

@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Lock, Terminal, AlertCircle, Search, Filter, Trash2, Download, LogOut, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { maintenanceApi, LogEntry } from '../lib/maintenance';
 import { useLang } from '../contexts/LangContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 const MaintenancePanel: React.FC = () => {
   const { t } = useLang();
+  const confirm = useConfirm();
   
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -101,8 +103,9 @@ const MaintenancePanel: React.FC = () => {
   
   // Handle clear logs
   const handleClearLogs = async () => {
-    if (!token || !confirm(`Are you sure you want to clear ${selectedCategory} logs?`)) return;
-    
+    if (!token) return;
+    if (!(await confirm({ message: `Are you sure you want to clear ${selectedCategory} logs?` }))) return;
+
     setLoading(true);
     
     try {

@@ -1,10 +1,34 @@
 import React from 'react';
-import { X } from 'lucide-react';
-import type { SiteConfig } from './siteConfig';
+import { X, Upload } from 'lucide-react';
+import { uploadImage } from '../../../lib/upload';
+import { useToastActions } from '../../../contexts/ToastContext';
 
-import type { HeroSettingsTabProps, SettingsTabProps } from './types';
+import type { HeroSettingsTabProps } from './types';
 
-const HeroSettingsTab: React.FC<HeroSettingsTabProps> = ({ config, updateConfig, updateHeroContent, editingHero, setEditingHero, setConfig }) => (
+const HeroSettingsTab: React.FC<HeroSettingsTabProps> = ({ config, updateHeroContent, editingHero, setEditingHero, setConfig }) => {
+  const toast = useToastActions();
+
+  const setBgImage = (id: string, url: string) => {
+    setConfig(prev => ({
+      ...prev,
+      heroBackgrounds: prev.heroBackgrounds.map(h =>
+        h.id === id ? { ...h, backgroundImage: url } : h
+      ),
+    }));
+  };
+
+  const handleUpload = async (id: string, file?: File) => {
+    if (!file) return;
+    try {
+      const url = await uploadImage(file, 'general');
+      setBgImage(id, url);
+      toast.success('背景图已上传');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '上传失败');
+    }
+  };
+
+  return (
   <div className="space-y-6">
     <div className="flex items-center justify-between">
       <h3 className="text-lg font-semibold text-gray-900">Hero 背景配置</h3>
@@ -41,6 +65,45 @@ const HeroSettingsTab: React.FC<HeroSettingsTabProps> = ({ config, updateConfig,
           </div>
            {editingHero === hero.id && (
             <div className="p-4 space-y-6 border-t border-gray-200">
+              {/* 背景图 */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                  <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded">背景图</span>
+                  <span className="text-xs text-gray-400 font-normal">留空则使用内置特效</span>
+                </h4>
+                {hero.backgroundImage && (
+                  <div className="relative w-full max-w-xs">
+                    <img src={hero.backgroundImage} alt="" className="w-full h-28 object-cover rounded-lg border border-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => setBgImage(hero.id, '')}
+                      className="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full shadow"
+                      title="移除背景图"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={hero.backgroundImage || ''}
+                    onChange={(e) => setBgImage(hero.id, e.target.value)}
+                    placeholder="图片链接 https://… 或点右侧上传"
+                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <label className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg cursor-pointer hover:bg-gray-700 transition-colors">
+                    <Upload size={14} /> 上传
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleUpload(hero.id, e.target.files?.[0])}
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* Chinese Content */}
               <div className="space-y-4">
                 <h4 className="font-medium text-gray-900 flex items-center gap-2">
@@ -153,6 +216,7 @@ const HeroSettingsTab: React.FC<HeroSettingsTabProps> = ({ config, updateConfig,
       ))}
     </div>
   </div>
-);
+  );
+};
 
 export default HeroSettingsTab;

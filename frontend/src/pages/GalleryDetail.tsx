@@ -119,9 +119,10 @@ const GalleryDetail: React.FC = () => {
             <div className="flex-1 flex flex-col">
               <div className="flex-1 relative bg-[#0a0a0a] rounded-lg overflow-hidden">
                 <div className={`${getAspectRatio(selectedPhoto.aspect)} w-full`}>
-                  <div
-                    style={{ backgroundColor: selectedPhoto.src }}
-                    className="w-full h-full"
+                  <img
+                    src={selectedPhoto.src}
+                    alt={selectedPhoto.title || ''}
+                    className="w-full h-full object-contain"
                   />
                 </div>
               </div>
@@ -260,9 +261,11 @@ const GalleryDetail: React.FC = () => {
             className="relative group bg-gray-100 dark:bg-[#111] rounded-lg overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300"
           >
             <div className={`relative ${getAspectRatio(photo.aspect)}`}>
-              <div
-                style={{ backgroundColor: photo.src }}
-                className="w-full h-full transition-transform duration-500 group-hover:scale-105"
+              <img
+                src={photo.src}
+                alt={photo.title || ''}
+                loading="lazy"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
 
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">

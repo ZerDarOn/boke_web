@@ -4,9 +4,37 @@
 
 @layer base {
   :root {
-    --color-neon: 150;
-    --color-secondary: 260;
+    /* HSL 通道（供 Tailwind 颜色 + 透明度使用），由主题栏动态修改 */
+    --color-neon-hsl: 150 100% 40%;
+    --color-neon-dark-hsl: 150 100% 30%;
+    --color-secondary-hsl: 260 90% 65%;
+    /* 完整颜色（供内联 var(--color-neon)、canvas、光标等直接使用） */
+    --color-neon: hsl(150 100% 40%);
+    --color-secondary: hsl(260 90% 65%);
   }
+}
+
+/* ============================================================================
+ * 应用化交互（防误选高亮）
+ * 默认禁止选中文本，避免点按 UI 时出现高亮选择框；
+ * 正文(.prose)、输入框、代码块恢复可选，仍可拖选+Ctrl+C 复制。
+ * 右键菜单的屏蔽在 components/InteractionGuard.tsx 里处理。
+ * ============================================================================ */
+body {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+.prose,
+input,
+textarea,
+[contenteditable="true"],
+pre,
+code,
+.select-text {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
 }
 
 /* ============================================================================

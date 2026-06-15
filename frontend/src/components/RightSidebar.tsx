@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, Activity, Rss, ArrowRight, Copy, CheckCircle2, Clock, TrendingUp, ExternalLink } from 'lucide-react';
+import { Bell, Activity, Rss, ArrowRight, Copy, CheckCircle2, Clock, TrendingUp, ExternalLink, Music2 } from 'lucide-react';
 import { usePageCopy } from '../hooks/useSiteConfig';
 import { useActivities } from '../hooks/useActivities';
+import MusicPlayer from './MusicPlayer';
 
 const RightSidebar: React.FC = () => {
   const [rssCopied, setRssCopied] = useState(false);
@@ -212,6 +213,35 @@ const RightSidebar: React.FC = () => {
           <p className="text-[9px] text-gray-400 dark:text-gray-500 font-mono leading-relaxed">
             复制上方链接，添加到任意 RSS 阅读器订阅
           </p>
+        </div>
+      </div>
+
+      {/* 4. 音乐馆 - 迷你播放器 */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-50 dark:from-[#1a1a1a] dark:via-[#1a1a1a] dark:to-[#0d0d0d] border border-gray-200 dark:border-white/10 rounded-lg shadow-lg shadow-gray-200/50 dark:shadow-black/30 transition-all duration-300 hover:shadow-neon/10 hover:-translate-y-1">
+        {/* 装饰元素 */}
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-neon via-neon-dark to-neon"></div>
+        <div className="absolute top-0 right-0 w-16 h-16 bg-secondary/10 rounded-bl-full"></div>
+        <div className="absolute bottom-0 left-0 w-1 h-12 bg-gradient-to-t from-secondary/20 to-transparent"></div>
+
+        <div className="p-5 relative">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-sans font-bold text-sm text-ink dark:text-white flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/5 flex items-center justify-center">
+                <Music2 size={16} className="text-secondary" />
+              </div>
+              <span className="bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                音乐馆
+              </span>
+            </h4>
+            <Link
+              to="/music"
+              className="text-[10px] font-mono text-gray-400 hover:text-neon flex items-center gap-1 transition-colors"
+            >
+              更多 <ArrowRight size={10} />
+            </Link>
+          </div>
+
+          <MusicPlayer compact />
         </div>
       </div>
 

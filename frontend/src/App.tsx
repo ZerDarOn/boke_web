@@ -5,9 +5,12 @@ import { LangProvider } from './contexts/LangContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryClientProvider } from './contexts/QueryContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
 import { LoadingProgress } from './components/LoadingProgress';
+import CyberCursor from './components/CyberCursor';
+import InteractionGuard from './components/InteractionGuard';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
@@ -25,10 +28,13 @@ const Network = lazy(() => import('./pages/Network'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Anime = lazy(() => import('./pages/Anime'));
 const AnimeDetail = lazy(() => import('./pages/AnimeDetail'));
+const Games = lazy(() => import('./pages/Games'));
+const GameDetail = lazy(() => import('./pages/GameDetail'));
 const Diary = lazy(() => import('./pages/Diary'));
 const DiaryDetail = lazy(() => import('./pages/DiaryDetail'));
 const Gallery = lazy(() => import('./pages/Gallery'));
 const GalleryDetail = lazy(() => import('./pages/GalleryDetail'));
+const Music = lazy(() => import('./pages/Music'));
 
 // Admin Pages
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
@@ -36,6 +42,7 @@ const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
 const AdminPosts = lazy(() => import('./pages/Admin/AdminPosts'));
 const AdminAnime = lazy(() => import('./pages/Admin/AdminAnime'));
+const AdminGames = lazy(() => import('./pages/Admin/AdminGames'));
 const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
 const AdminShortDiary = lazy(() => import('./pages/Admin/AdminShortDiary'));
 const AdminActivities = lazy(() => import('./pages/Admin/AdminActivities'));
@@ -138,10 +145,13 @@ const NotFound: React.FC = () => (
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
+      <CyberCursor />
+      <InteractionGuard />
       <QueryClientProvider>
         <LangProvider>
           <AuthProvider>
             <ToastProvider>
+              <ConfirmProvider>
               <BrowserRouter>
               <LoadingProgress />
               <ScrollToTop />
@@ -164,10 +174,13 @@ const App: React.FC = () => {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="anime" element={<Anime />} />
             <Route path="anime/:id" element={<AnimeDetail />} />
+            <Route path="games" element={<Games />} />
+            <Route path="games/:id" element={<GameDetail />} />
             <Route path="diary" element={<Diary />} />
             <Route path="diary/:id" element={<DiaryDetail />} />
             <Route path="gallery" element={<Gallery />} />
             <Route path="gallery/:id" element={<GalleryDetail />} />
+            <Route path="music" element={<Music />} />
           </Route>
 
            {/* Maintenance */}
@@ -183,6 +196,7 @@ const App: React.FC = () => {
             <Route path="posts" element={<AdminPosts />} />
             <Route path="projects" element={<AdminProjects />} />
             <Route path="anime" element={<AdminAnime />} />
+            <Route path="games" element={<AdminGames />} />
             <Route path="gallery" element={<AdminGallery />} />
             <Route path="diary" element={<AdminDiary />} />
             <Route path="short-diary" element={<AdminShortDiary />} />
@@ -207,6 +221,7 @@ const App: React.FC = () => {
            </Routes>
            </Suspense>
            </BrowserRouter>
+              </ConfirmProvider>
             </ToastProvider>
          </AuthProvider>
        </LangProvider>

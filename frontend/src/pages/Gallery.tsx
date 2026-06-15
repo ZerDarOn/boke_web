@@ -49,10 +49,16 @@ const Gallery: React.FC = () => {
               className="break-inside-avoid block relative group bg-white dark:bg-[#111] border border-gray-100 dark:border-white/5 p-3 shadow-sm hover:shadow-xl dark:hover:border-neon/50 transition-all duration-500 cursor-pointer overflow-hidden"
             >
               <div className="aspect-[4/3] relative bg-gray-100 dark:bg-[#050505] overflow-hidden">
-                <div
-                  style={{ backgroundColor: album.cover || '#1a1a1a' }}
-                  className="w-full h-full transition-transform duration-700 group-hover:scale-110"
-                /> 
+                {album.cover ? (
+                  <img
+                    src={album.cover}
+                    alt=""
+                    loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-[#1a1a1a]" />
+                )}
 
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                   <div className="w-full h-[2px] bg-neon shadow-[0_0_20px_#10b981] transform -rotate-12 scale-x-0 group-hover:scale-x-150 transition-transform duration-500 delay-100"></div>

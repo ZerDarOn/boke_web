@@ -24,6 +24,7 @@ import {
   CheckSquare,
   Square,
 } from 'lucide-react';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 interface FileEditorData {
   path: string;
@@ -32,6 +33,7 @@ interface FileEditorData {
 }
 
 const AdminFiles: React.FC = () => {
+  const confirm = useConfirm();
   const [currentPath, setCurrentPath] = useState<string>('');
   const { data: files = [], isLoading: loading, refetch: refetchFiles } = useFilesList(currentPath);
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,7 +122,7 @@ const AdminFiles: React.FC = () => {
   };
 
   const handleRemovePassword = async (file: FileItem) => {
-    if (!confirm(`确定要移除文件 "${file.name}" 的密码保护吗？`)) return;
+    if (!(await confirm({ message: `确定要移除文件 "${file.name}" 的密码保护吗？` }))) return;
 
     try {
       const result = await api.files.removePassword(file.path);

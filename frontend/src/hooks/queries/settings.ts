@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsApi, type SiteConfig } from '../../lib/api';
+import { timelineApi } from '../../lib/api/timeline';
 import { queryKeys } from '../api/query-keys';
 import { unwrapApi } from '../api/fetcher';
 
@@ -61,14 +62,35 @@ export function useAdminActivitiesConfig() {
   return useQuery({
     queryKey: queryKeys.settings.key('activities'),
     queryFn: async (): Promise<AdminActivity[]> => {
+      // 1. 尝试从 settings 获取
       const result = await settingsApi.getByKey('activities');
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to load activities');
+      if (result.success && result.data?.value) {
+        const raw = result.data.value;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed as AdminActivity[];
+        }
       }
-      const raw = result.data?.value;
-      if (!raw) return [];
-      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      return Array.isArray(parsed) ? (parsed as AdminActivity[]) : [];
+      
+      // 2. Fallback: 从 timeline 获取
+      try {
+        const timelineResult = await timelineApi.getAll();
+        if (timelineResult.success && timelineResult.data && timelineResult.data.length > 0) {
+          return timelineResult.data.map((item) => ({
+            id: item.id,
+            project: 'Timeline',
+            title: item.title,
+            tags: [],
+            status: 'DONE' as const,
+            date: item.date || new Date(item.createdAt).toISOString().split('T')[0],
+          }));
+        }
+      } catch {
+        // 忽略 timeline 错误
+      }
+      
+      // 3. Fallback: 本地默认数据
+      return [];
     },
     staleTime: 2 * 60 * 1000,
   });

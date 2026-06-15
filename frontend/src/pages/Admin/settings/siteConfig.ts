@@ -19,6 +19,8 @@ export interface SiteConfig {
     id: string;
     name: string;
     enabled: boolean;
+    /** 自定义背景图链接；留空则使用内置特效 */
+    backgroundImage?: string;
     contentZH: {
       tag: string;
       titleStart: string;

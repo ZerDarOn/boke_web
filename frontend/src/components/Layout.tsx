@@ -30,6 +30,7 @@ import Sidebar from './Sidebar';
 import RightSidebar from './RightSidebar';
 import Hero from './Hero';
 import MobileBottomBar from './MobileBottomBar';
+import AiCompanion from './AiCompanion';
 import { Search, X, Loader2, AlertCircle } from 'lucide-react';
 import { useLang } from '../contexts/LangContext';
 import { useSiteConfig } from '../hooks/useSiteConfig';
@@ -62,8 +63,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [primaryHue, setPrimaryHue] = useState(150);
-  const [secondaryHue, setSecondaryHue] = useState(260);
+  // 主题色（访客本地偏好，持久化到 theme_pref）
+  const readThemePref = (): { primaryHue?: number; secondaryHue?: number } => {
+    try {
+      return JSON.parse(localStorage.getItem('theme_pref') || '{}');
+    } catch {
+      return {};
+    }
+  };
+  const [primaryHue, setPrimaryHue] = useState(() => readThemePref().primaryHue ?? 150);
+  const [secondaryHue, setSecondaryHue] = useState(() => readThemePref().secondaryHue ?? 260);
   const config = useSiteConfig();
   
   // Hero 背景索引 - 全局状态，所有页面共享
@@ -139,12 +148,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // 动态主题色
+  // 动态主题色：同时写入 HSL 通道(供 Tailwind)与完整颜色(供内联 var/canvas)，并持久化
   useEffect(() => {
-    const primaryVal = `hsl(${primaryHue}, 100%, 40%)`;
-    const secondaryVal = `hsl(${secondaryHue}, 90%, 65%)`;
-    document.documentElement.style.setProperty('--color-neon', primaryVal);
-    document.documentElement.style.setProperty('--color-secondary', secondaryVal);
+    const root = document.documentElement.style;
+    root.setProperty('--color-neon-hsl', `${primaryHue} 100% 40%`);
+    root.setProperty('--color-neon-dark-hsl', `${primaryHue} 100% 30%`);
+    root.setProperty('--color-secondary-hsl', `${secondaryHue} 90% 65%`);
+    root.setProperty('--color-neon', `hsl(${primaryHue} 100% 40%)`);
+    root.setProperty('--color-secondary', `hsl(${secondaryHue} 90% 65%)`);
+    localStorage.setItem('theme_pref', JSON.stringify({ primaryHue, secondaryHue }));
   }, [primaryHue, secondaryHue]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -370,15 +382,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </footer>
         </div>
 
-        {/* 回到顶部按钮 */}
+        {/* 回到顶部按钮（左移避开右下角 AI 伙伴） */}
         <button
           onClick={scrollToTop}
-          className={`fixed bottom-6 right-4 md:bottom-8 md:right-8 w-10 h-10 md:w-12 md:h-12 bg-white dark:bg-ink border-2 border-neon text-ink dark:text-paper flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all duration-500 hover:bg-neon hover:text-white z-50 rounded-full ${
+          className={`fixed bottom-6 right-24 md:bottom-8 md:right-40 w-10 h-10 md:w-12 md:h-12 bg-white dark:bg-ink border-2 border-neon text-ink dark:text-paper flex items-center justify-center shadow-lg transition-all duration-500 hover:bg-neon hover:text-white z-50 rounded-full ${
             showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'
           }`}
         >
           <span className="font-serif font-black text-lg md:text-xl">↑</span>
         </button>
+
+        {/* 右下角 AI 伙伴（含 3D 模型插槽 + 对话） */}
+        <AiCompanion />
       </div>
     </HeroContext.Provider>
   );

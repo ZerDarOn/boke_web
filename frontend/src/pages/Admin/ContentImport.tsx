@@ -1,6 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { API_BASE_URL } from '../../lib/apiConfig';
-import { getAuthToken } from '../../lib/api/request';
+import { apiRequest } from '../../lib/api';
+import { useToastActions } from '../../contexts/ToastContext';
+import {
+  parseFrontMatter,
+  frontMatterText,
+  frontMatterTags,
+} from '../../lib/frontMatter';
 import { useDropzone } from 'react-dropzone';
 import {
   Upload,
@@ -31,10 +36,16 @@ interface FilePreview {
   file: File;
   content: string;
   frontMatter: Record<string, unknown> | null;
+  /** 缺失的必填字段（id/title/date），非空表示后端会拒绝导入 */
+  missingRequired: string[];
   error: string | null;
 }
 
+const MD_MAX_SIZE = 1 * 1024 * 1024; // 单个 Markdown 文件上限 1MB（与后端一致）
+const ZIP_MAX_SIZE = 10 * 1024 * 1024; // ZIP 上限 10MB
+
 const ContentImport: React.FC = () => {
+  const toast = useToastActions();
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [importMode, setImportMode] = useState<'single' | 'batch' | 'folder' | 'zip'>('batch');
@@ -64,24 +75,18 @@ const ContentImport: React.FC = () => {
       const file = acceptedFiles[0];
       const content = await file.text();
 
-      const response = await fetch(`${API_BASE_URL}/api/content/import/single`, {
+      const result = await apiRequest<any>('/api/content/import/single', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify({
           content,
           conflictResolution
         })
       });
 
-      const result = await response.json();
-
       setProgress(100);
 
       if (result.success) {
-        if (result.data.skipped) {
+        if (result.data?.skipped) {
           setResults({
             success: 0,
             failed: 0,
@@ -120,7 +125,7 @@ const ContentImport: React.FC = () => {
   const onDropBatch = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
     if (acceptedFiles.length > 10) {
-      alert('一次最多上传 10 个文件');
+      toast.warning('一次最多上传 10 个文件');
       return;
     }
 
@@ -140,19 +145,13 @@ const ContentImport: React.FC = () => {
         }))
       );
 
-      const response = await fetch(`${API_BASE_URL}/api/content/import/batch`, {
+      const result = await apiRequest<any>('/api/content/import/batch', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify({
           files: filesWithContent,
           conflictResolution
         })
       });
-
-      const result = await response.json();
 
       setProgress(100);
 
@@ -228,19 +227,13 @@ const ContentImport: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/content/import/folder`, {
+      const result = await apiRequest<any>('/api/content/import/folder', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify({
           files: filesWithContent,
           conflictResolution
         })
       });
-
-      const result = await response.json();
 
       setProgress(100);
 
@@ -291,12 +284,12 @@ const ContentImport: React.FC = () => {
 
     const file = files[0];
     if (!file.name.endsWith('.zip')) {
-      alert('只支持 ZIP 文件');
+      toast.warning('只支持 ZIP 文件');
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      alert('ZIP 文件大小不能超过 10MB');
+    if (file.size > ZIP_MAX_SIZE) {
+      toast.warning('ZIP 文件大小不能超过 10MB');
       return;
     }
 
@@ -313,19 +306,13 @@ const ContentImport: React.FC = () => {
 
           setProgress(30);
 
-          const response = await fetch(`${API_BASE_URL}/api/content/import/zip`, {
+          const result = await apiRequest<any>('/api/content/import/zip', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${getAuthToken()}`
-            },
             body: JSON.stringify({
               zipData: base64,
               conflictResolution
             })
           });
-
-          const result = await response.json();
 
           setProgress(100);
 
@@ -400,7 +387,7 @@ const ContentImport: React.FC = () => {
   const directImportMdFiles = async (files: File[]) => {
     const mdFiles = filterMdFiles(files);
     if (mdFiles.length === 0) {
-      alert('未找到 Markdown 文件');
+      toast.warning('未找到 Markdown 文件');
       return;
     }
     if (mdFiles.length === 1) {
@@ -420,21 +407,27 @@ const ContentImport: React.FC = () => {
       }
       const mdFiles = filterMdFiles(acceptedFiles);
       if (mdFiles.length === 0) {
-        if (acceptedFiles.length > 0) alert('仅支持 .md 或 .zip 文件');
+        if (acceptedFiles.length > 0) toast.warning('仅支持 .md 或 .zip 文件');
         return;
       }
+      const oversized = mdFiles.filter((f) => f.size > MD_MAX_SIZE);
+      if (oversized.length > 0) {
+        toast.warning('有文件超过 1MB，已忽略', oversized.map((f) => f.name).join('、'));
+      }
+      const validFiles = mdFiles.filter((f) => f.size <= MD_MAX_SIZE);
+      if (validFiles.length === 0) return;
       if (skipPreview) {
-        void directImportMdFiles(mdFiles);
+        void directImportMdFiles(validFiles);
         return;
       }
-      void handlePreview(mdFiles);
+      void handlePreview(validFiles);
     },
     accept: {
       'text/markdown': ['.md'],
       'application/zip': ['.zip']
     },
     maxFiles: 10,
-    maxSize: 10 * 1024 * 1024 // 10MB for ZIP, 1MB for MD files
+    maxSize: ZIP_MAX_SIZE // ZIP 上限 10MB；Markdown 在 onDrop 中按 1MB 单独校验
   });
 
   const handleReset = () => {
@@ -453,11 +446,11 @@ const ContentImport: React.FC = () => {
 
     let mdFiles = filterMdFiles(files);
     if (mdFiles.length > 50) {
-      alert('一次最多预览 50 个 Markdown 文件，已截取前 50 个');
+      toast.info('一次最多预览 50 个 Markdown 文件，已截取前 50 个');
       mdFiles = mdFiles.slice(0, 50);
     }
     if (mdFiles.length === 0) {
-      alert('未找到 Markdown 文件');
+      toast.warning('未找到 Markdown 文件');
       return;
     }
 
@@ -468,54 +461,21 @@ const ContentImport: React.FC = () => {
       mdFiles.map(async (file) => {
         try {
           const content = await file.text();
-          
-          // 提取 Front Matter
-          const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-          let frontMatter = null;
-          let body = content;
-
-          if (frontMatterMatch) {
-            try {
-              const yamlContent = frontMatterMatch[1];
-              // 简单解析 YAML（实际应该使用 js-yaml）
-              frontMatter = yamlContent.split('\n').reduce((acc: Record<string, unknown>, line) => {
-                const match = line.match(/^(\w+):\s*(.*)$/);
-                if (match) {
-                  const [, key, value] = match;
-                  let parsedValue: unknown = value.trim();
-
-                  if (typeof parsedValue === 'string' && parsedValue.startsWith('[') && parsedValue.endsWith(']')) {
-                    parsedValue = parsedValue.slice(1, -1).split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
-                  } else if (parsedValue === 'true') {
-                    parsedValue = true;
-                  } else if (parsedValue === 'false') {
-                    parsedValue = false;
-                  } else if (typeof parsedValue === 'string' && parsedValue.startsWith('"') && parsedValue.endsWith('"')) {
-                    parsedValue = parsedValue.slice(1, -1);
-                  }
-
-                  acc[key] = parsedValue;
-                }
-                return acc;
-              }, {} as Record<string, unknown>);
-
-              body = content.replace(frontMatterMatch[0], '');
-            } catch {
-              // 解析失败，返回整个内容
-            }
-          }
+          const parsed = parseFrontMatter(content);
 
           return {
             file,
             content,
-            frontMatter,
-            error: null
+            frontMatter: parsed.error ? null : parsed.data,
+            missingRequired: parsed.missingRequired,
+            error: parsed.error,
           };
         } catch (error: any) {
           return {
             file,
             content: '',
             frontMatter: null,
+            missingRequired: [],
             error: error.message || '解析失败'
           };
         }
@@ -535,7 +495,7 @@ const ContentImport: React.FC = () => {
     const selectedPreviews = previewFiles.filter((_, index) => selectedIndices.has(index));
     
     if (selectedPreviews.length === 0) {
-      alert('请至少选择一个文件');
+      toast.warning('请至少选择一个文件');
       return;
     }
 
@@ -572,15 +532,8 @@ const ContentImport: React.FC = () => {
     }
   };
 
-  const fmString = (fm: Record<string, unknown> | null, key: string) => {
-    const v = fm?.[key];
-    return typeof v === 'string' ? v : undefined;
-  };
-
-  const fmTags = (fm: Record<string, unknown> | null) => {
-    const v = fm?.tags;
-    return Array.isArray(v) ? v.map(String) : [];
-  };
+  const fmString = frontMatterText;
+  const fmTags = frontMatterTags;
 
   return (
     <div className="space-y-6 p-6">
@@ -592,7 +545,7 @@ const ContentImport: React.FC = () => {
             通过上传 Markdown 文件来初始化博客内容
           </p>
         </div>
-        {results.success > 0 || results.failed > 0 && (
+        {(results.success > 0 || results.failed > 0) && (
           <button
             onClick={handleReset}
             className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-ink dark:text-paper rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
@@ -648,8 +601,8 @@ const ContentImport: React.FC = () => {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      if (file.size > 1 * 1024 * 1024) {
-                        alert('文件大小不能超过 1MB');
+                      if (file.size > MD_MAX_SIZE) {
+                        toast.warning('文件大小不能超过 1MB');
                         return;
                       }
                       if (skipPreview) void directImportMdFiles([file]);
@@ -671,12 +624,12 @@ const ContentImport: React.FC = () => {
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
                     if (files.length > 10) {
-                      alert('一次最多上传 10 个文件');
+                      toast.warning('一次最多上传 10 个文件');
                       return;
                     }
-                    const oversized = files.filter(f => f.size > 1 * 1024 * 1024);
+                    const oversized = files.filter(f => f.size > MD_MAX_SIZE);
                     if (oversized.length > 0) {
-                      alert('有文件大小超过 1MB');
+                      toast.warning('有文件大小超过 1MB');
                       return;
                     }
                     if (skipPreview) void directImportMdFiles(files);
@@ -697,7 +650,7 @@ const ContentImport: React.FC = () => {
                   onChange={(e) => {
                     const files = filterMdFiles(Array.from(e.target.files || []));
                     if (files.length === 0) {
-                      alert('文件夹内未找到 Markdown 文件');
+                      toast.warning('文件夹内未找到 Markdown 文件');
                       return;
                     }
                     if (skipPreview) void directImportMdFiles(files);
@@ -717,8 +670,8 @@ const ContentImport: React.FC = () => {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      if (file.size > 10 * 1024 * 1024) {
-                        alert('ZIP 文件大小不能超过 10MB');
+                      if (file.size > ZIP_MAX_SIZE) {
+                        toast.warning('ZIP 文件大小不能超过 10MB');
                         return;
                       }
                       onDropZip([file]);
@@ -821,6 +774,15 @@ const ContentImport: React.FC = () => {
                             {fmString(preview.frontMatter, 'type')}
                           </span>
                         )}
+                        {preview.missingRequired.length > 0 && !preview.error && (
+                          <span
+                            className="px-2 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded flex items-center gap-1"
+                            title="缺少必填字段，导入将被后端拒绝"
+                          >
+                            <AlertCircle size={12} />
+                            缺少必填: {preview.missingRequired.join(' / ')}
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                         {(preview.file.size / 1024).toFixed(1)} KB
@@ -830,6 +792,14 @@ const ContentImport: React.FC = () => {
                       {preview.frontMatter ? (
                         <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                           <div className="grid grid-cols-2 gap-2 text-xs">
+                            {fmString(preview.frontMatter, 'id') && (
+                              <div>
+                                <span className="text-gray-500">ID:</span>
+                                <span className="ml-2 font-mono text-ink dark:text-paper truncate">
+                                  {fmString(preview.frontMatter, 'id')}
+                                </span>
+                              </div>
+                            )}
                             {fmString(preview.frontMatter, 'title') && (
                               <div>
                                 <span className="text-gray-500">标题:</span>

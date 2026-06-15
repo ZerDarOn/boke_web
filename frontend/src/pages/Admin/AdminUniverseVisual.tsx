@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import type { UniverseNode } from '../../lib/api';
 import { useUniverseData, useSaveUniverseLayout } from '../../hooks/queries/universe';
 import { AlertCircle, Loader2, RefreshCw, Save, MousePointer, Eye } from 'lucide-react';
+import { useToastActions } from '../../contexts/ToastContext';
 
 const AdminUniverseVisual: React.FC = () => {
+  const toast = useToastActions();
   const { data: serverNodes = [], isLoading: loading, error: queryError, refetch } = useUniverseData('all');
   const saveLayout = useSaveUniverseLayout();
   const [nodes, setNodes] = useState<UniverseNode[]>([]);
@@ -67,10 +69,10 @@ const AdminUniverseVisual: React.FC = () => {
     try {
       setError(null);
       await saveLayout.mutateAsync(nodes);
-      alert('宇宙图布局保存成功！（不影响技能/人脉单独视图的布局）');
+      toast.success('宇宙图布局保存成功！', '不影响技能/人脉单独视图的布局');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
-      alert('保存失败，请重试');
+      toast.error('保存失败，请重试');
     }
   };
 

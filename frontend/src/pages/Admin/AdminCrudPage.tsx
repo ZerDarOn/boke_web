@@ -9,6 +9,8 @@ import {
   type CrudApi,
 } from '../../hooks/queries/admin-resource';
 import { Search, Plus, Edit, Trash2, Clock, Eye, Heart, Loader2, X, Save } from 'lucide-react';
+import { useToastActions } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export interface AdminCrudField {
   key: string;
@@ -48,6 +50,8 @@ const AdminCrudPage: React.FC<AdminCrudPageProps> = ({
   itemKey,
   fields = []
 }) => {
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const config = ENDPOINT_CONFIG[apiEndpoint];
   const rootKey = config?.rootKey ?? [apiEndpoint];
   const apiModule = config?.module;
@@ -70,15 +74,16 @@ const AdminCrudPage: React.FC<AdminCrudPageProps> = ({
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除吗？')) return;
+    if (!(await confirm({ message: '确定要删除吗？' }))) return;
     if (!apiModule?.delete) {
-      alert('删除失败');
+      toast.error('删除失败');
       return;
     }
     try {
       await deleteMutation.mutateAsync(id);
+      toast.success('删除成功');
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -117,8 +122,9 @@ const AdminCrudPage: React.FC<AdminCrudPageProps> = ({
         await createMutation.mutateAsync(submitData);
       }
       handleCloseModal();
+      toast.success(editingItem ? '更新成功' : '创建成功');
     } catch {
-      alert('保存失败');
+      toast.error('保存失败');
     }
   };
 

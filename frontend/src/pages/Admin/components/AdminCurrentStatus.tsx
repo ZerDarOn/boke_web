@@ -7,12 +7,16 @@ import {
   useDeleteCurrentStatus,
 } from '../../../hooks/queries/current-status';
 import { Plus, Edit, Trash2, Clock, Loader2, X, Save, Radio } from 'lucide-react';
+import { useToastActions } from '../../../contexts/ToastContext';
+import { useConfirm } from '../../../contexts/ConfirmContext';
 
 /**
  * 当前状态管理组件
  * 管理前台时间线中显示的当前状态
  */
 const AdminCurrentStatus: React.FC = () => {
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const { data: items = [], isLoading: loading, error: queryError, refetch } = useCurrentStatusList();
   const error = queryError?.message ?? null;
   const createItem = useCreateCurrentStatus();
@@ -25,11 +29,12 @@ const AdminCurrentStatus: React.FC = () => {
   const isSubmitting = createItem.isPending || updateItem.isPending;
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除吗？')) return;
+    if (!(await confirm({ message: '确定要删除吗？' }))) return;
     try {
       await deleteItem.mutateAsync(id);
+      toast.success('删除成功');
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -63,8 +68,9 @@ const AdminCurrentStatus: React.FC = () => {
         await createItem.mutateAsync(formData);
       }
       handleCloseModal();
+      toast.success(editingItem?.id ? '更新成功' : '创建成功');
     } catch {
-      alert('保存失败');
+      toast.error('保存失败');
     }
   };
 
@@ -72,8 +78,9 @@ const AdminCurrentStatus: React.FC = () => {
     try {
       await api.currentStatus.activate(id);
       await refetch();
+      toast.success('已激活');
     } catch {
-      alert('激活失败');
+      toast.error('激活失败');
     }
   };
 

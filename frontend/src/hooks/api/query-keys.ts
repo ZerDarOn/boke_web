@@ -36,6 +36,12 @@ export const queryKeys = {
       [...queryKeys.anime.all, 'list', params ?? {}] as const,
     detail: (id: string) => [...queryKeys.anime.all, 'detail', id] as const,
   },
+  games: {
+    all: ['games'] as const,
+    list: (params?: Record<string, unknown>) =>
+      [...queryKeys.games.all, 'list', params ?? {}] as const,
+    detail: (id: string) => [...queryKeys.games.all, 'detail', id] as const,
+  },
   announcements: {
     all: ['announcements'] as const,
     list: () => [...queryKeys.announcements.all, 'list'] as const,

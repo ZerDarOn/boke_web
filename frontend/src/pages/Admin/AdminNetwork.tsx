@@ -3,10 +3,12 @@ import { api, NetworkNode } from '../../lib/api';
 import { useNetworkNodes } from '../../hooks/queries/network';
 import VisualEditor from '../../components/VisualEditor';
 import { AlertCircle, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { useToastActions } from '../../contexts/ToastContext';
 
 type NetworkEditorNode = NetworkNode & { label: string };
 
 const AdminNetwork: React.FC = () => {
+  const toast = useToastActions();
   const { data: nodes = [], isLoading: loading, error: queryError, refetch } = useNetworkNodes();
   const editorNodes = useMemo<NetworkEditorNode[]>(
     () => nodes.map((n) => ({ ...n, label: n.name })),
@@ -39,13 +41,13 @@ const AdminNetwork: React.FC = () => {
       const result = await api.network.create(newNodeData);
       if (result.success && result.data) {
         await loadNodes();
-        alert('节点添加成功！');
+        toast.success('节点添加成功！');
       } else {
         setActionError(result.error || 'Failed to create node');
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unknown error');
-      alert('添加失败，请重试');
+      toast.error('添加失败，请重试');
     } finally {
       setIsAdding(false);
     }
@@ -87,13 +89,13 @@ const AdminNetwork: React.FC = () => {
       const result = await api.network.delete(id);
       if (result.success) {
         await loadNodes();
-        alert('节点删除成功！');
+        toast.success('节点删除成功！');
       } else {
         setActionError(result.error || 'Failed to delete node');
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unknown error');
-      alert('删除失败，请重试');
+      toast.error('删除失败，请重试');
     }
   };
 
@@ -113,10 +115,10 @@ const AdminNetwork: React.FC = () => {
         }
       }
 
-      alert('所有位置保存成功！');
+      toast.success('所有位置保存成功！');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unknown error');
-      alert('保存失败，请重试');
+      toast.error('保存失败，请重试');
     } finally {
       setSaving(false);
     }

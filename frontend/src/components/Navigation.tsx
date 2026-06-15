@@ -3,9 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   Search, Palette, SidebarClose, SidebarOpen, Globe, Settings, ChevronDown, 
   Github, Video, Book, Camera, Heart, Network, Code, Clock, UserCheck, RotateCcw, Moon, Sun, BookOpen, Gamepad2,
-  Menu, X
+  Menu, X, Check, Music2
 } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
+import { THEME_PRESETS, presetPrimaryColor, presetSecondaryColor } from '../lib/themePresets';
 
 interface NavigationProps {
   toggleRightSidebar: () => void;
@@ -56,16 +57,35 @@ const Navigation: React.FC<NavigationProps> = ({
 
   // Konami Code: ↑ ↑ ↓ ↓ ← → ← → B A
   useEffect(() => {
-    const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
+    const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a', 'b', 'a'];
     let currentIndex = 0;
+    let lastKeyTime = 0;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === konamiCode[currentIndex]) {
+      // 忽略输入框中的键盘事件
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      const now = Date.now();
+      // 超过 2 秒重置序列
+      if (now - lastKeyTime > 2000) {
+        currentIndex = 0;
+      }
+      lastKeyTime = now;
+      
+      const key = e.key.toLowerCase();
+      const expected = konamiCode[currentIndex].toLowerCase();
+
+      if (key === expected) {
         currentIndex++;
         if (currentIndex === konamiCode.length) {
           setShowSettings(prev => !prev);
           currentIndex = 0;
         }
+      } else if (e.key === 'ArrowUp' && currentIndex === 0) {
+        // 第一个键正确，开始计数
+        currentIndex = 1;
       } else {
         currentIndex = 0;
       }
@@ -82,7 +102,7 @@ const Navigation: React.FC<NavigationProps> = ({
     if (path === '/archives') return t.ARCHIVES;
     if (path === '/dashboard') return t.DASHBOARD;
     if (path === '/about' || path === '/network') return t.ABOUT;
-    if (path === '/posts' || path === '/anime' || path === '/games' || path === '/diary' || path === '/gallery') return t.MINE;
+    if (path === '/posts' || path === '/anime' || path === '/games' || path === '/diary' || path === '/gallery' || path === '/music') return t.MINE;
     if (path === '/projects' || path === '/timeline' || path === '/skills') return t.OTHERS;
     return t.HOME;
   };
@@ -118,7 +138,8 @@ const Navigation: React.FC<NavigationProps> = ({
             { label: lang === 'EN' ? 'Anime' : '追番', icon: Heart, path: '/anime' },
             { label: lang === 'EN' ? 'Games' : '游戏', icon: Gamepad2, path: '/games' },
             { label: lang === 'EN' ? 'Diary' : '日记', icon: Book, path: '/diary' },
-            { label: lang === 'EN' ? 'Gallery' : '相册', icon: Camera, path: '/gallery' }
+            { label: lang === 'EN' ? 'Gallery' : '相册', icon: Camera, path: '/gallery' },
+            { label: lang === 'EN' ? 'Music' : '音乐馆', icon: Music2, path: '/music' }
         ]
     },
     { 
@@ -171,11 +192,11 @@ const Navigation: React.FC<NavigationProps> = ({
         >
           {blogName.includes('.') ? (
             <>
-              <span className="text-neon group-hover:shadow-[0_0_15px_rgba(16,185,129,0.8)] transition-shadow duration-300">{blogName.split('.')[0]}</span>
+              <span className="text-neon transition-colors duration-300">{blogName.split('.')[0]}</span>
               .{blogName.split('.').slice(1).join('.')}
             </>
           ) : (
-            <span className="text-neon group-hover:shadow-[0_0_15px_rgba(16,185,129,0.8)] transition-shadow duration-300">{blogName}</span>
+            <span className="text-neon transition-colors duration-300">{blogName}</span>
           )}
         </Link>
 
@@ -183,7 +204,7 @@ const Navigation: React.FC<NavigationProps> = ({
         <div className="hidden lg:flex items-center h-full relative" ref={navRef}>
             {/* The Floating Energy Bar */}
             <div 
-                className="absolute bottom-0 h-[2px] bg-neon shadow-[0_-2px_10px_rgba(16,185,129,0.7)] transition-all duration-300 ease-out z-10"
+                className="absolute bottom-0 h-[2px] bg-neon transition-all duration-300 ease-out z-10"
                 style={{ 
                     left: `${indicatorStyle.left}px`, 
                     width: `${indicatorStyle.width}px`,
@@ -306,8 +327,33 @@ const Navigation: React.FC<NavigationProps> = ({
                                 <RotateCcw size={14} />
                             </button>
                         </div>
-                        
-                        {/* Primary Hue Slider */}
+
+                        {/* 预设主题 */}
+                        <div className="mb-5">
+                            <label className="text-[10px] font-mono text-gray-400 mb-2 block">{lang === 'EN' ? 'PRESETS' : '预设风格'}</label>
+                            <div className="grid grid-cols-6 gap-2">
+                                {THEME_PRESETS.map((p) => {
+                                    const active = primaryHue === p.primaryHue && secondaryHue === p.secondaryHue;
+                                    return (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => { setPrimaryHue(p.primaryHue); setSecondaryHue(p.secondaryHue); }}
+                                            title={p.name}
+                                            className={`relative h-8 rounded-md overflow-hidden border transition-all ${active ? 'border-white scale-110' : 'border-white/10 hover:border-white/40'}`}
+                                            style={{ background: `linear-gradient(135deg, ${presetPrimaryColor(p)}, ${presetSecondaryColor(p)})` }}
+                                        >
+                                            {active && (
+                                                <span className="absolute inset-0 flex items-center justify-center">
+                                                    <Check size={12} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Primary Hue Slider（微调） */}
                         <div className="mb-6">
                             <label className="text-[10px] font-mono text-gray-400 mb-2 block">{uiText.primary}</label>
                             <div className="w-full h-2 rounded-full mb-3 bg-[linear-gradient(to_right,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000)] relative"></div>
@@ -458,11 +504,35 @@ const Navigation: React.FC<NavigationProps> = ({
               </div>
               
               <div className="px-4">
+                <label className="text-xs text-gray-500 mb-2 block">{lang === 'EN' ? 'Presets' : '预设风格'}</label>
+                <div className="grid grid-cols-6 gap-2 mb-4">
+                  {THEME_PRESETS.map((p) => {
+                    const active = primaryHue === p.primaryHue && secondaryHue === p.secondaryHue;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => { setPrimaryHue(p.primaryHue); setSecondaryHue(p.secondaryHue); }}
+                        title={p.name}
+                        className={`relative h-8 rounded-md overflow-hidden border transition-all ${active ? 'border-white scale-110' : 'border-white/10'}`}
+                        style={{ background: `linear-gradient(135deg, ${presetPrimaryColor(p)}, ${presetSecondaryColor(p)})` }}
+                      >
+                        {active && (
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            <Check size={12} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="px-4">
                 <label className="text-xs text-gray-500 mb-2 block">{uiText.primary}</label>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="360" 
+                <input
+                  type="range"
+                  min="0"
+                  max="360"
                   value={primaryHue} 
                   onChange={(e) => setPrimaryHue(Number(e.target.value))}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"

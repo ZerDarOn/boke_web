@@ -1,121 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
-/**
- * 检测是否为触屏设备
- */
-const isTouchDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return (
-    'ontouchstart' in window ||
-    navigator.maxTouchPoints > 0 ||
-    ((navigator as any).msMaxTouchPoints ?? 0) > 0
-  );
-};
-
-/**
- * 自定义霓虹光标组件 - 在深色管理后台中更显眼
- * 触屏设备自动禁用
- */
-const NeonCursor: React.FC = () => {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isVisible, setIsVisible] = useState(false);
-  const [isTouch, setIsTouch] = useState(false);
-
-  useEffect(() => {
-    setIsTouch(isTouchDevice());
-    
-    if (isTouchDevice()) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      setPosition({ x: e.clientX, y: e.clientY });
-      if (!isVisible) setIsVisible(true);
-    };
-
-    const handleMouseLeave = () => setIsVisible(false);
-    const handleMouseEnter = () => setIsVisible(true);
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseleave', handleMouseLeave);
-    document.addEventListener('mouseenter', handleMouseEnter);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseleave', handleMouseLeave);
-      document.removeEventListener('mouseenter', handleMouseEnter);
-    };
-  }, [isVisible]);
-
-  if (isTouch) return null;
-
-  return (
-    <>
-      <style>{`
-        .admin-cursor-area {
-          cursor: none !important;
-        }
-        .admin-cursor-area * {
-          cursor: none !important;
-        }
-        .admin-cursor-area a,
-        .admin-cursor-area button,
-        .admin-cursor-area input,
-        .admin-cursor-area textarea,
-        .admin-cursor-area select {
-          cursor: none !important;
-        }
-      `}</style>
-      
-      <div
-        className="fixed pointer-events-none z-[9999] mix-blend-difference"
-        style={{
-          left: position.x,
-          top: position.y,
-          transform: 'translate(-50%, -50%)',
-          opacity: isVisible ? 1 : 0,
-          transition: 'opacity 0.15s ease',
-        }}
-      >
-        <div className="w-3 h-3 bg-neon rounded-full shadow-[0_0_10px_#10b981,0_0_20px_#10b981,0_0_30px_#10b981]" />
-      </div>
-      
-      <div
-        className="fixed pointer-events-none z-[9998]"
-        style={{
-          left: position.x,
-          top: position.y,
-          transform: 'translate(-50%, -50%)',
-          opacity: isVisible ? 0.6 : 0,
-          transition: 'opacity 0.15s ease, transform 0.1s ease',
-        }}
-      >
-        <div className="w-8 h-8 border-2 border-neon rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)] animate-pulse" />
-      </div>
-
-      <div
-        className="fixed pointer-events-none z-[9997]"
-        style={{
-          left: position.x,
-          top: position.y,
-          transform: 'translate(-50%, -50%)',
-          opacity: isVisible ? 0.4 : 0,
-          transition: 'opacity 0.15s ease',
-        }}
-      >
-        <div className="absolute w-6 h-[2px] bg-neon/80 -translate-x-1/2" />
-        <div className="absolute w-[2px] h-6 bg-neon/80 -translate-y-1/2" />
-      </div>
-    </>
-  );
-};
 
 const AdminLayout: React.FC = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showLoading, setShowLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // 路由变化时自动收起移动端侧边栏
+  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
   // 延迟显示loading，避免闪烁
   useEffect(() => {
@@ -130,18 +27,21 @@ const AdminLayout: React.FC = () => {
     return () => clearTimeout(timer);
   }, [loading]);
 
+  const isAdmin = user?.role === 'ADMIN';
+
   useEffect(() => {
-    // 只有在验证完成后且未登录才跳转
-    if (!loading && !user) {
+    // 验证完成后：未登录或非管理员都跳回登录页
+    if (!loading && (!user || !isAdmin)) {
       navigate('/admin/login');
     }
-  }, [user, loading, navigate]);
+  }, [user, isAdmin, loading, navigate]);
 
   const menuItems = [
     { icon: '📊', label: '仪表盘', path: '/admin/dashboard' },
     { icon: '📝', label: '文章管理', path: '/admin/posts' },
     { icon: '🚀', label: '项目管理', path: '/admin/projects' },
     { icon: '🎬', label: '动漫管理', path: '/admin/anime' },
+    { icon: '🎮', label: '游戏管理', path: '/admin/games' },
     { icon: '📷', label: '相册管理', path: '/admin/gallery' },
     { icon: '📔', label: '长日记管理', path: '/admin/diary' },
     { icon: '💭', label: '短日记管理', path: '/admin/short-diary' },
@@ -182,25 +82,43 @@ const AdminLayout: React.FC = () => {
     );
   }
 
-  if (!user) {
+  if (!user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-ink/5 dark:bg-black/50">
-        <div className="text-2xl">未登录，跳转中...</div>
+        <div className="text-2xl">{!user ? '未登录，跳转中...' : '无管理员权限，跳转中...'}</div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-ink/5 dark:bg-black/50 admin-cursor-area">
-      {/* 霓虹光标 */}
-      <NeonCursor />
-      
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-gray-900 border-r border-gray-700 flex flex-col">
-        <div className="p-6 flex-shrink-0">
+      {/* 光标由全局 CyberCursor 统一渲染 */}
+
+      {/* 移动端遮罩 */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/60 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar：移动端抽屉，桌面端常驻 */}
+      <aside
+        className={`fixed left-0 top-0 h-full w-64 bg-gray-900 border-r border-gray-700 flex flex-col z-50 transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-6 flex-shrink-0 flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">
             🎛 管理后台
           </h2>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            aria-label="关闭菜单"
+          >
+            <X size={20} />
+          </button>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-1 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
           {menuItems.map((item) => (
@@ -229,11 +147,20 @@ const AdminLayout: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="ml-64 p-8">
-        <div className="mb-8 flex items-center justify-between bg-white rounded-xl px-6 py-4 shadow-sm border border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {menuItems.find(item => item.path === activeMenu)?.label || '管理后台'}
-          </h1>
+      <main className="lg:ml-64 p-4 md:p-8">
+        <div className="mb-6 md:mb-8 flex items-center justify-between gap-3 bg-white rounded-xl px-4 md:px-6 py-4 shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden flex-shrink-0 p-2 -ml-1 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+              aria-label="打开菜单"
+            >
+              <Menu size={22} />
+            </button>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 truncate">
+              {menuItems.find(item => item.path === activeMenu)?.label || '管理后台'}
+            </h1>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-gray-600 font-medium">
               {user?.displayName || '管理员'}

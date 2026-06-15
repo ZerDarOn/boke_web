@@ -6,6 +6,8 @@ import {
 } from '../../hooks/queries/settings';
 import { Search, Plus, Edit, Trash2, Loader2, X, Save, Activity, CheckCircle, Clock, AlertCircle, Database } from 'lucide-react';
 import { LATEST_ACTIVITIES } from '../../constants';
+import { useToastActions } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 type Activity = AdminActivity;
 
@@ -16,6 +18,8 @@ const STATUS_OPTIONS = [
 ];
 
 const AdminActivities: React.FC = () => {
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const { data: activities = [], isLoading: loading, error: queryError } = useAdminActivitiesConfig();
   const saveActivitiesMutation = useSaveAdminActivities();
   const saving = saveActivitiesMutation.isPending;
@@ -35,16 +39,16 @@ const AdminActivities: React.FC = () => {
 
   // 从默认数据重新初始化（覆盖当前数据）
   const handleReinitialize = async () => {
-    if (!confirm('确定要重置为默认数据吗？这会覆盖所有现有动态。')) return;
-    
+    if (!(await confirm({ message: '确定要重置为默认数据吗？这会覆盖所有现有动态。' }))) return;
+
     const defaultActivities = LATEST_ACTIVITIES.map(a => ({
       ...a,
       status: a.status as 'DONE' | 'IN_PROGRESS' | 'PLANNED'
     }));
-    
+
     const success = await saveActivities(defaultActivities);
     if (success) {
-      alert('重置成功！');
+      toast.success('重置成功！');
     }
   };
 
@@ -53,13 +57,13 @@ const AdminActivities: React.FC = () => {
       await saveActivitiesMutation.mutateAsync(newActivities);
       return true;
     } catch {
-      alert('保存失败');
+      toast.error('保存失败');
       return false;
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这条动态吗？')) return;
+    if (!(await confirm({ message: '确定要删除这条动态吗？' }))) return;
 
     const newActivities = activities.filter(a => a.id !== id);
     await saveActivities(newActivities);
@@ -86,7 +90,7 @@ const AdminActivities: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title?.trim() || !formData.project?.trim()) {
-      alert('请填写项目和标题');
+      toast.warning('请填写项目和标题');
       return;
     }
 

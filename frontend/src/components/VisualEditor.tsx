@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { api, NetworkNode, Skill } from '../lib/api';
 import { X, Plus, Save, RotateCw, Link, Info, Trash2, Edit, MousePointer, Grid, Maximize2, Check, ChevronDown, Settings, Image as ImageIcon } from 'lucide-react';
 import ImageUpload from './ImageUpload';
+import { useToastActions } from '../contexts/ToastContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 interface VisualEditorProps<T> {
   type: 'network' | 'skills';
@@ -28,6 +30,8 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
     editable = true
   } = props;
 
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const [localNodes, setLocalNodes] = useState<T[]>(nodes);
   const [selectedNode, setSelectedNode] = useState<T | null>(null);
   const [editingNode, setEditingNode] = useState<T | null>(null);
@@ -148,8 +152,8 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
   // 删除节点
   const handleDeleteNode = async (id: string) => {
     if (!onDeleteNode) return;
-    if (!confirm('确定要删除这个节点吗？')) return;
-    
+    if (!(await confirm({ message: '确定要删除这个节点吗？' }))) return;
+
     await onDeleteNode(id);
   };
 
@@ -198,10 +202,10 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
         buttonLink: (editingNode as any).buttonLink,
       } as unknown as Partial<T>);
       setSelectedNode(editingNode);
-      alert('保存成功！');
+      toast.success('保存成功！');
     } catch (error) {
       console.error('保存失败:', error);
-      alert('保存失败');
+      toast.error('保存失败');
     } finally {
       setSaving(false);
     }
@@ -238,10 +242,10 @@ function VisualEditor<T extends { id: string; x: number; y: number; label: strin
     setSaving(true);
     try {
       await onSave(localNodes);
-      alert('保存成功！');
+      toast.success('保存成功！');
     } catch (error) {
       console.error('保存失败:', error);
-      alert('保存失败，请重试');
+      toast.error('保存失败，请重试');
     } finally {
       setSaving(false);
     }

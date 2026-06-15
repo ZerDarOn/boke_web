@@ -7,10 +7,14 @@ import {
   useDeleteDiary,
 } from '../../hooks/queries/diary';
 import { Search, Plus, Edit, Trash2, Loader2, X, Save, Quote } from 'lucide-react';
+import { useToastActions } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const STAMP_OPTIONS = ['FLOW', 'READ', 'BUG', 'OBSERVE', 'OFFLINE', 'IDEA', 'DONE', 'MEMO'];
 
 const AdminShortDiary: React.FC = () => {
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const { data: diaries = [], isLoading: loading, error: queryError } = useShortDiaryList();
   const createDiary = useCreateDiary();
   const updateDiary = useUpdateDiary();
@@ -30,11 +34,12 @@ const AdminShortDiary: React.FC = () => {
   const isSubmitting = createDiary.isPending || updateDiary.isPending;
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这条短日记吗？')) return;
+    if (!(await confirm({ message: '确定要删除这条短日记吗？' }))) return;
     try {
       await deleteDiary.mutateAsync(id);
+      toast.success('删除成功');
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -58,7 +63,7 @@ const AdminShortDiary: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.content?.trim()) {
-      alert('请输入日记内容');
+      toast.warning('请输入日记内容');
       return;
     }
 
@@ -69,8 +74,9 @@ const AdminShortDiary: React.FC = () => {
         await createDiary.mutateAsync({ ...formData, type: 'SHORT' });
       }
       setIsModalOpen(false);
+      toast.success(editingDiary ? '更新成功' : '创建成功');
     } catch {
-      alert(editingDiary ? '更新失败' : '创建失败');
+      toast.error(editingDiary ? '更新失败' : '创建失败');
     }
   };
 

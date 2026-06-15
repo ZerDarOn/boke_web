@@ -7,12 +7,16 @@ import {
   useDeleteHistoryItem,
 } from '../../../hooks/queries/history';
 import { Plus, Edit, Trash2, Clock, Eye, Loader2, X, Save, History, ArrowUp, ArrowDown } from 'lucide-react';
+import { useToastActions } from '../../../contexts/ToastContext';
+import { useConfirm } from '../../../contexts/ConfirmContext';
 
 /**
  * 历史项目管理组件
  * 管理前台时间线中显示的历史项目
  */
 const AdminHistory: React.FC = () => {
+  const toast = useToastActions();
+  const confirm = useConfirm();
   const { data: items = [], isLoading: loading, error: queryError, refetch } = useHistoryItems();
   const error = queryError?.message ?? null;
   const createItem = useCreateHistoryItem();
@@ -26,11 +30,12 @@ const AdminHistory: React.FC = () => {
   const isSubmitting = createItem.isPending || updateItem.isPending;
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除吗？')) return;
+    if (!(await confirm({ message: '确定要删除吗？' }))) return;
     try {
       await deleteItem.mutateAsync(id);
+      toast.success('删除成功');
     } catch {
-      alert('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -61,19 +66,19 @@ const AdminHistory: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!String(formData.title ?? '').trim()) {
-      alert('请填写标题');
+      toast.warning('请填写标题');
       return;
     }
     if (!String(formData.date ?? '').trim()) {
-      alert('请填写日期');
+      toast.warning('请填写日期');
       return;
     }
     if (!String(formData.role ?? '').trim()) {
-      alert('请填写角色');
+      toast.warning('请填写角色');
       return;
     }
     if (!String(formData.description ?? '').trim()) {
-      alert('请填写描述');
+      toast.warning('请填写描述');
       return;
     }
 
@@ -95,8 +100,9 @@ const AdminHistory: React.FC = () => {
         await createItem.mutateAsync(submitData);
       }
       handleCloseModal();
+      toast.success(editingItem?.id ? '更新成功' : '创建成功');
     } catch {
-      alert('保存失败');
+      toast.error('保存失败');
     }
   };
 
@@ -108,7 +114,7 @@ const AdminHistory: React.FC = () => {
       await api.history.reorder(currentItem.id, prevItem.order - 1);
       await refetch();
     } catch (error) {
-      alert('排序失败');
+      toast.error('排序失败');
     }
   };
 
@@ -120,7 +126,7 @@ const AdminHistory: React.FC = () => {
       await api.history.reorder(currentItem.id, nextItem.order + 1);
       await refetch();
     } catch (error) {
-      alert('排序失败');
+      toast.error('排序失败');
     }
   };
 

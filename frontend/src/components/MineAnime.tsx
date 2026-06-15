@@ -93,12 +93,14 @@ const MineAnime: React.FC = () => {
                 className="group relative bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 hover:border-neon transition-colors duration-300 block"
               >
 
-                   {/* Poster Image Placeholder */}
+                   {/* Poster Image */}
                    <div className="aspect-[2/3] w-full relative overflow-hidden bg-gray-100 dark:bg-[#050505]">
-                       <div
-                           className="w-full h-full transition-transform duration-500 group-hover:scale-105"
-                           style={{ backgroundColor: item.cover }}
-                       ></div>
+                       <img
+                           src={item.cover}
+                           alt={item.title}
+                           loading="lazy"
+                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                       />
 
                        {/* Overlay Status Tag */}
                        <div className="absolute top-2 left-2">

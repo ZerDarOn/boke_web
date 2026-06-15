@@ -117,8 +117,8 @@ const AnimeDetail: React.FC = () => {
 
        <div className="mb-8 relative rounded-xl overflow-hidden border border-gray-200 dark:border-white/10">
          <div
-           className="w-full h-64 md:h-80 relative"
-           style={{ backgroundColor: anime.bannerImage || anime.cover }}
+           className="w-full h-64 md:h-80 relative bg-cover bg-center"
+           style={{ backgroundImage: `url("${anime.bannerImage || anime.cover}")` }}
          >
           <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 dark:from-[#0a0a0a] dark:via-[#0a0a0a]/80 to-transparent"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-white via-transparent to-white dark:from-[#0a0a0a] dark:via-transparent dark:to-[#0a0a0a]"></div>
@@ -146,9 +146,10 @@ const AnimeDetail: React.FC = () => {
            <div className="md:col-span-1">
              <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-white/10 p-6 sticky top-6">
                <div className="aspect-[2/3] w-full rounded-lg overflow-hidden mb-6 shadow-lg">
-                 <div
-                   className="w-full h-full"
-                   style={{ backgroundColor: anime.cover }}
+                 <img
+                   src={anime.cover}
+                   alt={anime.title}
+                   className="w-full h-full object-cover"
                  />
                </div>
 
