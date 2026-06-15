@@ -1,0 +1,67 @@
+/**
+ * APlayer 样式覆盖：去掉默认白底/阴影，融入水墨赛博卡片，适配深色模式。
+ */
+.ink-aplayer .aplayer {
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: inherit;
+  line-height: initial;
+}
+
+.ink-aplayer .aplayer .aplayer-pic {
+  border-radius: 8px;
+}
+
+.ink-aplayer .aplayer .aplayer-info {
+  margin-left: 66px;
+}
+
+/* 列表滚动条与项目其它区域保持一致的纤细风格 */
+.ink-aplayer .aplayer .aplayer-list ol::-webkit-scrollbar {
+  width: 4px;
+}
+.ink-aplayer .aplayer .aplayer-list ol::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 2px;
+}
+
+/* ---------- 深色模式适配 ---------- */
+.dark .ink-aplayer .aplayer .aplayer-title {
+  color: #f3f4f6;
+}
+.dark .ink-aplayer .aplayer .aplayer-author {
+  color: #9ca3af;
+}
+.dark .ink-aplayer .aplayer .aplayer-info {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.dark .ink-aplayer .aplayer .aplayer-controller .aplayer-time {
+  color: #9ca3af;
+}
+.dark .ink-aplayer .aplayer .aplayer-bar-wrap .aplayer-bar {
+  background: rgba(255, 255, 255, 0.15);
+}
+.dark .ink-aplayer .aplayer .aplayer-bar-wrap .aplayer-bar .aplayer-loaded {
+  background: rgba(255, 255, 255, 0.3);
+}
+.dark .ink-aplayer .aplayer .aplayer-volume-wrap .aplayer-volume-bar-wrap .aplayer-volume-bar {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dark .ink-aplayer .aplayer .aplayer-list {
+  background: transparent;
+}
+.dark .ink-aplayer .aplayer .aplayer-list ol li {
+  border-top-color: rgba(255, 255, 255, 0.06);
+  color: #d1d5db;
+}
+.dark .ink-aplayer .aplayer .aplayer-list ol li:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.dark .ink-aplayer .aplayer .aplayer-list ol li.aplayer-list-light {
+  background: rgba(255, 255, 255, 0.08);
+}
+.dark .ink-aplayer .aplayer .aplayer-list ol li .aplayer-list-author {
+  color: #6b7280;
+}
