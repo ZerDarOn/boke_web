@@ -92,59 +92,62 @@ export const defaultSiteConfig: SiteConfig = {
   heroBackgrounds: [
     {
       id: 'ink',
-      name: 'Ink Slash',
+      name: 'Stories',
       enabled: true,
+      backgroundImage: '/uploads/hero/hero1.jpg',
       contentZH: {
-        tag: '数字编年史(2025)',
-        titleStart: '以',
-        titleHighlight: '代码',
-        titleEnd: '书写',
-        quote: '"在数字虚空中记录灵魂的回响。"'
+        tag: '记录 · 创作 · 折腾',
+        titleStart: '把经历写成',
+        titleHighlight: '故事',
+        titleEnd: '',
+        quote: '"这里有项目复盘、技术笔记，和偶尔走神写下的东西。"'
       },
       contentEN: {
-        tag: 'DIGITAL.CHRONICLES(2025)',
-        titleStart: 'WRITTEN IN',
-        titleHighlight: 'CODE',
+        tag: 'STORIES & NOTES',
+        titleStart: 'TURNING EXPERIENCE INTO',
+        titleHighlight: 'STORIES',
         titleEnd: '',
-        quote: '"Documenting the ghost in the shell, one line at a time."'
+        quote: '"Project deep-dives, technical notes, and the occasional wandering thought."'
       }
     },
     {
       id: 'grid',
-      name: 'Cyber Grid',
+      name: 'Projects',
       enabled: true,
+      backgroundImage: '/uploads/hero/hero2.jpg',
       contentZH: {
-        tag: '系统重构中...',
-        titleStart: '矩阵',
-        titleHighlight: '重载',
+        tag: '做过的东西',
+        titleStart: '想法落地成',
+        titleHighlight: '作品',
         titleEnd: '',
-        quote: '"系统即是现实，逻辑构建真理。"'
+        quote: '"每一个项目背后，都是一段从零到一的旅程。"'
       },
       contentEN: {
-        tag: 'SYSTEM.REFACTORING...',
-        titleStart: 'MATRIX',
-        titleHighlight: 'RELOADED',
+        tag: 'WHAT I\'VE BUILT',
+        titleStart: 'IDEAS BECOME',
+        titleHighlight: 'PROJECTS',
         titleEnd: '',
-        quote: '"The system is the reality. Logic builds truth."'
+        quote: '"Every project tells a story of going from zero to one."'
       }
     },
     {
       id: 'nebula',
-      name: 'Void Nebula',
+      name: 'Life',
       enabled: true,
+      backgroundImage: '/uploads/hero/hero3.jpg',
       contentZH: {
-        tag: '星海漫游指南',
-        titleStart: '凝视',
-        titleHighlight: '深渊',
+        tag: '还有一些喜欢的东西',
+        titleStart: '分享让生活有光的',
+        titleHighlight: '热爱',
         titleEnd: '',
-        quote: '"在数据洪流中寻找秩序的星光。"'
+        quote: '"追过的番、通关的游戏、单曲循环的歌，都在这里。"'
       },
       contentEN: {
-        tag: 'GUIDE.TO.GALAXY',
-        titleStart: 'VOID',
-        titleHighlight: 'GAZING',
-        titleEnd: '',
-        quote: '"Staring into the abyss of data, finding order in chaos."'
+        tag: 'THINGS I LOVE',
+        titleStart: 'THE',
+        titleHighlight: 'JOY',
+        titleEnd: 'THAT FILLS THE GAPS',
+        quote: '"Anime marathons, game completions, and songs on repeat — all here."'
       }
     }
   ],
