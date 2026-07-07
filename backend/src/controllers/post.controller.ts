@@ -56,6 +56,7 @@ export class PostController {
             title: post.title,
             slug: post.slug,
             excerpt: post.excerpt,
+            coverImage: post.coverImage,
             date: post.date,
             category: post.category,
             tags: post.tags,

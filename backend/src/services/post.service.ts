@@ -38,6 +38,7 @@ export class PostService {
           title: true,
           slug: true,
           excerpt: true,
+          coverImage: true,
           date: true,
           category: true,
           tags: true,

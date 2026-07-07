@@ -20,6 +20,7 @@ interface PostCardProps {
   date: string;
   category: string;
   excerpt: string;
+  coverImage?: string;
   viewMode: 'list' | 'grid';
 }
 
@@ -31,13 +32,14 @@ const mapPostType = (post: ApiPost) => ({
   date: post.date.split('T')[0], // 只取日期部分
   category: post.category,
   excerpt: post.excerpt,
+  coverImage: post.coverImage,
   content: post.content,
   tags: post.tags,
   readingTime: post.readingTime || '5 min',
 });
 
 // 使用 React.memo 优化文章卡片组件
-const PostCard = memo(({ id, slug, title, date, category, excerpt, viewMode }: PostCardProps) => {
+const PostCard = memo(({ id, slug, title, date, category, excerpt, coverImage, viewMode }: PostCardProps) => {
   return (
     <Link
       to={`/posts/${slug}`}
@@ -46,8 +48,20 @@ const PostCard = memo(({ id, slug, title, date, category, excerpt, viewMode }: P
         ${viewMode === 'list' ? 'flex flex-col md:flex-row gap-6 items-start p-6' : 'flex flex-col p-6 h-full'}
       `}
     >
+      {/* Cover Image */}
+      {coverImage && (
+        <div className={`flex-shrink-0 overflow-hidden ${viewMode === 'list' ? 'md:w-48 w-full h-48 md:h-32' : 'w-full h-48 mb-4'}`}>
+          <img
+            src={coverImage}
+            alt={title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
+        </div>
+      )}
+
       {/* Date Badge */}
-      <div className={`flex-shrink-0 ${viewMode === 'list' ? 'md:w-28 pt-1' : 'mb-4'}`}>
+      <div className={`flex-shrink-0 ${viewMode === 'list' ? 'md:w-28 pt-1' : coverImage ? '' : 'mb-4'}`}>
         <span className="font-mono text-sm text-gray-400 block mb-1">{date}</span>
         <span className="font-mono text-xs text-neon border border-neon px-2 py-0.5 inline-block bg-neon/5">
           {category}
@@ -294,6 +308,7 @@ export default function Posts() {
             date={post.date}
             category={post.category}
             excerpt={post.excerpt}
+            coverImage={post.coverImage}
             viewMode={viewMode}
           />
         ))}

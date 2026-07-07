@@ -32,6 +32,9 @@ model Post {
   isPublished Boolean  @default(true)
   isFeatured  Boolean  @default(false)
 
+  // 封面图
+  coverImage  String?
+
   // 访问控制
   accessLevel AccessLevel @default(PUBLIC)
   password    String?       // 密码保护时使用

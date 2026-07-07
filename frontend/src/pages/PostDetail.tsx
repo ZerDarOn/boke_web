@@ -292,6 +292,17 @@ const PostDetail: React.FC = () => {
           <div className="absolute bottom-0 left-0 w-0 h-1 bg-gradient-to-r from-neon to-transparent group-hover:w-full transition-all duration-500"></div>
         </h1>
 
+        {/* 封面图 */}
+        {post.coverImage && (
+          <div className="mb-6 overflow-hidden rounded-lg border border-white/10">
+            <img
+              src={post.coverImage}
+              alt={post.title}
+              className="w-full max-h-96 object-cover"
+            />
+          </div>
+        )}
+
         {/* 分隔线 - 扫描线效果 */}
         <div className="relative h-px mb-6 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-gray-600"></div>

@@ -7,7 +7,7 @@ import {
   useDeletePost,
 } from '../../hooks/queries/posts';
 import { uploadImage } from '../../lib/upload';
-import { Search, Plus, Edit, Trash2, FileText, Clock, Eye, Heart, Loader2, X, Save, Image, Lock, Globe, Key } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, FileText, Clock, Eye, Heart, Loader2, X, Save, Image, Lock, Globe, Key, Upload } from 'lucide-react';
 import { useToastActions } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
@@ -46,6 +46,7 @@ interface Post {
   likeCount: number;
   date: string;
   excerpt?: string;
+  coverImage?: string;
   accessLevel?: AccessLevel;
   password?: string;
 }
@@ -397,6 +398,63 @@ const AdminPosts: React.FC = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="文章摘要"
                   />
+                </div>
+
+                {/* 封面图上传 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    封面图
+                  </label>
+                  {formData.coverImage ? (
+                    <div className="relative w-48 mb-2">
+                      <img
+                        src={formData.coverImage}
+                        alt="封面预览"
+                        className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleInputChange('coverImage', '')}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : null}
+                  <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors w-fit">
+                    {uploadingImage ? (
+                      <>
+                        <Loader2 size={18} className="text-blue-600 animate-spin" />
+                        <span className="text-sm text-blue-600">上传中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={18} className="text-gray-600" />
+                        <span className="text-sm text-gray-700">
+                          {formData.coverImage ? '更换封面图' : '上传封面图'}
+                        </span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          setUploadingImage(true);
+                          const imageUrl = await uploadImage(file, 'posts');
+                          handleInputChange('coverImage', imageUrl);
+                        } catch (error) {
+                          toast.error('封面上传失败');
+                        } finally {
+                          setUploadingImage(false);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
 
                  {/* 图片上传 */}
