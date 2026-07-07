@@ -22,7 +22,6 @@ async function main() {
       category: '项目',
       tags: ['React', 'TypeScript', 'Express', 'Prisma', 'PostgreSQL', 'TailwindCSS'],
       readingTime: '8 min',
-      coverImage: '/uploads/hero/hero2.jpg',
       isFeatured: true,
       content: `# INK.SPIRIT 是怎么长出来的
 
@@ -82,7 +81,6 @@ INK.SPIRIT 对我来说已经不只是一个“博客系统”。它更像是一
       category: '项目',
       tags: ['AI', 'FastAPI', 'Python', 'WebSocket', 'LLM', '情感计算'],
       readingTime: '12 min',
-      coverImage: '/uploads/hero/hero3.jpg',
       isFeatured: false,
       content: `# ArkHeart 方舟之心 — AI 桌面宠物的认知架构
 
@@ -199,7 +197,6 @@ ArkHeart 探索了一个问题：**AI 能否拥有持续的情感和记忆？**
       category: '项目',
       tags: ['Tauri', 'React', 'Rust', 'PixiJS', 'AI', '动画'],
       readingTime: '10 min',
-      coverImage: '/uploads/hero/hero1.jpg',
       isFeatured: false,
       content: `# FrameForge — AI 动画帧审查与对齐工具
 
