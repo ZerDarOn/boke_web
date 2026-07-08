@@ -51,6 +51,16 @@ const defaultConfig: SiteConfig = {
 
 function readLocalConfig(): Partial<SiteConfig> {
   try {
+    const ts = localStorage.getItem('site_config_ts');
+    if (ts) {
+      const age = Date.now() - Number(ts);
+      // 缓存超过 1 小时自动失效，防止旧配置盖住 API 数据
+      if (age > 3600000) {
+        localStorage.removeItem('site_config');
+        localStorage.removeItem('site_config_ts');
+        return {};
+      }
+    }
     const saved = localStorage.getItem('site_config');
     return saved ? JSON.parse(saved) : {};
   } catch {
@@ -89,6 +99,7 @@ export function useSiteConfig(): SiteConfig {
   useEffect(() => {
     if (apiData) {
       localStorage.setItem('site_config', JSON.stringify(apiData));
+      localStorage.setItem('site_config_ts', String(Date.now()));
     }
   }, [apiData]);
 

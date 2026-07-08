@@ -29,6 +29,7 @@ const AdminSettings: React.FC = () => {
     if (serverConfig) {
       setConfig({ ...defaultSiteConfig, ...serverConfig });
       localStorage.setItem('site_config', JSON.stringify(serverConfig));
+      localStorage.setItem('site_config_ts', String(Date.now()));
     }
   }, [serverConfig]);
 
@@ -39,6 +40,7 @@ const AdminSettings: React.FC = () => {
     try {
       await saveSiteConfig.mutateAsync(config);
       localStorage.setItem('site_config', JSON.stringify(config));
+      localStorage.setItem('site_config_ts', String(Date.now()));
       setMessage({ type: 'success', text: '设置已保存到服务器！所有设备将同步更新' });
       setTimeout(() => setMessage(null), 5000);
     } catch (err) {
