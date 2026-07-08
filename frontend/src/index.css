@@ -11,6 +11,11 @@
     /* 完整颜色（供内联 var(--color-neon)、canvas、光标等直接使用） */
     --color-neon: hsl(150 100% 40%);
     --color-secondary: hsl(260 90% 65%);
+
+    /* 字体族（供 Tailwind fontFamily + 内联使用），由 Layout 运行时注入 */
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-serif: "Noto Serif SC", "SimSun", "STSong", serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
   }
 }
 
@@ -190,6 +195,11 @@ code,
  * ---------- */
 html {
   touch-action: manipulation;
+  /* 防止任何超宽子元素导致手机左右滑出边界。
+     用 clip 而非 hidden：clip 只裁剪、不创建滚动容器，不会破坏 sticky 侧栏 / fixed 导航 */
+  overflow-x: clip;
+  /* 防止滚动到顶/底时的过度滚动橡皮筋与浏览器下拉刷新，体验更贴近原生 App */
+  overscroll-behavior: none;
 }
 
 /* ============================================================================

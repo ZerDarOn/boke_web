@@ -51,7 +51,6 @@ export const HeroContext = React.createContext<{
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { lang, setLang, t } = useLang();
-  const [scrollY, setScrollY] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -111,9 +110,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       if (rafId !== null) return;
       rafId = window.requestAnimationFrame(() => {
         rafId = null;
-        const currentScroll = window.scrollY;
-        setScrollY((prev) => (prev === currentScroll ? prev : currentScroll));
-        const nextShow = currentScroll > 500;
+        const nextShow = window.scrollY > 500;
         setShowScrollTop((prev) => (prev === nextShow ? prev : nextShow));
       });
     };
@@ -158,6 +155,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     root.setProperty('--color-secondary', `hsl(${secondaryHue} 90% 65%)`);
     localStorage.setItem('theme_pref', JSON.stringify({ primaryHue, secondaryHue }));
   }, [primaryHue, secondaryHue]);
+
+  // 动态字体注入（跟随 API 配置）
+  useEffect(() => {
+    const root = document.documentElement.style;
+    const fonts = config.fontSettings;
+    if (!fonts) return;
+    root.setProperty('--font-sans', fonts.sans);
+    root.setProperty('--font-serif', fonts.serif);
+    root.setProperty('--font-mono', fonts.mono);
+  }, [config.fontSettings]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
   const toggleLang = () => setLang(prev => prev === 'ZH' ? 'EN' : 'ZH');
@@ -348,7 +355,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         )}
 
         {/* Hero 区域 - 所有页面都有 */}
-        <Hero scrollY={scrollY} lang={lang} />
+        <Hero lang={lang} />
 
         {/* 主内容区域 - 从 Hero 下方开始 */}
         <div className="relative z-10 mt-[100vh] bg-transparent min-h-screen">
@@ -359,7 +366,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
 
             <main className={`flex-1 min-w-0 flex flex-col gap-4 md:gap-6 transition-all duration-300`}>
-              <div className="bg-paper/80 dark:bg-[#0a0a0a]/90 backdrop-blur-md rounded-xl p-3 md:p-4 lg:p-6 border border-white/50 dark:border-white/10 shadow-sm ring-1 ring-black/5 dark:ring-white/10 min-h-[600px]">
+              <div className="bg-paper/95 dark:bg-[#0a0a0a]/95 rounded-xl p-3 md:p-4 lg:p-6 border border-white/50 dark:border-white/10 shadow-sm ring-1 ring-black/5 dark:ring-white/10 min-h-[600px]">
                 {children || <Outlet />}
               </div>
               

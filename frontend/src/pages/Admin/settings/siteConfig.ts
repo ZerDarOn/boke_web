@@ -37,6 +37,14 @@ export interface SiteConfig {
     };
   }[];
   
+  // 字体配置
+  fontSettings: {
+    sans: string;
+    serif: string;
+    mono: string;
+    imports: string[];
+  };
+
   // 主题配置
   defaultTheme: 'light' | 'dark';
   primaryColor: string;
@@ -152,6 +160,13 @@ export const defaultSiteConfig: SiteConfig = {
     }
   ],
   
+  fontSettings: {
+    sans: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    serif: '"Noto Serif SC", "SimSun", "STSong", serif',
+    mono: '"JetBrains Mono", "Fira Code", monospace',
+    imports: [],
+  },
+
   defaultTheme: 'dark',
   primaryColor: '#10b981',
   secondaryColor: '#8b5cf6',

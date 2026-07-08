@@ -21,6 +21,12 @@ const defaultConfig: SiteConfig = {
   primaryColor: '#10b981',
   secondaryColor: '#8b5cf6',
   defaultTheme: 'dark',
+  fontSettings: {
+    sans: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    serif: '"Noto Serif SC", "SimSun", "STSong", serif',
+    mono: '"JetBrains Mono", "Fira Code", monospace',
+    imports: [],
+  },
   pageCopy: {
     diaryTitle: 'DIARY.STREAM',
     diarySubtitle: 'Private Thoughts',
@@ -64,9 +70,13 @@ function mergeConfigs(
       ...localConfig?.pageCopy,
     },
     heroBackgrounds:
-      localConfig?.heroBackgrounds ??
       apiConfig?.heroBackgrounds ??
+      localConfig?.heroBackgrounds ??
       defaultConfig.heroBackgrounds,
+    fontSettings:
+      apiConfig?.fontSettings ??
+      localConfig?.fontSettings ??
+      defaultConfig.fontSettings,
   };
 }
 
