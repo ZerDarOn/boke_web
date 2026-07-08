@@ -14,7 +14,6 @@ export function useDiaryList(params?: { page?: number; limit?: number; type?: 'S
   return useQuery({
     queryKey: queryKeys.diary.list(params),
     queryFn: () => unwrapApi(diaryApi.getAll(params)),
-    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -29,7 +28,6 @@ export function useLongDiaryNavList() {
       const all = await unwrapApi(diaryApi.getAll());
       return all.filter((d) => d.type === 'LONG');
     },
-    staleTime: 5 * 60 * 1000,
   });
 }
 

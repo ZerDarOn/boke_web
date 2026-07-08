@@ -7,7 +7,6 @@ export function useUniverseData(mode?: 'all' | 'skill' | 'person') {
   return useQuery({
     queryKey: [...queryKeys.universe.all, 'nodes', mode ?? 'all'],
     queryFn: () => unwrapApi(universeApi.getAll(mode)),
-    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -15,7 +14,6 @@ export function useUniverseConnections() {
   return useQuery({
     queryKey: [...queryKeys.universe.all, 'connections'],
     queryFn: () => unwrapApi(universeApi.getConnections()),
-    staleTime: 5 * 60 * 1000,
   });
 }
 

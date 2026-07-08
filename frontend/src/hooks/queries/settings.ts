@@ -9,7 +9,6 @@ export function useSiteSettings() {
   return useQuery({
     queryKey: queryKeys.settings.site(),
     queryFn: () => unwrapApi(settingsApi.getAll()),
-    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -63,7 +62,7 @@ export function useAdminActivitiesConfig() {
   return useQuery({
     queryKey: queryKeys.settings.key('activities'),
     queryFn: async (): Promise<AdminActivity[]> => {
-      // 1. 尝试从 settings 获取
+      // 1. 尝试�?settings 获取
       const result = await settingsApi.getByKey('activities');
       if (result.success && result.data?.value) {
         const raw = result.data.value;
@@ -73,7 +72,7 @@ export function useAdminActivitiesConfig() {
         }
       }
       
-      // 2. Fallback: 从 timeline 获取
+      // 2. Fallback: �?timeline 获取
       try {
         const timelineResult = await timelineApi.getAll();
         if (timelineResult.success && timelineResult.data && timelineResult.data.length > 0) {
@@ -109,7 +108,7 @@ export function useSaveAdminActivities() {
   });
 }
 
-/** 读取音乐馆歌单清单（存于 SiteConfig 的 music_sources 键，未配置时回退默认） */
+/** 读取音乐馆歌单清单（存于 SiteConfig �?music_sources 键，未配置时回退默认�?*/
 export function useMusicSources() {
   return useQuery({
     queryKey: queryKeys.settings.key('music_sources'),
@@ -124,11 +123,10 @@ export function useMusicSources() {
       }
       return DEFAULT_MUSIC_SOURCES;
     },
-    staleTime: 5 * 60 * 1000,
   });
 }
 
-/** 保存音乐馆歌单清单 */
+/** 保存音乐馆歌单清�?*/
 export function useSaveMusicSources() {
   const qc = useQueryClient();
   return useMutation({

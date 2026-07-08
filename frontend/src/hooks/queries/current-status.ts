@@ -19,7 +19,6 @@ export function useActiveCurrentStatus() {
   return useQuery({
     queryKey: [...queryKeys.currentStatus(), 'active'],
     queryFn: () => unwrapApi(currentStatusApi.getActive()),
-    staleTime: 5 * 60 * 1000,
     retry: false,
   });
 }

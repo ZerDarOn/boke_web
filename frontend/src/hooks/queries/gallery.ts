@@ -23,7 +23,6 @@ export function useGalleryAlbums() {
       });
       return Array.from(albumMap.values());
     },
-    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -31,11 +30,10 @@ export function useGalleryImages(params?: { page?: number; limit?: number; album
   return useQuery({
     queryKey: queryKeys.gallery.images(params),
     queryFn: () => unwrapApi(galleryApi.getAll(params)),
-    staleTime: 5 * 60 * 1000,
   });
 }
 
-/** 管理后台：按相册筛选照片 */
+/** 管理后台：按相册筛选照�?*/
 export function useAdminGalleryPhotos(albumId?: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.gallery.images({ albumId, limit: 100, admin: true }),

@@ -14,7 +14,6 @@ export function useGameList(params?: { status?: string; platform?: string; favor
   return useQuery({
     queryKey: queryKeys.games.list(params),
     queryFn: () => unwrapApi(gamesApi.getAll(params)),
-    staleTime: 5 * 60 * 1000,
   });
 }
 

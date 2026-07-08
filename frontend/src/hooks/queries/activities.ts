@@ -50,6 +50,5 @@ export function useActivities(limit?: number) {
 
       return [];
     },
-    staleTime: 5 * 60 * 1000,
   });
 }

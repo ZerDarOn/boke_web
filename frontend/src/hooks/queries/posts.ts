@@ -15,7 +15,6 @@ export function usePostsList(params?: {
   return useQuery({
     queryKey: queryKeys.posts.list(params),
     queryFn: () => unwrapApi(postsApi.getAll(params)),
-    staleTime: 5 * 60 * 1000,
   });
 }
 

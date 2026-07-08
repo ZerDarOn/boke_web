@@ -19,7 +19,6 @@ export function useActiveHistoryItems() {
   return useQuery({
     queryKey: [...queryKeys.history(), 'active'],
     queryFn: () => unwrapApi(historyApi.getAll({ active: true })),
-    staleTime: 5 * 60 * 1000,
   });
 }
 

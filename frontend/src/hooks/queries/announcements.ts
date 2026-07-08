@@ -14,7 +14,6 @@ export function useAnnouncements() {
   return useQuery({
     queryKey: queryKeys.announcements.list(),
     queryFn: () => unwrapApi(announcementsApi.getAll()),
-    staleTime: 5 * 60 * 1000,
   });
 }
 

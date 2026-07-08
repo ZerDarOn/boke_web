@@ -14,7 +14,6 @@ export function useAnimeList(params?: { page?: number; limit?: number; status?: 
   return useQuery({
     queryKey: queryKeys.anime.list(params),
     queryFn: () => unwrapApi(animeApi.getAll(params)),
-    staleTime: 5 * 60 * 1000,
   });
 }
 
