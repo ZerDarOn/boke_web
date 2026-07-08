@@ -43,6 +43,7 @@ const AdminLayout: React.FC = () => {
     { icon: '🎬', label: '动漫管理', path: '/admin/anime' },
     { icon: '🎮', label: '游戏管理', path: '/admin/games' },
     { icon: '📷', label: '相册管理', path: '/admin/gallery' },
+    { icon: '🎵', label: '音乐管理', path: '/admin/music' },
     { icon: '📔', label: '长日记管理', path: '/admin/diary' },
     { icon: '💭', label: '短日记管理', path: '/admin/short-diary' },
     { icon: '🌌', label: '宇宙图管理', path: '/admin/universe' },

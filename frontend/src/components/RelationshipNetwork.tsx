@@ -4,7 +4,7 @@ import { useNetworkNodes } from '../hooks/queries/network';
 
 const RelationshipNetwork: React.FC = () => {
   const [activeNodeId, setActiveNodeId] = useState<string | null>('me');
-  const { data: nodes = [], isLoading: loading, error: queryError } = useNetworkNodes();
+  const { data: nodes = [], isLoading: loading, error: queryError } = useNetworkNodes({ limit: 500 });
   const error = queryError?.message ?? null;
 
   useEffect(() => {

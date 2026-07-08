@@ -1,20 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import APlayer, { type APlayerAudio } from 'aplayer';
 import 'aplayer/dist/APlayer.min.css';
 import './MusicPlayer.css';
 import { Loader2, AlertCircle, Music2 } from 'lucide-react';
-import { fetchNeteasePlaylist } from '../lib/meting';
-import { MUSIC_CACHE_VERSION } from '../lib/musicConfig';
+import { fetchSourceTracks } from '../lib/meting';
+import { MUSIC_CACHE_VERSION, DEFAULT_MUSIC_SOURCES, type MusicSource } from '../lib/musicConfig';
+import { useMusicSources } from '../hooks/queries/settings';
 
 interface MusicPlayerProps {
   /** 紧凑模式：折叠歌单、降低列表高度，适合右侧栏小窗口 */
   compact?: boolean;
-  /** 覆盖默认歌单 ID */
-  playlistId?: string;
+  /** 指定要播放的歌单源；不传则用后台第一个启用的歌单 */
+  source?: MusicSource;
   className?: string;
 }
 
-// 检查并清除旧版本缓存
+// 检查并清除旧版本的 APlayer 进度缓存
 const checkAndClearCache = () => {
   const cacheKey = 'ink_aplayer_cache_version';
   const savedVersion = localStorage.getItem(cacheKey);
@@ -24,32 +25,44 @@ const checkAndClearCache = () => {
   }
 };
 
-const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, playlistId, className }) => {
+const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, source, className }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<APlayer | null>(null);
   const [audios, setAudios] = useState<APlayerAudio[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 没有显式传入 source 时（如右侧栏迷你播放器），回退到后台第一个启用的歌单
+  const sourcesQuery = useMusicSources();
+  const effectiveSource = useMemo<MusicSource | undefined>(() => {
+    if (source) return source;
+    if (sourcesQuery.data) {
+      return sourcesQuery.data.find((s) => s.enabled) ?? DEFAULT_MUSIC_SOURCES[0];
+    }
+    return undefined; // 歌单清单仍在加载
+  }, [source, sourcesQuery.data]);
+
   // 组件挂载时检查缓存版本
   useEffect(() => {
     checkAndClearCache();
   }, []);
 
-  // 拉取网易云歌单
+  // 拉取歌单
   useEffect(() => {
+    if (!effectiveSource) return;
     const controller = new AbortController();
     setLoading(true);
     setError(null);
     setAudios(null);
-    fetchNeteasePlaylist(playlistId, controller.signal)
+    fetchSourceTracks(effectiveSource, controller.signal)
       .then((list) => setAudios(list))
       .catch((err: Error) => {
         if (err.name !== 'AbortError') setError(err.message || '音乐加载失败');
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [playlistId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSource?.server, effectiveSource?.type, effectiveSource?.sourceId]);
 
   // 实例化 APlayer（歌单就绪后）
   useEffect(() => {
@@ -91,7 +104,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, playlistId, 
         <AlertCircle size={20} className="text-orange-400" />
         <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{error}</p>
         <p className="text-[10px] text-gray-400 dark:text-gray-600 font-mono flex items-center gap-1">
-          <Music2 size={10} /> 检查 musicConfig 中的歌单 ID
+          <Music2 size={10} /> 可在后台「音乐管理」检查歌单 ID
         </p>
       </div>
     );

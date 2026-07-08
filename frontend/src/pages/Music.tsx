@@ -1,10 +1,16 @@
-import React from 'react';
-import { Music4, Disc3, Headphones } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Music4, Disc3, Headphones, Loader2, ListMusic } from 'lucide-react';
 import { useLang } from '../contexts/LangContext';
 import MusicPlayer from '../components/MusicPlayer';
+import { useMusicSources } from '../hooks/queries/settings';
 
 const Music: React.FC = () => {
   const { lang } = useLang();
+  const { data: sources = [], isLoading } = useMusicSources();
+  const enabledSources = sources.filter((s) => s.enabled);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = enabledSources.find((s) => s.id === selectedId) ?? enabledSources[0];
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -20,7 +26,7 @@ const Music: React.FC = () => {
               <span className="text-neon font-mono text-xs animate-pulse">♪</span>
             </h1>
             <p className="font-mono text-[11px] text-gray-400 dark:text-gray-500 tracking-widest mt-0.5">
-              NETEASE.CLOUD // PLAYLIST.STREAM
+              ONLINE.PLAYLIST // STREAM
             </p>
           </div>
         </div>
@@ -31,14 +37,57 @@ const Music: React.FC = () => {
       <p className="font-serif text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed flex items-start gap-2">
         <Headphones size={16} className="text-neon mt-0.5 flex-shrink-0" />
         {lang === 'EN'
-          ? 'A curated stream from my NetEase Cloud playlist. Press play and let the ink flow.'
-          : '这里流淌着我收藏的网易云歌单。点击播放，让墨色随音律晕开。'}
+          ? 'A curated stream from my playlists. Press play and let the ink flow.'
+          : '这里流淌着我收藏的歌单。点击播放，让墨色随音律晕开。'}
       </p>
+
+      {/* 歌单切换标签（多于一个时才显示） */}
+      {enabledSources.length > 1 && (
+        <div className="flex flex-wrap gap-2 mb-5">
+          {enabledSources.map((s) => {
+            const active = selected?.id === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setSelectedId(s.id)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-wide transition-all duration-300 flex items-center gap-1.5 border ${
+                  active
+                    ? 'bg-neon text-white border-neon shadow-md shadow-neon/30'
+                    : 'bg-white/60 dark:bg-white/5 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-white/10 hover:border-neon/40 hover:text-neon'
+                }`}
+              >
+                <ListMusic size={12} />
+                {s.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* 主播放器（展开歌单） */}
       <div className="relative overflow-hidden bg-white/60 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-xl p-4 md:p-6 shadow-sm">
         <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-neon via-secondary to-transparent"></div>
-        <MusicPlayer />
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-gray-400">
+            <Loader2 size={16} className="animate-spin text-neon" />
+            <span className="text-xs font-mono tracking-wider">LOADING.PLAYLISTS...</span>
+          </div>
+        ) : selected ? (
+          <MusicPlayer source={selected} key={selected.id} />
+        ) : (
+          <div className="text-center py-10 space-y-3">
+            <Music4 size={28} className="text-gray-300 dark:text-gray-600 mx-auto" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {lang === 'EN' ? 'No playlist yet.' : '还没有歌单'}
+            </p>
+            <Link
+              to="/admin/music"
+              className="inline-block text-xs text-neon hover:underline font-mono"
+            >
+              {lang === 'EN' ? 'Add one in admin →' : '去后台「音乐管理」添加 →'}
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* 提示 */}

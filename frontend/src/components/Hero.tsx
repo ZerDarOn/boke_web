@@ -1,10 +1,9 @@
-import React, { useEffect, useContext, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useContext, useState, useMemo } from 'react';
 import { ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HeroContext } from './Layout';
 import HeroCanvas from './HeroCanvas';
 
 interface HeroProps {
-  scrollY: number;
   lang: 'EN' | 'ZH';
 }
 
@@ -90,7 +89,7 @@ const defaultHeroContent: HeroContentItem[] = [
   }
 ];
 
-const Hero: React.FC<HeroProps> = ({ scrollY, lang }) => {
+const Hero: React.FC<HeroProps> = ({ lang }) => {
   // 使用 Context 获取/设置背景索引，实现跨页面同步
   const { bgIndex, setBgIndex } = useContext(HeroContext);
   const [heroConfig, setHeroConfig] = useState<HeroContentItem[]>(defaultHeroContent);
@@ -135,10 +134,37 @@ const Hero: React.FC<HeroProps> = ({ scrollY, lang }) => {
     return () => clearInterval(timer);
   }, [setBgIndex, heroContent.length]);
 
-  const progress = Math.min(scrollY / window.innerHeight, 1);
-  const scale = Math.max(0.8, 1 - progress * 0.2);
-  const opacity = Math.max(0, 1 - progress * 1.2);
-  const translateY = scrollY * 0.5;
+  const textRef = useRef<HTMLDivElement>(null);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+
+  // 视差与淡出直接操作 DOM（rAF 节流），避免把滚动位置提升到 React state 触发整页 re-render
+  useEffect(() => {
+    let rafId: number | null = null;
+    const update = () => {
+      rafId = null;
+      const sy = window.scrollY;
+      const progress = Math.min(sy / window.innerHeight, 1);
+      const scale = Math.max(0.8, 1 - progress * 0.2);
+      const opacity = Math.max(0, 1 - progress * 1.2);
+      const translateY = sy * 0.5;
+      if (textRef.current) {
+        textRef.current.style.transform = `translateY(${translateY}px) scale(${scale})`;
+        textRef.current.style.opacity = String(opacity);
+      }
+      if (indicatorRef.current) {
+        indicatorRef.current.style.opacity = String(Math.max(0, 1 - sy / 100));
+      }
+    };
+    const onScroll = () => {
+      if (rafId === null) rafId = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   return (
     <section className="fixed top-0 left-0 w-full h-screen overflow-hidden flex items-center justify-center z-0 bg-[#05060a] transition-colors duration-500">
@@ -154,11 +180,12 @@ const Hero: React.FC<HeroProps> = ({ scrollY, lang }) => {
             className={`absolute inset-0 transition-opacity duration-700 ${idx === safeIndex ? 'opacity-100' : 'opacity-0'}`}
           >
             <div
-              className="absolute inset-0 bg-cover bg-center"
+              className="absolute inset-0 bg-cover bg-center opacity-90"
               style={{ backgroundImage: `url("${item.backgroundImage}")` }}
             />
-            {/* 遮罩：保证标题文字在任意图片上都可读 */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/65" />
+            {/* 遮罩：统一到站点星空基调（#05060a），边缘晕染让封面融入星空、保证文字可读 */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#05060a]/70 via-[#05060a]/30 to-[#05060a]/80" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(5,6,10,0.72)_100%)]" />
           </div>
         ) : null
       )}
@@ -201,18 +228,15 @@ const Hero: React.FC<HeroProps> = ({ scrollY, lang }) => {
 
 
       {/* --- HERO TEXT CONTENT --- */}
-      <div 
+      <div
+        ref={textRef}
         className="relative z-10 text-center select-none px-4 transition-all duration-75 ease-out w-full"
-        style={{ 
-          transform: `translateY(${translateY}px) scale(${scale})`,
-          opacity: opacity 
-        }}
       >
-        <h2 className="font-mono text-neon text-sm md:text-lg tracking-[0.5em] mb-4 opacity-80 drop-shadow-lg uppercase">
+        <h2 className="font-serif text-neon text-xs sm:text-sm md:text-lg tracking-[0.2em] md:tracking-[0.35em] mb-5 opacity-90 drop-shadow-lg">
           {currentContent.tag}
         </h2>
-        
-        <h1 className="font-sans font-black text-5xl md:text-8xl lg:text-9xl text-white tracking-tighter relative drop-shadow-2xl leading-tight">
+
+        <h1 className="font-serif font-bold text-4xl sm:text-5xl md:text-8xl lg:text-9xl text-white relative drop-shadow-2xl leading-tight">
           {currentContent.titleStart}
           <br />
           {/* Apply Secondary Color Gradient Here */}
@@ -222,15 +246,15 @@ const Hero: React.FC<HeroProps> = ({ scrollY, lang }) => {
           {currentContent.titleEnd && <span className="text-paper ml-4">{currentContent.titleEnd}</span>}
         </h1>
 
-        <p className="mt-8 font-serif text-gray-400 text-lg md:text-xl max-w-lg mx-auto italic drop-shadow-md">
+        <p className="mt-6 md:mt-8 font-serif text-gray-400 text-base md:text-xl max-w-lg mx-auto italic drop-shadow-md">
           {currentContent.quote}
         </p>
       </div>
 
       {/* Scroll Indicator */}
-      <div 
+      <div
+        ref={indicatorRef}
         className="absolute bottom-10 w-full flex justify-center items-center gap-2 text-ink/50 dark:text-white/50 animate-bounce z-30"
-        style={{ opacity: Math.max(0, 1 - scrollY / 100) }}
       >
         <div className="flex flex-col items-center gap-2">
             <span className="font-mono text-xs tracking-widest">READ MORE</span>

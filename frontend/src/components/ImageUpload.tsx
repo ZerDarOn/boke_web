@@ -4,6 +4,21 @@ import { getAuthToken } from '../lib/api/request';
 import { API_BASE_URL } from '../lib/apiConfig';
 import AvatarCropper from './AvatarCropper';
 import { useToastActions } from '../contexts/ToastContext';
+import { resolveImageSrc } from '../lib/image';
+
+/**
+ * 把 base64 data URL 转成 Blob（纯本地解码，不经过 fetch）。
+ * 之前用 fetch(dataURL) 会被生产环境 CSP 的 connect-src 拦截。
+ */
+function dataURLtoBlob(dataurl: string): Blob {
+  const [header, base64 = ''] = dataurl.split(',');
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const binary = atob(base64);
+  const u8 = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) u8[i] = binary.charCodeAt(i);
+  return new Blob([u8], { type: mime });
+}
 
 interface ImageUploadProps {
   value?: string; // 当前图片 URL
@@ -64,10 +79,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     setUploading(true);
 
     try {
-      // 将 base64 转换为 Blob
-      const response = await fetch(croppedImage);
-      const blob = await response.blob();
-      
+      // 将 base64 转换为 Blob（本地解码，避免 CSP connect-src 拦截 data: URL）
+      const blob = dataURLtoBlob(croppedImage);
+
       // 创建 FormData 上传
       const formData = new FormData();
       formData.append('image', blob, 'avatar.png');
@@ -135,7 +149,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           {value ? (
             <>
               <img
-                src={value}
+                src={resolveImageSrc(value)}
                 alt="Preview"
                 className="w-full h-full object-cover"
               />
@@ -181,7 +195,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           {value && (
             <button
               type="button"
-              onClick={() => { setTempImage(value); setShowCropper(true); }}
+              onClick={() => { setTempImage(resolveImageSrc(value)); setShowCropper(true); }}
               disabled={uploading}
               className="px-3 py-1.5 text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1 disabled:opacity-50"
             >

@@ -5,7 +5,7 @@ import { useDiaryList } from '../hooks/queries/diary';
 import { usePageCopy } from '../hooks/useSiteConfig';
 
 const MineDiary: React.FC = () => {
-  const { data: diaries = [], isLoading: loading, error: queryError } = useDiaryList();
+  const { data: diaries = [], isLoading: loading, error: queryError } = useDiaryList({ limit: 500 });
   const error = queryError?.message ?? null;
   const pageCopy = usePageCopy();
   

@@ -182,7 +182,8 @@ const Navigation: React.FC<NavigationProps> = ({
   }, [hoveredItem, activeItem, lang]);
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-[#1a1b26]/80 backdrop-blur-md text-gray-300 h-16 shadow-lg transition-all duration-300 border-b border-white/5">
+    <>
+    <nav className="fixed top-0 left-0 w-full z-50 bg-[#1a1b26]/90 md:bg-[#1a1b26]/80 backdrop-blur-none md:backdrop-blur-md text-gray-300 h-16 shadow-lg transition-all duration-300 border-b border-white/5">
       <div className="max-w-[1600px] mx-auto px-4 h-full flex justify-between items-center">
         
         {/* Left: Branding */}
@@ -280,16 +281,8 @@ const Navigation: React.FC<NavigationProps> = ({
             </div>
         </div>
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
-        >
-          {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-
         {/* Right: Utility Icons */}
-        <div className="flex items-center gap-1 md:gap-2 pl-4 relative">
+        <div className="flex items-center gap-1 md:gap-2 pl-2 md:pl-4 relative">
             <button
                 onClick={openSearch}
                 className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
@@ -298,12 +291,12 @@ const Navigation: React.FC<NavigationProps> = ({
                 <Search size={18} />
             </button>
             
-            <button onClick={toggleLang} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors flex items-center gap-1 font-mono text-[10px]" title="Language">
+            <button onClick={toggleLang} className="hidden md:flex p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors items-center gap-1 font-mono text-[10px]" title="Language">
                 <Globe size={18} /> {lang}
             </button>
-            
-            {/* Color Palette Popover */}
-            <div className="relative">
+
+            {/* Color Palette Popover - 移动端收进汉堡菜单 */}
+            <div className="relative hidden md:block">
                 <button 
                     onClick={() => setIsColorPickerOpen(!isColorPickerOpen)} 
                     className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors" 
@@ -415,20 +408,31 @@ const Navigation: React.FC<NavigationProps> = ({
               </button>
             )}
 
-            <div className="w-[1px] h-6 bg-white/10 mx-1"></div>
+            {/* 分隔线 + 右侧栏开关：仅在能显示右侧栏的大屏(xl)出现 */}
+            <div className="hidden xl:block w-[1px] h-6 bg-white/10 mx-1"></div>
 
-            <button 
+            <button
                 onClick={toggleRightSidebar}
-                className={`p-2 hover:bg-white/10 rounded-md transition-all duration-300 group ${!isRightSidebarOpen ? 'text-neon' : 'text-gray-400'}`}
+                className={`hidden xl:block p-2 hover:bg-white/10 rounded-md transition-all duration-300 group ${!isRightSidebarOpen ? 'text-neon' : 'text-gray-400'}`}
             >
                 {isRightSidebarOpen ? <SidebarClose size={18} className="group-hover:text-white" /> : <SidebarOpen size={18} />}
             </button>
+
+            {/* Mobile Menu Button - 仅移动端，固定在最右 */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+              aria-label="菜单"
+            >
+              {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
         </div>
       </div>
+    </nav>
 
-      {/* Mobile Menu Panel */}
+      {/* Mobile Menu Panel - 必须放在 nav 外：nav 的 backdrop-blur 会把内部 fixed 元素的定位基准从视口变成 nav 自身(高 64px)，导致面板高度坍塌、看不见 */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed top-16 left-0 right-0 bottom-0 bg-[#0a0a0a]/98 backdrop-blur-xl z-40 overflow-y-auto">
+        <div className="lg:hidden fixed top-16 left-0 right-0 bottom-0 bg-[#0a0a0a] z-[60] overflow-y-auto">
           <div className="p-4 space-y-2">
             {menuItems.map((item) => (
               <div key={item.id}>
@@ -566,7 +570,7 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
         </div>
       )}
-    </nav>
+    </>
   );
 };
 

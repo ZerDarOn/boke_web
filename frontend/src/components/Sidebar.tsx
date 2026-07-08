@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { User, Github, Twitter, Hash, Loader2 } from 'lucide-react';
 import { usePostCategories, usePostTags } from '../hooks/queries/posts';
 import { useSiteConfig } from '../hooks/useSiteConfig';
+import { resolveImageSrc } from '../lib/image';
 
 // 分类和标签的类型定义
 interface Category {
@@ -87,7 +88,7 @@ const Sidebar: React.FC = () => {
         <div className="w-20 h-20 rounded-full bg-ink dark:bg-black border-2 border-neon p-1 mb-3 relative">
             <div className="w-full h-full rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden">
                 {config.authorAvatar ? (
-                  <img src={config.authorAvatar} alt={config.authorName} className="w-full h-full object-cover" />
+                  <img src={resolveImageSrc(config.authorAvatar)} alt={config.authorName} className="w-full h-full object-cover" />
                 ) : (
                   <User className="text-gray-500 w-10 h-10" />
                 )}

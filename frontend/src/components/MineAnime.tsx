@@ -5,13 +5,21 @@ import { useAnimeList } from '../hooks/queries/anime';
 
 const MineAnime: React.FC = () => {
   const [filter, setFilter] = useState<'FAVORITE' | 'ALL' | 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED'>('ALL');
-  const { data: animeList = [], isLoading: loading, error: queryError } = useAnimeList();
+  const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const { data: animeList = [], isLoading: loading, error: queryError } = useAnimeList({ limit: 500 });
   const error = queryError?.message ?? null;
-  
-  const filteredList = animeList.filter(item => {
-    if (filter === 'ALL') return true;
-    if (filter === 'FAVORITE') return item.favorite;
-    return item.status === filter;
+
+  // 类型中文名 + 数据中实际存在的类型（动态生成按钮，避免出现没有内容的空类型）
+  const TYPE_LABELS: Record<string, string> = {
+    TV: '番剧', Movie: '剧场版', OVA: 'OVA', Special: '特别篇', ONA: '网络动画',
+  };
+  const availableTypes = Array.from(new Set(animeList.map((a) => a.type).filter(Boolean)));
+
+  const filteredList = animeList.filter((item) => {
+    const statusOk =
+      filter === 'ALL' ? true : filter === 'FAVORITE' ? item.favorite : item.status === filter;
+    const typeOk = typeFilter === 'ALL' ? true : item.type === typeFilter;
+    return statusOk && typeOk;
   });
 
   const getStatusIcon = (status: string) => {
@@ -83,6 +91,26 @@ const MineAnime: React.FC = () => {
               ))}
           </div>
       </div>
+
+      {/* Type Filter（类型筛选：番剧 / 剧场版 / OVA…，仅当存在多种类型时显示） */}
+      {availableTypes.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 mb-10 -mt-6">
+          <span className="text-[10px] font-mono text-gray-400 uppercase mr-1 tracking-widest">类型</span>
+          {[{ key: 'ALL', label: '全部' }, ...availableTypes.map((t) => ({ key: t, label: TYPE_LABELS[t] || t }))].map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setTypeFilter(opt.key)}
+              className={`px-3 py-1 text-xs font-bold font-mono transition-all duration-300 ${
+                typeFilter === opt.key
+                  ? 'bg-neon text-white shadow-lg shadow-neon/30 -translate-y-0.5'
+                  : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#222]'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

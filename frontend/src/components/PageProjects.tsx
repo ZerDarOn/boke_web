@@ -11,7 +11,7 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
   const lang = 'ZH';
   const t = TRANSLATIONS['ZH'];
   
-  const { data: projects = [], isLoading: loading, error: queryError } = useProjectsList();
+  const { data: projects = [], isLoading: loading, error: queryError } = useProjectsList({ limit: 500 });
   const error = queryError?.message ?? null;
   
   const primaryProjects = projects.filter(p => p.featured);

@@ -3,6 +3,7 @@ import { settingsApi, type SiteConfig } from '../../lib/api';
 import { timelineApi } from '../../lib/api/timeline';
 import { queryKeys } from '../api/query-keys';
 import { unwrapApi } from '../api/fetcher';
+import { DEFAULT_MUSIC_SOURCES, type MusicSource } from '../../lib/musicConfig';
 
 export function useSiteSettings() {
   return useQuery({
@@ -104,6 +105,38 @@ export function useSaveAdminActivities() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.settings.key('activities') });
       qc.invalidateQueries({ queryKey: queryKeys.activities() });
+    },
+  });
+}
+
+/** 读取音乐馆歌单清单（存于 SiteConfig 的 music_sources 键，未配置时回退默认） */
+export function useMusicSources() {
+  return useQuery({
+    queryKey: queryKeys.settings.key('music_sources'),
+    queryFn: async (): Promise<MusicSource[]> => {
+      const result = await settingsApi.getByKey('music_sources');
+      if (result.success && result.data?.value) {
+        const raw = result.data.value;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed as MusicSource[];
+        }
+      }
+      return DEFAULT_MUSIC_SOURCES;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** 保存音乐馆歌单清单 */
+export function useSaveMusicSources() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sources: MusicSource[]) =>
+      unwrapApi(settingsApi.update('music_sources', sources)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.settings.key('music_sources') });
+      qc.invalidateQueries({ queryKey: queryKeys.settings.all });
     },
   });
 }

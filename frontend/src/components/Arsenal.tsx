@@ -53,7 +53,7 @@ const Arsenal: React.FC = () => {
         {!loading && projects.length > 0 && projects.map((project, index) => (
           <div 
             key={project.id} 
-            className="group bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 p-6 flex flex-col h-full hover:border-neon transition-colors duration-300 relative overflow-hidden"
+            className="group bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-2xl p-6 flex flex-col h-full hover:border-neon transition-colors duration-300 relative overflow-hidden"
           >
             {/* Tech Decoration */}
             <div className="absolute top-0 right-0 p-3 opacity-50">
@@ -62,10 +62,10 @@ const Arsenal: React.FC = () => {
 
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
-              <span className="font-mono text-[10px] text-neon border border-neon/30 px-1.5 py-0.5 bg-neon/5">
+              <span className="font-mono text-[10px] text-neon border border-neon/30 rounded px-1.5 py-0.5 bg-neon/5">
                 {project.id}
               </span>
-              <span className={`font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5 ${project.status === 'ACTIVE' ? 'bg-green-500/20 text-green-400' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+              <span className={`font-mono text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 ${project.status === 'ACTIVE' ? 'bg-green-500/20 text-green-400' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
                 {project.status}
               </span>
             </div>
@@ -96,7 +96,7 @@ const Arsenal: React.FC = () => {
                   href={project.link || project.demoUrl || project.githubUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-ink dark:bg-white text-white dark:text-ink p-2 hover:bg-neon hover:text-white dark:hover:bg-neon dark:hover:text-white transition-all duration-300"
+                  className="bg-ink dark:bg-white text-white dark:text-ink rounded-lg p-2 hover:bg-neon hover:text-white dark:hover:bg-neon dark:hover:text-white transition-all duration-300"
                 >
                   <ExternalLink size={16} />
                 </a>

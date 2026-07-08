@@ -31,7 +31,7 @@ const ProjectDetail: React.FC = () => {
   const { t } = useLang();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const { data: project, isLoading: loading, error: queryError } = useProject(id);
-  const { data: allProjects = [] } = useProjectsList();
+  const { data: allProjects = [] } = useProjectsList({ limit: 500 });
   const error = queryError?.message ?? null;
 
   const getStatusColor = (status: string) => {

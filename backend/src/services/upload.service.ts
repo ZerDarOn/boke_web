@@ -54,8 +54,13 @@ export const processImageUpload = async (
     thumbnailWidth = 400,
   } = options;
 
+  // 兼容磁盘存储(diskStorage→file.path)与内存存储(memoryStorage→file.buffer)。
+  // 上传中间件用的是 diskStorage，file.buffer 为 undefined，必须从 file.path 读取，
+  // 否则 sharp(undefined) 会抛错导致上传返回 500。
+  const fileBuffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
+
   // 获取图片尺寸
-  const metadata = await sharp(file.buffer).metadata();
+  const metadata = await sharp(fileBuffer).metadata();
   const dimensions = metadata.width && metadata.height
     ? { width: metadata.width, height: metadata.height }
     : undefined;
@@ -80,15 +85,15 @@ export const processImageUpload = async (
       await minioClient.putObject(
         process.env.MINIO_BUCKET || 'ink-spirit-blog',
         objectKey,
-        file.buffer,
-        file.size,
+        fileBuffer,
+        fileBuffer.length,
         { 'Content-Type': file.mimetype }
       );
       console.log(`✅ Uploaded to MinIO: ${objectKey}`);
 
       // 生成缩略图
       if (generateThumbnail && dimensions && dimensions.width > thumbnailWidth) {
-        const thumbnailBuffer = await sharp(file.buffer)
+        const thumbnailBuffer = await sharp(fileBuffer)
           .resize(thumbnailWidth, null, { withoutEnlargement: true })
           .toBuffer();
 
@@ -109,11 +114,11 @@ export const processImageUpload = async (
     } catch (error) {
       console.error('❌ MinIO upload failed, falling back to local storage:', error);
       // 如果 MinIO 失败，fallback 到本地存储
-      return uploadToLocal(file, filename, type, result, generateThumbnail, thumbnailWidth, dimensions);
+      return uploadToLocal(file, fileBuffer, filename, type, result, generateThumbnail, thumbnailWidth, dimensions);
     }
   } else {
     // 使用本地存储
-    return uploadToLocal(file, filename, type, result, generateThumbnail, thumbnailWidth, dimensions);
+    return uploadToLocal(file, fileBuffer, filename, type, result, generateThumbnail, thumbnailWidth, dimensions);
   }
 
   return result;
@@ -122,6 +127,7 @@ export const processImageUpload = async (
 // 本地存储 fallback 函数
 async function uploadToLocal(
   file: Express.Multer.File,
+  fileBuffer: Buffer,
   filename: string,
   type: string,
   result: any,
@@ -135,18 +141,23 @@ async function uploadToLocal(
   const filePath = path.join(uploadPath, filename);
 
   // 保存原图
-  await sharp(file.buffer).toFile(filePath);
+  await sharp(fileBuffer).toFile(filePath);
 
   // 生成缩略图
   if (generateThumbnail && dimensions && dimensions.width > thumbnailWidth) {
     const thumbnailFilename = `thumb_${filename}`;
     const thumbnailPath = path.join(uploadPath, thumbnailFilename);
 
-    await sharp(file.buffer)
+    await sharp(fileBuffer)
       .resize(thumbnailWidth, null, { withoutEnlargement: true })
       .toFile(thumbnailPath);
 
     result.thumbnailUrl = getFileUrl(thumbnailFilename, type);
+  }
+
+  // 清理 multer(diskStorage) 落盘的原始临时文件，避免与 sharp 处理后的文件重复占用磁盘
+  if (file.path && fs.existsSync(file.path) && path.resolve(file.path) !== path.resolve(filePath)) {
+    try { fs.unlinkSync(file.path); } catch { /* 忽略清理失败 */ }
   }
 
   return result;

@@ -14,8 +14,8 @@ import {
 
 const rootKey = queryKeys.skills.all;
 
-export function useSkillsList() {
-  return useAdminResourceList<Skill>(rootKey, skillsApi);
+export function useSkillsList(params?: { page?: number; limit?: number }) {
+  return useAdminResourceList<Skill>(rootKey, skillsApi, params);
 }
 
 export function useSkillGroups() {

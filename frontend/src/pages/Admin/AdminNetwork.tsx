@@ -9,7 +9,7 @@ type NetworkEditorNode = NetworkNode & { label: string };
 
 const AdminNetwork: React.FC = () => {
   const toast = useToastActions();
-  const { data: nodes = [], isLoading: loading, error: queryError, refetch } = useNetworkNodes();
+  const { data: nodes = [], isLoading: loading, error: queryError, refetch } = useNetworkNodes({ limit: 500 });
   const editorNodes = useMemo<NetworkEditorNode[]>(
     () => nodes.map((n) => ({ ...n, label: n.name })),
     [nodes]

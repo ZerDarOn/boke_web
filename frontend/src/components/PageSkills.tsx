@@ -12,7 +12,7 @@ interface PageSkillsProps {
 const PageSkills: React.FC<PageSkillsProps> = () => {
   const [activeSkill, setActiveSkill] = useState<string | null>(null);
   const { data: skillGroups = [], isLoading: skillsLoading, error: skillsError } = useSkillGroups();
-  const { data: allProjects = [], isLoading: projectsLoading } = useProjectsList();
+  const { data: allProjects = [], isLoading: projectsLoading } = useProjectsList({ limit: 500 });
   const loading = skillsLoading || projectsLoading;
   const error = skillsError?.message ?? null;
 

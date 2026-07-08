@@ -100,28 +100,29 @@ const AvatarCropper: React.FC<AvatarCropperProps> = ({
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      // 计算源图片的裁剪区域
-      const scaledWidth = imageSize.width * scale;
-      const scaledHeight = imageSize.height * scale;
-      
-      // 计算图片中心点相对于预览框的偏移
-      const offsetX = previewSize / 2 + position.x;
-      const offsetY = previewSize / 2 + position.y;
-      
-      // 计算在源图片上对应的点
-      const srcX = (offsetX - (previewSize - scaledWidth) / 2) / scale;
-      const srcY = (offsetY - (previewSize - scaledHeight) / 2) / scale;
-      
-      // 计算裁剪半径对应的源图片尺寸
-      const cropRadius = (previewSize / 2) / scale;
-      
-      // 绘制裁剪的图片
+      // 预览里图片以 imageSize（contain 进 previewSize 的尺寸）为基准再乘 scale 显示，
+      // 并以预览中心为锚点做 translate(position)。这里要把「预览坐标」换算回「原图像素坐标」。
+      const naturalW = img.naturalWidth;
+      const naturalH = img.naturalHeight;
+
+      // 显示基准缩放（contain 后、未乘 scale）；宽高比一致，取宽即可
+      const displayScale = imageSize.width / naturalW;
+      // 预览像素 → 原图像素 的总缩放
+      const totalScale = displayScale * scale;
+
+      // 圆形裁剪框中心固定在预览中心；图片中心 = 预览中心 + position。
+      // 因此裁剪框中心相对图片中心的偏移为 -position（预览像素），换算到原图像素：
+      const srcCenterX = naturalW / 2 - position.x / totalScale;
+      const srcCenterY = naturalH / 2 - position.y / totalScale;
+      // 裁剪框半径（预览像素）换算到原图像素
+      const srcRadius = (previewSize / 2) / totalScale;
+
       ctx.drawImage(
         img,
-        srcX - cropRadius,
-        srcY - cropRadius,
-        cropRadius * 2,
-        cropRadius * 2,
+        srcCenterX - srcRadius,
+        srcCenterY - srcRadius,
+        srcRadius * 2,
+        srcRadius * 2,
         0,
         0,
         size,
@@ -169,6 +170,10 @@ const AvatarCropper: React.FC<AvatarCropperProps> = ({
                 style={{
                   width: imageSize.width * scale,
                   height: imageSize.height * scale,
+                  // 覆盖 Tailwind preflight 的 img { max-width:100% }，
+                  // 否则放大时宽度被截到容器宽、高度不受限，导致纵向拉伸变形
+                  maxWidth: 'none',
+                  maxHeight: 'none',
                   transform: `translate(${position.x}px, ${position.y}px)`,
                   transition: isDragging ? 'none' : 'transform 0.1s',
                 }}

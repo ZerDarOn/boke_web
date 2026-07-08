@@ -2,7 +2,7 @@ import { PaginationParams } from '../types';
 
 export const getPagination = (page?: string, limit?: string): PaginationParams => {
   const parsedPage = Math.max(1, parseInt(page || '1', 10));
-  const parsedLimit = Math.min(100, Math.max(1, parseInt(limit || '10', 10)));
+  const parsedLimit = Math.min(500, Math.max(1, parseInt(limit || '10', 10)));
   
   return {
     page: parsedPage,

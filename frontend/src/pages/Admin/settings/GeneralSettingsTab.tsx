@@ -1,6 +1,7 @@
 import React from 'react';
 import { User } from 'lucide-react';
 import ImageUpload from '../../../components/ImageUpload';
+import { resolveImageSrc } from '../../../lib/image';
 
 import type { SettingsTabProps } from './types';
 
@@ -75,7 +76,7 @@ const GeneralSettingsTab: React.FC<SettingsTabProps> = ({ config, updateConfig }
           >
             {config.authorAvatar ? (
               <img
-                src={config.authorAvatar}
+                src={resolveImageSrc(config.authorAvatar)}
                 alt="作者头像"
                 className="w-full h-full object-cover"
               />

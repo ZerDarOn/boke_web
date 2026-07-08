@@ -1,8 +1,8 @@
 /**
- * Meting API 封装：把网易云歌单转成 APlayer 可用的歌曲列表。
+ * Meting API 封装：把一个歌单源转成 APlayer 可用的歌曲列表。
  */
 import type { APlayerAudio } from 'aplayer';
-import { METING_API_BASE, MUSIC_SERVER, getPlaylistId } from './musicConfig';
+import { METING_API_BASE, type MusicSource } from './musicConfig';
 
 /** Meting API 返回的单曲结构 */
 interface MetingTrack {
@@ -14,18 +14,16 @@ interface MetingTrack {
 }
 
 /**
- * 拉取网易云歌单歌曲列表。
- * @param playlistId 歌单 ID，默认读取 musicConfig
- * @param signal 可选 AbortSignal
+ * 向 Meting API 请求一个资源（歌单/单曲/专辑/歌手）的歌曲列表。
  */
-export async function fetchNeteasePlaylist(
-  playlistId: string = getPlaylistId(),
+export async function fetchSourceTracks(
+  source: Pick<MusicSource, 'server' | 'type' | 'sourceId'>,
   signal?: AbortSignal,
 ): Promise<APlayerAudio[]> {
   const params = new URLSearchParams({
-    server: MUSIC_SERVER,
-    type: 'playlist',
-    id: playlistId,
+    server: source.server,
+    type: source.type,
+    id: source.sourceId,
   });
   const res = await fetch(`${METING_API_BASE}?${params.toString()}`, {
     signal,
@@ -36,7 +34,7 @@ export async function fetchNeteasePlaylist(
   }
   const data = (await res.json()) as MetingTrack[];
   if (!Array.isArray(data) || data.length === 0) {
-    throw new Error('歌单为空或无法获取，请检查歌单 ID 是否公开');
+    throw new Error('歌单为空或无法获取，请检查 ID 是否正确、是否公开');
   }
   return data
     .filter((t) => t && t.url)

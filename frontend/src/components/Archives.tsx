@@ -23,9 +23,9 @@ const Archives: React.FC = () => {
 
   return (
     <section id="articles" className="py-12 w-full relative">
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 border-b-2 border-ink dark:border-white pb-4 gap-4 md:gap-0">
-        <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
-            <h2 className="text-4xl md:text-6xl font-serif font-black text-ink dark:text-white tracking-tight leading-none">
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-16 border-b-2 border-ink dark:border-white pb-4 gap-3 md:gap-0">
+        <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-6">
+            <h2 className="text-3xl sm:text-4xl md:text-6xl font-serif font-black text-ink dark:text-white tracking-tight leading-none">
             LATEST WRITINGS
             </h2>
             <span className="font-mono text-neon font-bold text-lg">
@@ -65,14 +65,14 @@ const Archives: React.FC = () => {
             key={post.id}
             to={`/posts/${post.slug}`}
             className={`
-                group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
+                group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
                 ${viewMode === 'list' ? 'flex flex-col md:flex-row gap-6 items-start p-6' : 'flex flex-col p-6 h-full'}
             `}
           >
             {/* Date Badge */}
             <div className={`flex-shrink-0 ${viewMode === 'list' ? 'md:w-28 pt-1' : 'mb-4'}`}>
                <span className="font-mono text-sm text-gray-400 block mb-1">{formatDate(post.date)}</span>
-               <span className="font-mono text-xs text-neon border border-neon px-2 py-0.5 inline-block bg-neon/5">
+               <span className="font-mono text-xs text-neon border border-neon rounded px-2 py-0.5 inline-block bg-neon/5">
                  {post.category}
                </span>
             </div>

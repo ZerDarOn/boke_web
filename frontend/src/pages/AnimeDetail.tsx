@@ -27,7 +27,7 @@ import {
 const AnimeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { data: anime, isLoading: loading, error: queryError } = useAnimeItem(id);
-  const { data: allAnime = [] } = useAnimeList();
+  const { data: allAnime = [] } = useAnimeList({ limit: 500 });
   const error = queryError?.message ?? null;
   const scrollProgress = useScrollProgress();
   const theme = useThemeClass();

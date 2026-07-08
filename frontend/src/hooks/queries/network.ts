@@ -9,8 +9,8 @@ import {
 
 const rootKey = queryKeys.network.all;
 
-export function useNetworkNodes() {
-  return useAdminResourceList<NetworkNode>(rootKey, networkApi);
+export function useNetworkNodes(params?: { page?: number; limit?: number }) {
+  return useAdminResourceList<NetworkNode>(rootKey, networkApi, params);
 }
 
 export function useCreateNetworkNode() {

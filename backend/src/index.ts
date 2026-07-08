@@ -236,6 +236,38 @@ function startSteamSyncSchedule(): void {
   console.log('🎮 Steam library sync scheduled (every 24h).');
 }
 
+/**
+ * B站追番定时同步
+ * - 仅当 BILIBILI_UID 配置时生效
+ * - 启动时执行一次，之后每 24 小时重复
+ * - 失败仅记日志，不影响服务器（如用户临时关闭"公开追番"，同步失败会被静默吞掉）
+ */
+function startBilibiliAnimeSyncSchedule(): void {
+  const uid = process.env.BILIBILI_UID;
+  if (!uid) {
+    console.log('ℹ️  Bilibili anime sync skipped: BILIBILI_UID not configured.');
+    return;
+  }
+
+  const INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+  const run = async () => {
+    try {
+      const { syncBilibiliAnime } = await import('./services/bilibili.service');
+      const r = await syncBilibiliAnime(uid);
+      console.log(
+        `📺 Bilibili anime sync: ${r.created} created, ${r.updated} updated, ${r.total} total`,
+      );
+    } catch (err: any) {
+      console.error(`⚠️  Bilibili anime scheduled sync failed: ${err.message}`);
+    }
+  };
+
+  run();
+  setInterval(run, INTERVAL_MS);
+  console.log('📺 Bilibili anime sync scheduled (every 24h).');
+}
+
 async function main() {
   // 动态导入配置模块
   const { config, validateProductionEnv } = await import('./config/env');
@@ -301,6 +333,9 @@ async function main() {
 
       // 启动 Steam 定时同步（仅在环境变量配置后生效）
       startSteamSyncSchedule();
+
+      // 启动 B站追番定时同步（仅在 BILIBILI_UID 配置后生效）
+      startBilibiliAnimeSyncSchedule();
     });
 
     const gracefulShutdown = () => {

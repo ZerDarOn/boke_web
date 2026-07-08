@@ -21,7 +21,7 @@ const iconMap: Record<string, React.ElementType> = {
 
 const PageTimeline: React.FC = () => {
   const [viewMode, setViewMode] = useState<'timeline' | 'history'>('timeline');
-  const { data: events = [], isLoading: timelineLoading, error: timelineError } = useTimelineList();
+  const { data: events = [], isLoading: timelineLoading, error: timelineError } = useTimelineList({ limit: 500 });
   const { data: currentStatus = null, isLoading: statusLoading } = useActiveCurrentStatus();
   const { data: historyItems = [], isLoading: historyLoading } = useActiveHistoryItems();
   const loading = timelineLoading || statusLoading || historyLoading;

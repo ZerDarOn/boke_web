@@ -17,7 +17,7 @@ interface SkillNode {
 
 const AdminSkills: React.FC = () => {
   const toast = useToastActions();
-  const { data: skills = [], isLoading: loading, error: queryError, refetch } = useSkillsList();
+  const { data: skills = [], isLoading: loading, error: queryError, refetch } = useSkillsList({ limit: 500 });
   const error = queryError?.message ?? null;
   const [actionError, setActionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

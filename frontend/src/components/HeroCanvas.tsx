@@ -100,11 +100,16 @@ const HeroCanvas: React.FC = () => {
     window.addEventListener('mouseout', onOut);
 
     let raf = 0;
+    let color = resolveNeon();
+    let frameCount = 0;
     const render = () => {
       raf = requestAnimationFrame(render);
       if (document.visibilityState === 'hidden') return;
+      // Hero 滚出视口后停止绘制：被下方内容盖住时仍全速 O(n²) 重绘是滚动卡顿的主因之一
+      if (window.scrollY >= window.innerHeight) return;
 
-      const color = resolveNeon();
+      // 主题色每 ~30 帧刷新一次即可，避免每帧 getComputedStyle 触发强制样式计算
+      if ((frameCount++ % 30) === 0) color = resolveNeon();
 
       // 墨底
       ctx.fillStyle = '#05060a';
