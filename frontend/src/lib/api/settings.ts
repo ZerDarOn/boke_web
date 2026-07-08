@@ -32,6 +32,9 @@ export interface SiteConfig {
     aboutContactCopyTip: string;
   };
   heroBackgrounds: any[];
+  siteDescription?: string;
+  siteKeywords?: string;
+  favicon?: string;
   fontSettings?: {
     sans: string;
     serif: string;

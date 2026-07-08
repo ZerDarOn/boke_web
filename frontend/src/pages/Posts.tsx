@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, memo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { TRANSLATIONS } from '../constants';
 import { ArrowRight, LayoutList, LayoutGrid, Filter, X, Loader2 } from 'lucide-react';
+import { SEO } from '../components/SEO';
 import type { Post as ApiPost } from '../lib/api';
 import { usePostsList, usePostCategories, usePostTags } from '../hooks/queries/posts';
 import { PostListSkeleton } from '../components/Skeleton';
@@ -44,13 +45,13 @@ const PostCard = memo(({ id, slug, title, date, category, excerpt, coverImage, v
     <Link
       to={`/posts/${slug}`}
       className={`
-        group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
+        group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
         ${viewMode === 'list' ? 'flex flex-col md:flex-row gap-6 items-start p-6' : 'flex flex-col p-6 h-full'}
       `}
     >
       {/* Cover Image */}
       {coverImage && (
-        <div className={`flex-shrink-0 overflow-hidden ${viewMode === 'list' ? 'md:w-48 w-full h-48 md:h-32' : 'w-full h-48 mb-4'}`}>
+        <div className={`flex-shrink-0 overflow-hidden rounded-xl ${viewMode === 'list' ? 'md:w-48 w-full h-48 md:h-32' : 'w-full h-48 mb-4'}`}>
           <img
             src={coverImage}
             alt={title}
@@ -63,7 +64,7 @@ const PostCard = memo(({ id, slug, title, date, category, excerpt, coverImage, v
       {/* Date Badge */}
       <div className={`flex-shrink-0 ${viewMode === 'list' ? 'md:w-28 pt-1' : coverImage ? '' : 'mb-4'}`}>
         <span className="font-mono text-sm text-gray-400 block mb-1">{date}</span>
-        <span className="font-mono text-xs text-neon border border-neon px-2 py-0.5 inline-block bg-neon/5">
+        <span className="font-mono text-xs text-neon border border-neon rounded px-2 py-0.5 inline-block bg-neon/5">
           {category}
         </span>
       </div>
@@ -140,6 +141,11 @@ export default function Posts() {
 
   return (
     <section className="py-12 w-full relative">
+      <SEO
+        title="文章"
+        description="技术笔记、项目复盘、思考随笔"
+        type="website"
+      />
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 border-b-2 border-ink dark:border-white pb-4 gap-4 md:gap-0">
         <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
           <h2 className="text-4xl md:text-6xl font-serif font-black text-ink dark:text-white tracking-tight leading-none">

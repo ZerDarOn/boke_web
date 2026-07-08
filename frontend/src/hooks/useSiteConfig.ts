@@ -21,6 +21,8 @@ const defaultConfig: SiteConfig = {
   primaryColor: '#10b981',
   secondaryColor: '#8b5cf6',
   defaultTheme: 'dark',
+  siteDescription: '个人博客 — 记录、创作、分享。',
+  siteKeywords: '博客,技术,编程,生活',
   fontSettings: {
     sans: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     serif: '"Noto Serif SC", "SimSun", "STSong", serif',

@@ -19,7 +19,7 @@ import {
   Lock,
   AlertCircle
 } from 'lucide-react';
-import SimpleComments from '../components/GiscusComments';
+import GiscusComments from '../components/GiscusComments';
 import TableOfContents from '../components/TableOfContents';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
@@ -230,6 +230,7 @@ const PostDetail: React.FC = () => {
           description={post.excerpt}
           keywords={post.tags?.join(', ')}
           type="article"
+          image={post.coverImage}
         />
       )}
       
@@ -483,7 +484,7 @@ const PostDetail: React.FC = () => {
         <h3 className="text-2xl font-serif font-bold mb-6 pb-2 border-b border-gray-200 dark:border-white/10 text-ink dark:text-white">
           评论
         </h3>
-        <SimpleComments theme={theme} />
+        <GiscusComments theme={theme} />
       </div>
 
       {/* 返回顶部 */}

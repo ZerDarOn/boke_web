@@ -1,131 +1,112 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-interface Comment {
-  id: string;
-  username: string;
-  content: string;
-  timestamp: number;
-}
-
-interface SimpleCommentsProps {
+interface GiscusCommentsProps {
   theme?: 'light' | 'dark';
 }
 
-const SimpleComments: React.FC<SimpleCommentsProps> = ({ theme = 'dark' }) => {
+/**
+ * Giscus 评论组件
+ *
+ * 基于 GitHub Discussions，利用 giscus.app 提供的轻量脚本接入。
+ * 使用前需要在 GitHub 仓库中：
+ *  1. 开启 Discussions 功能
+ *  2. 安装 giscus GitHub App (https://github.com/apps/giscus)
+ *  3. 前往 https://giscus.app 填写仓库信息，获取 repo / repoId / categoryId
+ *
+ * 配置项通过顶部常量集中管理，保持代码整洁。
+ */
+
+// ── 配置（替换为你自己的仓库信息） ──
+const GISCUS_CONFIG = {
+  repo: 'cyber-ronin/ink-spirit-blog' as `${string}/${string}`, // ← 替换为你的 GitHub 仓库
+  repoId: '',                                                        // ← 从 giscus.app 获取
+  categoryId: '',                                                    // ← 从 giscus.app 获取
+  category: 'Announcements',                                         // Discussion 分类，默认用 Announcements
+  mapping: 'pathname' as const,                                      // 按页面路径映射 Discussion
+  reactionsEnabled: '1' as const,
+  emitMetadata: '0' as const,
+  inputPosition: 'top' as const,
+  lang: 'zh-CN',
+  loading: 'lazy' as const,
+};
+
+const GiscusComments: React.FC<GiscusCommentsProps> = ({ theme = 'dark' }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [configured, setConfigured] = useState(
+    Boolean(GISCUS_CONFIG.repoId && GISCUS_CONFIG.categoryId),
+  );
   const location = useLocation();
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [username, setUsername] = useState('');
-  const [content, setContent] = useState('');
 
-  const storageKey = `comments-${location.pathname}`;
-
+  // 每次路由变化时，Giscus 通过 iframe postMessage 自动重载对应 Discussion
+  // 我们只需保证脚本只注入一次，且 script 的 src 随 theme 更新
   useEffect(() => {
-    const stored = localStorage.getItem(storageKey);
-    if (stored) {
-      try {
-        setComments(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to parse comments:', e);
-      }
-    }
-  }, [storageKey]);
+    if (!configured) return;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim() || !content.trim()) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      username: username.trim(),
-      content: content.trim(),
-      timestamp: Date.now()
-    };
+    // 清空旧 iframe（主题切换时重建）
+    container.innerHTML = '';
 
-    const updated = [newComment, ...comments];
-    setComments(updated);
-    localStorage.setItem(storageKey, JSON.stringify(updated));
-    setContent('');
-  };
+    const script = document.createElement('script');
+    script.src = 'https://giscus.app/client.js';
+    script.setAttribute('data-repo', GISCUS_CONFIG.repo);
+    script.setAttribute('data-repo-id', GISCUS_CONFIG.repoId);
+    script.setAttribute('data-category-id', GISCUS_CONFIG.categoryId);
+    script.setAttribute('data-category', GISCUS_CONFIG.category);
+    script.setAttribute('data-mapping', GISCUS_CONFIG.mapping);
+    script.setAttribute('data-reactions-enabled', GISCUS_CONFIG.reactionsEnabled);
+    script.setAttribute('data-emit-metadata', GISCUS_CONFIG.emitMetadata);
+    script.setAttribute('data-input-position', GISCUS_CONFIG.inputPosition);
+    script.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark_dimmed');
+    script.setAttribute('data-lang', GISCUS_CONFIG.lang);
+    script.setAttribute('data-loading', GISCUS_CONFIG.loading);
+    script.setAttribute('crossorigin', 'anonymous');
+    script.async = true;
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+    container.appendChild(script);
+  }, [configured, theme, location.pathname]);
+
+  // 未配置时显示引导
+  if (!configured) {
+    return (
+      <div className="w-full mt-12">
+        <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-white/10 p-8">
+          <h3 className="text-lg font-semibold text-ink dark:text-white mb-3">评论功能</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
+            Giscus 评论系统尚未配置。需要前往{' '}
+            <a
+              href="https://giscus.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-neon underline"
+            >
+              giscus.app
+            </a>{' '}
+            获取 <code className="bg-gray-100 dark:bg-white/10 px-1 rounded text-xs">repoId</code> 和{' '}
+            <code className="bg-gray-100 dark:bg-white/10 px-1 rounded text-xs">categoryId</code>，
+            填入 <code className="bg-gray-100 dark:bg-white/10 px-1 rounded text-xs">GiscusComments.tsx</code> 顶部的
+            GISCUS_CONFIG 即可启用。
+          </p>
+          <ol className="list-decimal list-inside text-xs text-gray-400 space-y-1">
+            <li>确保 GitHub 仓库已开启 Discussions</li>
+            <li>安装 <a href="https://github.com/apps/giscus" target="_blank" rel="noopener noreferrer" className="text-neon underline">giscus GitHub App</a></li>
+            <li>在 giscus.app 填写仓库信息并复制 ID</li>
+          </ol>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full mt-12">
-      <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-white/10 p-6">
-        <form onSubmit={handleSubmit} className="space-y-4 mb-8">
-          <div>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="用户名"
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-ink dark:text-white placeholder-gray-400 focus:outline-none focus:border-neon focus:ring-1 focus:ring-neon transition-all"
-              maxLength={50}
-            />
-          </div>
-          <div>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="写下你的评论..."
-              rows={4}
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-ink dark:text-white placeholder-gray-400 focus:outline-none focus:border-neon focus:ring-1 focus:ring-neon transition-all resize-none"
-              maxLength={500}
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-6 py-2 bg-neon text-white font-mono text-sm rounded hover:bg-neon/80 transition-colors"
-          >
-            发表评论
-          </button>
-        </form>
-
-        {comments.length > 0 ? (
-          <div className="space-y-4">
-            {comments.map((comment) => (
-              <div
-                key={comment.id}
-                className="p-4 bg-gray-50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-ink dark:text-white font-mono">
-                    {comment.username}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                    {formatDate(comment.timestamp)}
-                  </span>
-                </div>
-                <p className="text-sm text-ink dark:text-gray-200 leading-relaxed">
-                  {comment.content}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-8 font-mono text-sm">
-            还没有评论，快来发表第一条吧！
-          </p>
-        )}
-      </div>
-
-      <div className="mt-4 text-center">
-        <p className="text-xs text-gray-400 dark:text-gray-600 font-mono">
-          评论仅保存在本地浏览器中
-        </p>
-      </div>
+      <div
+        ref={containerRef}
+        className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden"
+      />
     </div>
   );
 };
 
-export default SimpleComments;
+export default GiscusComments;
