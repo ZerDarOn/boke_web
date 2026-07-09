@@ -14,10 +14,10 @@ const About: React.FC = () => {
     {
       type: 'email',
       label: lang === 'EN' ? 'Email' : '邮箱',
-      value: 'ronin@cyber.ink',
+      value: '1500507371@qq.com',
       icon: Mail,
       action: () => {
-        navigator.clipboard.writeText('ronin@cyber.ink');
+        navigator.clipboard.writeText('1500507371@qq.com');
         setCopyStatus('copied');
         setTimeout(() => setCopyStatus('idle'), 2000);
       }
@@ -25,16 +25,16 @@ const About: React.FC = () => {
     {
       type: 'github',
       label: 'GitHub',
-      value: 'github.com/cyber-ronin',
+      value: 'github.com/ZerDarOn',
       icon: Github,
-      action: () => window.open('https://github.com/cyber-ronin', '_blank')
+      action: () => window.open('https://github.com/ZerDarOn', '_blank')
     },
     {
       type: 'bilibili',
       label: lang === 'EN' ? 'Bilibili' : 'B站',
-      value: 'bilibili.com/user/123456',
+      value: lang === 'EN' ? 'Not Set' : '未设置',
       icon: Video,
-      action: () => window.open('https://bilibili.com/user/123456', '_blank')
+      action: () => {} // 等提供 UID 后替换
     },
     {
       type: 'wechat',
