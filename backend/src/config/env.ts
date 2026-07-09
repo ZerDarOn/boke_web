@@ -48,6 +48,35 @@ export function validateProductionEnv(): { valid: boolean; errors: string[] } {
   };
 }
 
+/**
+ * 输出安全警告（所有环境生效，不阻断启动）
+ * 开发环境同样需要意识到使用了默认密钥的风险
+ */
+export function logSecurityWarnings(): void {
+  const warnings: string[] = [];
+
+  for (const [varName, insecureValue] of Object.entries(INSECURE_DEFAULTS)) {
+    if (process.env[varName] === insecureValue) {
+      warnings.push(`  ⚠️  ${varName} 使用了默认值 "${insecureValue}" — ${process.env.NODE_ENV === 'production' ? '生产环境严禁使用！' : '建议设置真实密钥'}`);
+    }
+  }
+
+  for (const varName of REQUIRED_ENV_VARS) {
+    if (!process.env[varName]) {
+      warnings.push(`  ⚠️  缺少环境变量: ${varName}`);
+    }
+  }
+
+  if (warnings.length > 0) {
+    console.warn('\n🔒 安全警告 (env.ts):\n');
+    warnings.forEach(w => console.warn(w));
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('\n  💡 提示: 开发环境可以忽略，但请确保生产部署前修改 .env');
+    }
+    console.warn('');
+  }
+}
+
 export const config = {
     PORT: parseInt(process.env.PORT || '3001'),
     NODE_ENV: process.env.NODE_ENV || 'development',

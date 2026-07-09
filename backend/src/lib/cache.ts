@@ -9,6 +9,7 @@ interface CacheStats {
   hits: number;
   misses: number;
   keys: number;
+  evictions: number;
 }
 
 interface RedisLike {
@@ -21,12 +22,16 @@ interface RedisLike {
   disconnect(): void;
 }
 
+const DEFAULT_CACHE_CAPACITY = 1000;
+
 class MemoryCache {
   private cache: Map<string, CacheEntry<any>> = new Map();
-  private stats: CacheStats = { hits: 0, misses: 0, keys: 0 };
+  private stats: CacheStats = { hits: 0, misses: 0, keys: 0, evictions: 0 };
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private capacity: number;
 
-  constructor() {
+  constructor(capacity: number = DEFAULT_CACHE_CAPACITY) {
+    this.capacity = capacity;
     this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
   }
 
@@ -44,18 +49,35 @@ class MemoryCache {
       return null;
     }
 
+    // LRU promotion: move to end of Map (most recently used)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+
     this.stats.hits++;
     return entry.value;
   }
 
   async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
     const expiresAt = Date.now() + ttlSeconds * 1000;
-    
-    if (!this.cache.has(key)) {
-      this.stats.keys++;
+
+    // Key already exists — update in place, no capacity change
+    if (this.cache.has(key)) {
+      this.cache.set(key, { value, expiresAt });
+      return;
     }
-    
+
+    // Evict oldest (least recently used) entry if at capacity
+    if (this.cache.size >= this.capacity) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.cache.delete(oldestKey);
+        this.stats.keys--;
+        this.stats.evictions++;
+      }
+    }
+
     this.cache.set(key, { value, expiresAt });
+    this.stats.keys++;
   }
 
   async del(key: string): Promise<void> {
@@ -234,6 +256,7 @@ export const cache = {
         hits: 0,
         misses: 0,
         keys: 0,
+        evictions: 0,
         hitRate: 'N/A (Redis)',
         backend: 'redis',
       };

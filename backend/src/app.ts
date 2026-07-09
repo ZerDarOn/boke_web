@@ -17,34 +17,36 @@ import {
 import { sanitizeInput, addXSSProtectionHeaders } from './lib/sanitizer';
 import { initializeCache, cache, shutdownCache } from './lib/cache';
 
-// Import routes
-const postRoutes = require('./routes/posts').default;
-const projectRoutes = require('./routes/projects').default;
-const announcementRoutes = require('./routes/announcements').default;
-const animeRoutes = require('./routes/anime').default;
-const diaryRoutes = require('./routes/diary').default;
-const galleryRoutes = require('./routes/gallery').default;
-const skillRoutes = require('./routes/skills').default;
-const timelineRoutes = require('./routes/timeline').default;
-const networkRoutes = require('./routes/network').default;
-const universeRoutes = require('./routes/universe').default;
-const dashboardRoutes = require('./routes/dashboard').default;
-const searchRoutes = require('./routes/search').default;
-const uploadRoutes = require('./routes/upload').default;
-const minioRoutes = require('./routes/minio').default;
-const authRoutes = require('./routes/auth').default;
-const fileRoutes = require('./routes/files').default;
-const rssRoutes = require('./routes/rss').default;
-const aiRoutes = require('./routes/ai').default;
-const settingsRoutes = require('./routes/settings').default;
-const maintenanceRoutes = require('./routes/maintenance').default;
-const currentStatusRoutes = require('./routes/current-status').default;
-const historyRoutes = require('./routes/history').default;
-const contentRoutes = require('./routes/content').default;
-const exportRoutes = require('./routes/export').default;
-const errorRoutes = require('./routes/error').default;
-const gameRoutes = require('./routes/game').default;
-const fileService = require('./services/file.service').default;
+// Import routes — single barrel entry point
+import {
+  postRoutes,
+  projectRoutes,
+  announcementRoutes,
+  animeRoutes,
+  diaryRoutes,
+  galleryRoutes,
+  skillRoutes,
+  timelineRoutes,
+  networkRoutes,
+  universeRoutes,
+  dashboardRoutes,
+  searchRoutes,
+  uploadRoutes,
+  minioRoutes,
+  authRoutes,
+  fileRoutes,
+  rssRoutes,
+  aiRoutes,
+  settingsRoutes,
+  maintenanceRoutes,
+  currentStatusRoutes,
+  historyRoutes,
+  contentRoutes,
+  exportRoutes,
+  errorRoutes,
+  gameRoutes,
+} from './routes';
+import fileService from './services/file.service';
 
 const app = express();
 

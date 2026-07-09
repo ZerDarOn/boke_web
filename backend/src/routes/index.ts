@@ -1,0 +1,29 @@
+// Route barrel — single entry point for all API routes.
+// Each module exports a default Express Router.
+
+export { default as aiRoutes } from './ai';
+export { default as animeRoutes } from './anime';
+export { default as announcementRoutes } from './announcements';
+export { default as authRoutes } from './auth';
+export { default as contentRoutes } from './content';
+export { default as currentStatusRoutes } from './current-status';
+export { default as dashboardRoutes } from './dashboard';
+export { default as diaryRoutes } from './diary';
+export { default as errorRoutes } from './error';
+export { default as exportRoutes } from './export';
+export { default as fileRoutes } from './files';
+export { default as galleryRoutes } from './gallery';
+export { default as gameRoutes } from './game';
+export { default as historyRoutes } from './history';
+export { default as maintenanceRoutes } from './maintenance';
+export { default as minioRoutes } from './minio';
+export { default as networkRoutes } from './network';
+export { default as postRoutes } from './posts';
+export { default as projectRoutes } from './projects';
+export { default as rssRoutes } from './rss';
+export { default as searchRoutes } from './search';
+export { default as settingsRoutes } from './settings';
+export { default as skillRoutes } from './skills';
+export { default as timelineRoutes } from './timeline';
+export { default as universeRoutes } from './universe';
+export { default as uploadRoutes } from './upload';

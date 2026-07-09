@@ -1,278 +1,30 @@
-import { spawn } from 'child_process';
-import { existsSync, rmSync } from 'fs';
-import { join } from 'path';
-import * as net from 'net';
-
-const prismaClientPath = join(__dirname, '../node_modules/.prisma/client/index.js');
-
 /**
- * 检查端口是否被占用
+ * INK.SPIRIT Blog — Backend Entry Point
+ *
+ * 启动顺序（不可变更）：
+ *   1. 加载配置 + 安全告警
+ *   2. Prisma Client 检查/生成
+ *   3. 动态导入 app / database-init / cache（依赖 Prisma）
+ *   4. 端口检测 → DB 初始化 → HTTP 服务器 → 定时任务
  */
-function isPortInUse(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const server = net.createServer();
 
-    server.once('error', (err: any) => {
-      if (err.code === 'EADDRINUSE') {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    });
-
-    server.once('listening', () => {
-      server.close();
-      resolve(false);
-    });
-
-    server.listen(port);
-  });
-}
-
-/**
- * 获取占用端口的进程信息
- */
-async function getProcessUsingPort(port: number): Promise<string | null> {
-  try {
-    const { exec } = require('child_process');
-    const platform = process.platform;
-
-    let command: string;
-    if (platform === 'win32') {
-      command = `netstat -ano | findstr :${port}`;
-    } else {
-      command = `lsof -i :${port} | grep LISTEN`;
-    }
-
-    return new Promise((resolve) => {
-      exec(command, (error: any, stdout: string) => {
-        if (error || !stdout.trim()) {
-          resolve(null);
-          return;
-        }
-
-        const lines = stdout.trim().split('\n');
-        if (lines.length > 0) {
-          resolve(stdout.trim());
-        } else {
-          resolve(null);
-        }
-      });
-    });
-  } catch {
-    return null;
-  }
-}
-
-/**
- * 格式化数据库错误信息
- */
-function formatDatabaseError(error: any): string {
-  const message = error.message || String(error);
-
-  if (message.includes('password authentication failed')) {
-    return `
-❌ 数据库密码认证失败
-
-💡 请检查以下内容：
-   1. PostgreSQL 的 postgres 用户密码是否正确
-   2. 检查 backend/.env 文件中的 DATABASE_URL
-   3. 格式：postgresql://postgres:<密码>@localhost:5432/ink_spirit
-
-📝 如果忘记密码，可以：
-   - 运行：npx tsx scripts/find-password.ts 查找常见密码
-`;
-  }
-
-  if (message.includes('does not exist')) {
-    return `
-❌ 数据库不存在
-
-💡 请创建数据库：
-   - 运行：npx tsx scripts/create-db-final.ts
-   - 或手动：CREATE DATABASE ink_spirit;
-`;
-  }
-
-  if (message.includes('ECONNREFUSED') || message.includes('connect ECONNREFUSED')) {
-    return `
-❌ 无法连接到数据库服务器
-
-💡 请检查：
-   1. PostgreSQL 服务是否启动
-   2. 端口 5432 是否正确
-   3. 防火墙是否阻止连接
-
-🔧 启动 PostgreSQL：
-   - Windows: 服务管理器 -> PostgreSQL
-   - macOS: brew services start postgresql
-   - Linux: sudo systemctl start postgresql
-`;
-  }
-
-  return `❌ 数据库错误: ${message}`;
-}
-
-/**
- * 格式化端口占用错误信息
- */
-async function formatPortError(port: number): Promise<string> {
-  const processInfo = await getProcessUsingPort(port);
-
-  return `
-❌ 端口 ${port} 已被占用
-
-💡 解决方案：
-
-   方案 1：关闭占用端口的进程
-   - Windows: taskkill //F //PID <进程ID>
-   - macOS/Linux: kill -9 <进程ID>
-
-   方案 2：更改端口号
-   - 修改 backend/.env 中的 PORT 环境变量
-   - 设置：PORT=3002（或其他可用端口）
-
-${processInfo ? `📊 占用端口 ${port} 的进程信息：\n${processInfo}\n` : ''}
-
-🔧 快速关闭占用端口（Windows）：
-   netstat -ano | findstr :${port}
-   taskkill //F //PID <进程ID>
-`;
-}
-
-/**
- * 异步生成 Prisma Client
- */
-async function generatePrismaClient(): Promise<boolean> {
-  console.log('🔄 Generating Prisma Client...');
-  
-  return new Promise((resolve) => {
-    // Windows 下需要通过 shell 执行
-    const isWindows = process.platform === 'win32';
-    
-    const proc = spawn(
-      isWindows ? 'cmd' : 'npx',
-      isWindows ? ['/c', 'npx', 'prisma', 'generate'] : ['prisma', 'generate'],
-      {
-        cwd: join(__dirname, '..'),
-        stdio: 'inherit',
-        env: process.env,
-        shell: isWindows,
-      }
-    );
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        console.log('✅ Prisma Client generated.\n');
-        resolve(true);
-      } else {
-        console.error(`❌ Prisma generate failed with code ${code}`);
-        resolve(false);
-      }
-    });
-
-    proc.on('error', (err) => {
-      console.error('❌ Failed to spawn prisma:', err.message);
-      resolve(false);
-    });
-  });
-}
-
-/**
- * 检查并生成 Prisma Client
- */
-async function ensurePrismaClient(): Promise<boolean> {
-  if (existsSync(prismaClientPath)) {
-    return true;
-  }
-
-  console.log('⚠️  Prisma Client not found. Attempting to generate...');
-  
-  // 清理旧缓存
-  const cachePath = join(__dirname, '../node_modules/.prisma');
-  try {
-    if (existsSync(cachePath)) {
-      rmSync(cachePath, { recursive: true, force: true });
-    }
-  } catch {}
-
-  return await generatePrismaClient();
-}
-
-// Main startup
-
-/**
- * Steam 库定时同步
- * - 仅当 STEAM_API_KEY 和 STEAM_USER_ID 都配置时生效
- * - 启动时执行一次，之后每 24 小时重复
- * - 同步失败仅记录日志，不影响服务器运行
- */
-function startSteamSyncSchedule(): void {
-  const steamApiKey = process.env.STEAM_API_KEY;
-  const steamUserId = process.env.STEAM_USER_ID;
-
-  if (!steamApiKey || !steamUserId) {
-    console.log('ℹ️  Steam sync skipped: STEAM_API_KEY / STEAM_USER_ID not configured.');
-    return;
-  }
-
-  const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-  const runSync = async () => {
-    try {
-      const { GameService } = await import('./services/game.service');
-      const result = await GameService.syncSteamLibrary(steamUserId, steamApiKey);
-      console.log(`🎮 Steam sync: ${result.created} created, ${result.updated} updated, ${result.total} total`);
-    } catch (err: any) {
-      console.error(`⚠️  Steam scheduled sync failed: ${err.message}`);
-    }
-  };
-
-  // 启动时执行一次
-  runSync();
-
-  // 定时执行
-  setInterval(runSync, SYNC_INTERVAL_MS);
-  console.log('🎮 Steam library sync scheduled (every 24h).');
-}
-
-/**
- * B站追番定时同步
- * - 仅当 BILIBILI_UID 配置时生效
- * - 启动时执行一次，之后每 24 小时重复
- * - 失败仅记日志，不影响服务器（如用户临时关闭"公开追番"，同步失败会被静默吞掉）
- */
-function startBilibiliAnimeSyncSchedule(): void {
-  const uid = process.env.BILIBILI_UID;
-  if (!uid) {
-    console.log('ℹ️  Bilibili anime sync skipped: BILIBILI_UID not configured.');
-    return;
-  }
-
-  const INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-  const run = async () => {
-    try {
-      const { syncBilibiliAnime } = await import('./services/bilibili.service');
-      const r = await syncBilibiliAnime(uid);
-      console.log(
-        `📺 Bilibili anime sync: ${r.created} created, ${r.updated} updated, ${r.total} total`,
-      );
-    } catch (err: any) {
-      console.error(`⚠️  Bilibili anime scheduled sync failed: ${err.message}`);
-    }
-  };
-
-  run();
-  setInterval(run, INTERVAL_MS);
-  console.log('📺 Bilibili anime sync scheduled (every 24h).');
-}
+import {
+  isPortInUse,
+  formatDatabaseError,
+  formatPortError,
+  ensurePrismaClient,
+} from './lib/boot-utils';
+import {
+  startSteamSyncSchedule,
+  startBilibiliAnimeSyncSchedule,
+} from './lib/scheduler';
 
 async function main() {
-  // 动态导入配置模块
-  const { config, validateProductionEnv } = await import('./config/env');
-  
-  // 生产环境安全检查
+  // ── 1. 配置 + 安全告警 ──
+  const { config, validateProductionEnv, logSecurityWarnings } = await import('./config/env');
+
+  logSecurityWarnings();
+
   const envValidation = validateProductionEnv();
   if (!envValidation.valid) {
     console.error('\n🔒 生产环境安全检查失败:\n');
@@ -281,9 +33,9 @@ async function main() {
     process.exit(1);
   }
 
-  // 检查/生成 Prisma Client
+  // ── 2. Prisma Client ──
   const hasClient = await ensurePrismaClient();
-  
+
   if (!hasClient) {
     console.error('\n❌ Prisma Client is required but could not be generated.');
     console.error('💡 Please run manually:\n');
@@ -292,34 +44,30 @@ async function main() {
     process.exit(1);
   }
 
-  // 动态导入依赖 Prisma 的模块
+  // ── 3. 动态导入（依赖 Prisma Client） ──
   const [{ default: app }, { initializeDatabase }, { shutdownCache }] = await Promise.all([
     import('./app'),
     import('./lib/database-init'),
-    import('./lib/cache')
+    import('./lib/cache'),
   ]);
 
   const PORT = config.PORT || 3001;
 
+  // ── 4. 启动 ──
   try {
-    // 检查端口是否被占用
     const portInUse = await isPortInUse(PORT);
     if (portInUse) {
-      const errorMessage = await formatPortError(PORT);
-      console.error(errorMessage);
+      console.error(await formatPortError(PORT));
       process.exit(1);
     }
 
-    // 初始化数据库（包含自动 schema 同步）
     const prisma = await initializeDatabase();
-
     if (!prisma) {
       console.error('❌ Database initialization failed.');
       console.error('💡 Check DATABASE_URL and ensure PostgreSQL is running.');
       process.exit(1);
     }
 
-    // 启动 HTTP 服务器
     const server = app.listen(PORT, () => {
       console.log(`
 🚀 INK.SPIRIT Backend Server
@@ -331,10 +79,7 @@ async function main() {
 ════════════════════════════════════
       `);
 
-      // 启动 Steam 定时同步（仅在环境变量配置后生效）
       startSteamSyncSchedule();
-
-      // 启动 B站追番定时同步（仅在 BILIBILI_UID 配置后生效）
       startBilibiliAnimeSyncSchedule();
     });
 
@@ -352,16 +97,14 @@ async function main() {
 
     server.on('error', async (error: any) => {
       if (error.code === 'EADDRINUSE') {
-        const errorMessage = await formatPortError(PORT);
-        console.error(errorMessage);
+        console.error(await formatPortError(PORT));
       } else {
         console.error('❌ Server error:', error.message);
       }
       process.exit(1);
     });
   } catch (error) {
-    const errorMessage = formatDatabaseError(error);
-    console.error(errorMessage);
+    console.error(formatDatabaseError(error));
     process.exit(1);
   }
 }

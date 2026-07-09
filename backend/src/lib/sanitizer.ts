@@ -1,8 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 
 /**
- * 输入净化中间件
- * 用于清理用户输入，防止 XSS 攻击和其他注入攻击
+ * 输入净化中间件 — defense-in-depth 层
+ *
+ * ⚠️ 安全职责边界：
+ *   - SQL 注入主防线：Prisma ORM（参数化查询）
+ *   - XSS 主防线：CSP + Helmet + React 自动转义
+ *   - 本模块：辅助层，清理明显的危险模式，不替代主防线
+ *
+ * 注意：以下 SQL 注入正则属黑名单模式，不防编码绕过（如 unicode escape）。
+ * 不依赖它作为主防线，仅用于日志告警和辅助拦截。
  */
 
 /**
