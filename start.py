@@ -382,6 +382,24 @@ def start_dev():
     else:
         log_warn("后端未响应，可能还在启动中")
 
+    # AI 服务（可选，未配置 API Key 时占位回复）
+    log_step("启动 AI 服务 ")
+    ai_service_dir = ROOT_DIR / "ai-service"
+    ai_proc = None
+    if ai_service_dir.exists() and (ai_service_dir / "main.py").exists():
+        # 优先用 venv，否则用系统 Python
+        venv_python = ai_service_dir / ".venv" / "Scripts" / "python.exe"
+        py_cmd = str(venv_python) if venv_python.exists() else "python"
+        try:
+            ai_proc = run_bg(f"{py_cmd} main.py", cwd=str(ai_service_dir))
+            log_step_ok(f"AI 服务启动中 (PID {ai_proc.pid})")
+            if not port_in_use(8000):
+                time.sleep(1)
+        except Exception as e:
+            log_warn(f"AI 服务启动失败: {e}")
+    else:
+        log_warn("AI 服务未找到，跳过（AiCompanion 仍可显示占位回复）")
+
     # 前端
     log_step("启动前端 ")
     frontend_proc = run_bg("npm run dev", cwd=str(FRONTEND_DIR))
@@ -405,11 +423,16 @@ def start_dev():
             if frontend_proc.poll() is not None:
                 log_err(f"前端进程已退出 (退出码 {frontend_proc.returncode})")
                 break
+            if ai_proc and ai_proc.poll() is not None:
+                log_warn(f"AI 服务已退出 (退出码 {ai_proc.returncode})")
+                ai_proc = None  # AI 服务退出不终止整个启动脚本
             time.sleep(2)
     except KeyboardInterrupt:
         log_info("\n收到 Ctrl+C，正在停止服务...")
         backend_proc.terminate()
         frontend_proc.terminate()
+        if ai_proc:
+            ai_proc.terminate()
         log_ok("服务已停止")
 
 # ── 预览模式 ───────────────────────────────────────────────

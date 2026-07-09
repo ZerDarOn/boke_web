@@ -21,6 +21,8 @@ from app.models.schemas import (
     UserSegmentRequest,
     UserSegmentResponse,
 )
+from pydantic import BaseModel, Field
+from typing import List, Optional
 from app.services.ai_service import ContentAnalyzer, AIService
 from app.services.analytics_service import AnalyticsService
 
@@ -112,6 +114,40 @@ async def analyze_sentiment(req: SentimentAnalysisRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Chat 请求/响应模型 ──
+class ChatRequest(BaseModel):
+    message: str = Field(..., description="用户消息")
+    history: List[dict] = Field(default_factory=list, description="对话历史 [{role,content}]")
+
+
+class ChatResponse(BaseModel):
+    reply: str = Field(..., description="AI 回复")
+    sources: List[dict] = Field(default_factory=list, description="引用的知识来源")
+
+
+@ai_router.post("/chat", response_model=ChatResponse)
+async def chat(req: ChatRequest):
+    """博客 AI 助手对话（AiCompanion 右下角浮窗）"""
+    try:
+        # 构建系统提示词：让 AI 以博客助手身份回答
+        system_prompt = (
+            "你是 INK.SPIRIT 博客的 AI 助手，一个融合水墨美学与赛博朋克风格的个人网站。"
+            "你可以介绍博客内容、项目、作者信息。语气友好、简洁。"
+        )
+
+        # 拼接对话上下文
+        context = system_prompt + "\n\n"
+        for h in req.history[-10:]:  # 只保留最近 10 轮
+            role = "用户" if h.get("role") == "user" else "助手"
+            context += f"{role}: {h.get('content', '')}\n"
+        context += f"用户: {req.message}\n助手:"
+
+        response = await ai_client.generate(context)
+        return ChatResponse(reply=response.strip(), sources=[])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 服务不可用: {str(e)}")
 
 
 analytics_router = APIRouter(prefix="/analytics")
