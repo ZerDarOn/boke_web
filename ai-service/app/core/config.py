@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # Analytics
     ANALYTICS_WINDOW_DAYS: int = 30
     TRENDING_MIN_VIEWS: int = 100
+
+    # Knowledge Base (RAG)
+    KB_RELEVANCE_THRESHOLD: float = 0.45
+    KB_CHUNK_SIZE: int = 600
+    KB_CHUNK_OVERLAP: int = 80
     
     class Config:
         env_file = ".env"

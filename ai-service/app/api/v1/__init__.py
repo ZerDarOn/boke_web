@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from app.services.ai_service import ContentAnalyzer, AIService
 from app.services.analytics_service import AnalyticsService
+from app.services.knowledge_base import get_kb
 
 ai_router = APIRouter(prefix="/ai")
 
@@ -129,25 +130,64 @@ class ChatResponse(BaseModel):
 
 @ai_router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
-    """博客 AI 助手对话（AiCompanion 右下角浮窗）"""
+    """博客 AI 助手对话（AiCompanion 右下角浮窗）— Smart RAG"""
     try:
-        # 构建系统提示词：让 AI 以博客助手身份回答
-        system_prompt = (
-            "你是 INK.SPIRIT 博客的 AI 助手，一个融合水墨美学与赛博朋克风格的个人网站。"
-            "你可以介绍博客内容、项目、作者信息。语气友好、简洁。"
-        )
+        kb = get_kb()
 
-        # 拼接对话上下文
+        # Step 1 — 用问题搜索知识库，自动判断是否需要 RAG
+        chunks, needs_kb = await kb.search(req.message)
+
+        # Step 2 — 构建 prompt
+        if needs_kb and chunks:
+            # 知识增强模式：把检索到的文章片段注入上下文
+            kb_text = "\n\n".join(
+                f"【来源: {c['title']} 相似度:{c['score']}】\n{c['content']}"
+                for c in chunks
+            )
+            system_prompt = (
+                "你是 INK.SPIRIT 博客的 AI 助手。\n"
+                "请基于以下博客内容回答问题，语气友好、简洁。\n"
+                "引用博客内容时用自然语言提及文章名。\n\n"
+                "=== 博客知识库 ===\n"
+                f"{kb_text}\n"
+                "=== 结束 ==="
+            )
+        else:
+            # 纯聊天模式：不需要查知识库
+            system_prompt = (
+                "你是 INK.SPIRIT 博客的 AI 助手，一个融合水墨美学与赛博朋克风格的个人网站。"
+                "你可以介绍博客内容、项目、作者信息。语气友好、简洁。"
+            )
+
+        # Step 3 — 拼接对话历史
         context = system_prompt + "\n\n"
-        for h in req.history[-10:]:  # 只保留最近 10 轮
+        for h in req.history[-10:]:
             role = "用户" if h.get("role") == "user" else "助手"
             context += f"{role}: {h.get('content', '')}\n"
         context += f"用户: {req.message}\n助手:"
 
         response = await ai_client.generate(context)
-        return ChatResponse(reply=response.strip(), sources=[])
+
+        # Step 4 — 返回回复 + 引用来源
+        sources = [
+            {"title": c["title"], "url": f"/posts/{c['slug']}"}
+            for c in (chunks if needs_kb else [])
+        ] if needs_kb else []
+
+        return ChatResponse(reply=response.strip(), sources=sources)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI 服务不可用: {str(e)}")
+
+
+@ai_router.post("/reindex", response_model=dict)
+async def reindex_knowledge_base():
+    """重建博客知识库索引（文章新增/修改后调用）"""
+    try:
+        kb = get_kb()
+        result = await kb.reindex()
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"索引重建失败: {str(e)}")
 
 
 analytics_router = APIRouter(prefix="/analytics")

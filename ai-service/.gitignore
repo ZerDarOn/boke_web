@@ -33,5 +33,8 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# Knowledge Base (vector DB data — local only)
+chroma_data/
+
 # Logs
 *.log
