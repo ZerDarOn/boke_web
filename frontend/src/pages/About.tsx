@@ -32,9 +32,9 @@ const About: React.FC = () => {
     {
       type: 'bilibili',
       label: lang === 'EN' ? 'Bilibili' : 'B站',
-      value: lang === 'EN' ? 'Not Set' : '未设置',
+      value: 'bilibili.com/user/104973922',
       icon: Video,
-      action: () => {} // 等提供 UID 后替换
+      action: () => window.open('https://space.bilibili.com/104973922', '_blank')
     },
     {
       type: 'wechat',
