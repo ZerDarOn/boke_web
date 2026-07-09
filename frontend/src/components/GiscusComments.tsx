@@ -19,14 +19,14 @@ interface GiscusCommentsProps {
 
 // ── 配置（替换为你自己的仓库信息） ──
 const GISCUS_CONFIG = {
-  repo: 'cyber-ronin/ink-spirit-blog' as `${string}/${string}`, // ← 替换为你的 GitHub 仓库
-  repoId: '',                                                        // ← 从 giscus.app 获取
-  categoryId: '',                                                    // ← 从 giscus.app 获取
-  category: 'Announcements',                                         // Discussion 分类，默认用 Announcements
-  mapping: 'pathname' as const,                                      // 按页面路径映射 Discussion
+  repo: 'ZerDarOn/boke_web' as `${string}/${string}`,
+  repoId: 'R_kgDORL1jBQ',
+  categoryId: 'DIC_kwDORL1jBc4DAz87',
+  category: 'Announcements',
+  mapping: 'pathname' as const,
   reactionsEnabled: '1' as const,
   emitMetadata: '0' as const,
-  inputPosition: 'top' as const,
+  inputPosition: 'bottom' as const,
   lang: 'zh-CN',
   loading: 'lazy' as const,
 };
