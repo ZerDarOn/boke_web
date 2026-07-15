@@ -409,6 +409,43 @@ AI 动画帧审查与对齐工具。
 - **帧检查器** — 洋葱皮、放大镜、问题叠加
 - **导出** — GIF/MP4/WebP/PNG 序列`,
     },
+    {
+      name: 'CoC-Star',
+      slug: 'coc-star-trpg-vtt',
+      description: '面向中文 TRPG 跑团的在线虚拟桌面（VTT）。实时房间、Token 角色系统、场景切换、BGM 演出、骰子、AI 助手与知识库，支持 Cloudflare Tunnel 内网穿透。',
+      type: 'Web Application',
+      tech: ['React', 'TypeScript', 'Python', 'FastAPI', 'Zustand', 'WebSocket', 'PostgreSQL', 'ChromaDB'],
+      status: 'ACTIVE',
+      link: '',
+      githubUrl: 'https://github.com/ZerDarOn/boke_web',
+      featured: true,
+      startDate: new Date('2025-12-01'),
+      readme: `# CoC-Star
+
+面向中文 TRPG 跑团的在线虚拟桌面（VTT），从零独立实现。
+
+## 已落地的演出能力
+
+- **BGM** — GM 上传音频并同步播放、暂停、停止；成员独立调节音量和静音
+- **Token 与立绘差分** — 玩家为 Token 配置差分图片，发送 #关键词 或 @关键词 自动切换
+- **RP 舞台** — 带 Token 的发言在工作区显示角色对话和对应立绘
+- **聊天频道** — 主频道、信息、聊天 + 自定义频道，可设置是否显示立绘
+- **骰子** — 快捷指令 + /r /roll 自由表达式
+- **场景系统** — GM 提前准备场景/图层，一键切换，所见即所得
+- **角色卡库** — 全局 + 房间级角色管理，支持导入导出
+
+## AI 能力
+
+- **Smart RAG 知识库** — ChromaDB 语义索引，自动判断是否需要查库
+- **AI 助手面板** — GM/PL 在房间内召唤 AI 辅助描述、查规则、生成 NPC
+- **知识文档管理** — 上传世设资料、规则书，AI 基于知识库回答
+
+## 技术栈
+
+React 19 + Vite + TypeScript + Zustand · Python FastAPI · WebSocket 实时通信
+PostgreSQL + SQLAlchemy 2 + Alembic · ChromaDB 向量库
+Cloudflare Quick Tunnel 内网穿透 · pnpm monorepo`,
+    },
   ];
 
   for (const project of projects) {
