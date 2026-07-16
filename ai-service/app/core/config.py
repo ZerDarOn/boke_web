@@ -3,6 +3,7 @@ Configuration settings using Pydantic
 """
 
 from typing import List
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
@@ -21,6 +22,18 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     LOG_LEVEL: str = "info"
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """解析环境变量：逗号分隔字符串 → list，或 JSON 数组 → list"""
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                import json
+                return json.loads(v)
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
     
     # Database
     DATABASE_URL: str = ""
