@@ -3,37 +3,31 @@ Configuration settings using Pydantic
 """
 
 from typing import List
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
+from functools import lru_cache, cached_property
 
 
 class Settings(BaseSettings):
     """Application settings"""
-    
+
     # App Info
     APP_NAME: str = "INK.SPIRIT AI Service"
     APP_DESCRIPTION: str = "AI-powered features for INK.SPIRIT Blog"
     VERSION: str = "1.0.0"
-    
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DEBUG: bool = True
     LOG_LEVEL: str = "info"
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v):
-        """解析环境变量：逗号分隔字符串 → list，或 JSON 数组 → list"""
-        if isinstance(v, str):
-            v = v.strip()
-            if v.startswith("["):
-                import json
-                return json.loads(v)
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    # CORS — 存为字符串让 pydantic-settings 能直接解析 .env，
+    # 通过 @property 转为 list 给 FastAPI 使用
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3001"
+
+    @cached_property
+    def cors_origins_list(self) -> List[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
     
     # Database
     DATABASE_URL: str = ""
@@ -70,6 +64,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"  # 忽略 .env 中未定义的字段，避免字段名不匹配时拒绝启动
 
 
 @lru_cache()
