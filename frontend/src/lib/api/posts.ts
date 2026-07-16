@@ -24,6 +24,23 @@ export interface Post {
   updatedAt: string;
 }
 
+export interface PostAccessResponse {
+  success: boolean;
+  accessToken: string;
+}
+
+const postAccessStorageKey = (postIdentifier: string) => `post_access:${postIdentifier}`;
+
+export function getPostAccessToken(postIdentifier: string): string | null {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem(postAccessStorageKey(postIdentifier));
+}
+
+export function setPostAccessToken(postIdentifier: string, accessToken: string): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(postAccessStorageKey(postIdentifier), accessToken);
+}
+
 export interface CreatePostData {
   title: string;
   slug: string;
@@ -68,7 +85,10 @@ export const postsApi = {
 
   // GET /api/posts/:id - 获取文章详情
   getById: async (id: string) => {
-    return apiRequest<Post>(`/api/posts/${id}`);
+    const accessToken = getPostAccessToken(id);
+    return apiRequest<Post>(`/api/posts/${id}`, {
+      headers: accessToken ? { 'x-post-access-token': accessToken } : undefined,
+    });
   },
 
   // GET /api/posts/:id/related - 获取相关文章
@@ -92,7 +112,7 @@ export const postsApi = {
 
   // POST /api/posts/:id/verify - 验证文章密码
   verifyPassword: async (id: string, password: string) => {
-    return apiRequest<{ success: boolean }>(`/api/posts/${id}/verify`, {
+    return apiRequest<PostAccessResponse>(`/api/posts/${id}/verify`, {
       method: 'POST',
       body: JSON.stringify({ password }),
     });

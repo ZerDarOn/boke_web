@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { success, error } from '../utils/response';
 import ExportService from '../services/export.service';
+import prisma from '../lib/prisma';
 
 const router = Router();
 const exportService = new ExportService();
@@ -10,10 +11,8 @@ const exportService = new ExportService();
  * GET /api/export/stats
  * 获取导出统计信息
  */
-router.get('/stats', authenticate, async (req: Request, res: Response) => {
+router.get('/stats', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
-    const prisma = await import('@prisma/client').then(m => new m.PrismaClient());
-
     const stats = {
       posts: await prisma.post.count(),
       projects: await prisma.project.count(),
@@ -39,7 +38,7 @@ router.get('/stats', authenticate, async (req: Request, res: Response) => {
  * GET /api/export/all
  * 导出所有内容
  */
-router.get('/all', authenticate, async (req: Request, res: Response) => {
+router.get('/all', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const zipBuffer = await exportService.exportAll({});
 
@@ -56,7 +55,7 @@ router.get('/all', authenticate, async (req: Request, res: Response) => {
  * GET /api/export/:type
  * 按类型导出
  */
-router.get('/:type', authenticate, async (req: Request, res: Response) => {
+router.get('/:type', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { type } = req.params;
 
@@ -75,7 +74,7 @@ router.get('/:type', authenticate, async (req: Request, res: Response) => {
  * GET /api/export/:type/:id
  * 导出单个内容
  */
-router.get('/:type/:id', authenticate, async (req: Request, res: Response) => {
+router.get('/:type/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { type, id } = req.params;
 

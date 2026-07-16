@@ -10,6 +10,7 @@ import { validateBody } from '../middleware/validate.middleware';
 import { fileSchema } from '../schemas';
 import fileService from '../services/file.service';
 import { AuthPayload } from '../types';
+import { resolveStoragePath } from '../lib/storage-path-security';
 
 declare module 'express' {
   interface Request {
@@ -144,8 +145,10 @@ router.get('/download', optionalAuth, async (req, res) => {
       return res.redirect(url);
     } else {
       // 使用本地文件系统
-      const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'content-files');
-      const localPath = path.join(LOCAL_STORAGE_DIR, filePath);
+      const localPath = resolveStoragePath(
+        path.join(process.cwd(), 'content-files'),
+        filePath
+      );
 
       if (!fs.existsSync(localPath)) {
         return error(res, '文件不存在', 404);
@@ -175,8 +178,10 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
     }
 
     // 检查是否已存在（检查文件系统）
-    const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'content-files');
-    const localPath = path.join(LOCAL_STORAGE_DIR, filePath);
+    const localPath = resolveStoragePath(
+      path.join(process.cwd(), 'content-files'),
+      filePath
+    );
     if (fs.existsSync(localPath)) {
       return error(res, '文件或目录已存在', 409);
     }
@@ -347,7 +352,7 @@ router.post('/export', authenticate, requireAdmin, async (req, res) => {
 
     // 处理每个路径
     for (const filePath of paths) {
-      const localPath = path.join(LOCAL_STORAGE_DIR, filePath);
+      const localPath = resolveStoragePath(LOCAL_STORAGE_DIR, filePath);
 
       if (!fs.existsSync(localPath)) {
         console.warn(`文件不存在，跳过: ${filePath}`);
@@ -401,7 +406,11 @@ router.post('/import', authenticate, requireAdmin, uploadZip.single('file'), asy
     tempZipPath = req.file.path;
 
     const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'content-files');
-    const targetDir = targetPath ? path.join(LOCAL_STORAGE_DIR, targetPath as string) : LOCAL_STORAGE_DIR;
+    const targetDir = resolveStoragePath(
+      LOCAL_STORAGE_DIR,
+      targetPath as string,
+      { allowRoot: true }
+    );
 
     // 确保目标目录存在
     if (!fs.existsSync(targetDir)) {

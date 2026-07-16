@@ -1,22 +1,21 @@
 import { Router, Request, Response } from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { success, error, notFound } from '../utils/response';
 import { parseMarkdown, buildPrismaData, generateId, generateSlug, ParsedContent } from '../services/markdown.service';
 import * as response from '../utils/response';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import extractZip from 'extract-zip';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 /**
  * POST /api/content/import/single
  * 导入单个 Markdown 文件
  */
-router.post('/import/single', authenticate, async (req: Request, res: Response) => {
+router.post('/import/single', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { content, conflictResolution = 'skip' } = req.body;
 
@@ -52,7 +51,7 @@ router.post('/import/single', authenticate, async (req: Request, res: Response) 
  * POST /api/content/import/batch
  * 批量导入 Markdown 文件
  */
-router.post('/import/batch', authenticate, async (req: Request, res: Response) => {
+router.post('/import/batch', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { files, conflictResolution = 'skip' } = req.body;
 
@@ -122,7 +121,7 @@ router.post('/import/batch', authenticate, async (req: Request, res: Response) =
  * POST /api/content/import/folder
  * 导入文件夹
  */
-router.post('/import/folder', authenticate, async (req: Request, res: Response) => {
+router.post('/import/folder', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { files, conflictResolution = 'skip' } = req.body;
 
@@ -174,7 +173,7 @@ router.post('/import/folder', authenticate, async (req: Request, res: Response) 
  * POST /api/content/import/zip
  * 导入 ZIP 压缩包
  */
-router.post('/import/zip', authenticate, async (req: Request, res: Response) => {
+router.post('/import/zip', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { zipData, conflictResolution = 'skip' } = req.body;
 

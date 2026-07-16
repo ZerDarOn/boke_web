@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 import CodeBlock from './markdown/CodeBlock';
 
@@ -13,7 +12,7 @@ type MarkdownRendererProps = {
   rehypePlugins?: React.ComponentProps<typeof ReactMarkdown>['rehypePlugins'];
 };
 
-const DEFAULT_REHYPE_PLUGINS = [rehypeRaw, rehypeSlug] as const;
+const DEFAULT_REHYPE_PLUGINS = [rehypeSlug] as const;
 const DEFAULT_REMARK_PLUGINS = [remarkGfm] as const;
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({

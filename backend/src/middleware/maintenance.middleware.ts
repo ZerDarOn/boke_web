@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 
 // Maintenance mode configuration
 const MAINTENANCE_MODE = process.env.MAINTENANCE_MODE === 'true';
-const MAINTENANCE_PASSWORD = process.env.MAINTENANCE_PASSWORD || 'admin';
+const MAINTENANCE_PASSWORD = process.env.MAINTENANCE_PASSWORD;
 
 // Token storage (in production, use Redis or database)
 const activeTokens = new Set<string>();
@@ -26,6 +27,7 @@ export function isMaintenanceEnabled(): boolean {
  * Verify maintenance password
  */
 export function verifyPassword(password: string): boolean {
+  if (!MAINTENANCE_PASSWORD) return false;
   return password === MAINTENANCE_PASSWORD;
 }
 
@@ -33,7 +35,7 @@ export function verifyPassword(password: string): boolean {
  * Generate maintenance token
  */
 export function generateToken(): string {
-  const token = `maint_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  const token = crypto.randomBytes(32).toString('base64url');
   activeTokens.add(token);
   
   // Auto-remove after expiry
@@ -109,6 +111,17 @@ export function requireMaintenanceAuth(req: MaintenanceRequest, res: Response, n
  * Login endpoint handler
  */
 export async function handleMaintenanceLogin(req: Request, res: Response): Promise<void> {
+  if (!isMaintenanceEnabled()) {
+    res.status(404).json({ success: false, error: 'Maintenance mode is disabled' });
+    return;
+  }
+
+  if (!MAINTENANCE_PASSWORD) {
+    console.error('Maintenance login rejected: MAINTENANCE_PASSWORD is not configured');
+    res.status(503).json({ success: false, error: 'Maintenance authentication is unavailable' });
+    return;
+  }
+
   const { password } = req.body;
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
-import rehypeRaw from 'rehype-raw';
 import {
   ArrowLeft,
   Calendar,
@@ -24,7 +23,7 @@ import { projectMarkdownComponents } from '../components/markdown/contentMarkdow
 import type { Project } from '../lib/api';
 import { useProject, useProjectsList } from '../hooks/queries/projects';
 
-const DETAIL_REHYPE_PLUGINS = [rehypeRaw];
+const DETAIL_REHYPE_PLUGINS: [] = [];
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();

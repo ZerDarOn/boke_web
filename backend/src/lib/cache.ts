@@ -16,13 +16,15 @@ interface RedisLike {
   get(key: string): Promise<string | null>;
   setex(key: string, seconds: number, value: string): Promise<void>;
   del(...keys: string[]): Promise<void>;
-  keys(pattern: string): Promise<string[]>;
+  scan(cursor: string, matchKeyword: 'MATCH', pattern: string, countKeyword: 'COUNT', count: number): Promise<[string, string[]]>;
   flushdb(): Promise<void>;
   ping(): Promise<string>;
   disconnect(): void;
 }
 
 const DEFAULT_CACHE_CAPACITY = 1000;
+const CACHE_CLEANUP_INTERVAL_MS = 60_000;
+const REDIS_SCAN_BATCH_SIZE = 100;
 
 class MemoryCache {
   private cache: Map<string, CacheEntry<any>> = new Map();
@@ -32,7 +34,7 @@ class MemoryCache {
 
   constructor(capacity: number = DEFAULT_CACHE_CAPACITY) {
     this.capacity = capacity;
-    this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+    this.cleanupInterval = setInterval(() => this.cleanup(), CACHE_CLEANUP_INTERVAL_MS);
   }
 
   async get<T>(key: string): Promise<T | null> {
@@ -224,10 +226,18 @@ export const cache = {
   async delPattern(pattern: string): Promise<void> {
     if (useRedis && redisClient) {
       try {
-        const keys = await redisClient.keys(pattern);
-        if (keys.length > 0) {
-          await redisClient.del(...keys);
-        }
+        let cursor = '0';
+        do {
+          const [nextCursor, keys] = await redisClient.scan(
+            cursor,
+            'MATCH',
+            pattern,
+            'COUNT',
+            REDIS_SCAN_BATCH_SIZE
+          );
+          cursor = nextCursor;
+          if (keys.length > 0) await redisClient.del(...keys);
+        } while (cursor !== '0');
         return;
       } catch {
         // Fall through to memory cache
@@ -262,10 +272,15 @@ export const cache = {
       };
     }
     
-    return {
-      ...memoryCache!.getStats(),
-      backend: 'memory',
+    const stats = memoryCache?.getStats() ?? {
+      hits: 0,
+      misses: 0,
+      keys: 0,
+      evictions: 0,
+      hitRate: '0%',
     };
+
+    return { ...stats, backend: 'memory' };
   },
 
   isRedis(): boolean {
@@ -274,12 +289,15 @@ export const cache = {
 };
 
 export function generateCacheKey(...parts: (string | number | undefined)[]): string {
-  return parts.filter(Boolean).join(':');
+  return parts.filter(part => part !== undefined && part !== '').join(':');
 }
 
 export function shutdownCache(): void {
   memoryCache?.destroy();
   redisClient?.disconnect?.();
+  memoryCache = null;
+  redisClient = null;
+  useRedis = false;
 }
 
 const DEFAULT_TTL: Record<string, number> = {

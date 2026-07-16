@@ -4,7 +4,7 @@ import {
   uploadMultipleImages,
   handleUploadError,
 } from '../middleware/upload.middleware';
-import { authenticate, optionalAuth } from '../middleware/auth.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { success, error } from '../utils/response';
 import * as uploadService from '../services/upload.service';
 import fs from 'fs';
@@ -16,6 +16,7 @@ const router = Router();
 router.post(
   '/image/:type',
   authenticate,
+  requireAdmin,
   uploadSingleImage,
   handleUploadError,
   async (req, res) => {
@@ -41,6 +42,7 @@ router.post(
 router.post(
   '/images/:type',
   authenticate,
+  requireAdmin,
   uploadMultipleImages,
   handleUploadError,
   async (req, res) => {
@@ -67,7 +69,7 @@ router.post(
 );
 
 // 删除文件
-router.delete('/:type/:filename', authenticate, async (req, res) => {
+router.delete('/:type/:filename', authenticate, requireAdmin, async (req, res) => {
   try {
     const { type, filename } = req.params;
     const deleted = await uploadService.deleteFile(filename, type);

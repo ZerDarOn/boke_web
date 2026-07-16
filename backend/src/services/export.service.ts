@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import archiver from 'archiver';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
 
 interface ExportOptions {
   type?: 'all' | 'post' | 'project' | 'anime' | 'diary' | 'timeline' | 'skill' | 'gallery' | 'announcement';

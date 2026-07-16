@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PostService } from '../services/post.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
+import { createPostAccessToken, verifyPostAccessToken } from '../lib/post-access-token';
 
 export class PostController {
   // GET /api/posts
@@ -42,13 +43,18 @@ export class PostController {
       }
 
       // 检查访问权限
-      if (post.accessLevel === 'PRIVATE') {
+      const isAdmin = req.user?.role === 'ADMIN';
+      if (post.accessLevel === 'PRIVATE' && !isAdmin) {
         return response.forbidden(res, 'This post is private');
       }
 
       // 如果是密码保护的文章，检查是否已验证
       if (post.accessLevel === 'PASSWORD') {
-        const verified = req.session?.verifiedPosts?.[post.id];
+        const accessToken = req.headers['x-post-access-token'];
+        const verified = isAdmin || verifyPostAccessToken(
+          typeof accessToken === 'string' ? accessToken : undefined,
+          post.id
+        );
         if (!verified) {
           // 返回部分信息，不包含内容
           return response.success(res, {
@@ -66,7 +72,9 @@ export class PostController {
         }
       }
 
-      response.success(res, post);
+      const { password, ...safePost } = post;
+      void password;
+      response.success(res, safePost);
     } catch (error: any) {
       response.error(res, error.message || 'Failed to fetch post');
     }
@@ -81,16 +89,15 @@ export class PostController {
       const isValid = await PostService.verifyPassword(id, password);
 
       if (isValid) {
+        return response.success(res, {
+          success: true,
+          accessToken: createPostAccessToken(id),
+        });
+        return response.success(res, {
+          success: true,
+          accessToken: createPostAccessToken(id),
+        });
         // 在 session 中记录已验证
-        if (!req.session) {
-          (req as any).session = {};
-        }
-        if (!(req.session as any).verifiedPosts) {
-          (req.session as any).verifiedPosts = {};
-        }
-        (req.session as any).verifiedPosts[id] = true;
-
-        response.success(res, { success: true, message: 'Password verified' });
       } else {
         response.unauthorized(res, 'Invalid password');
       }

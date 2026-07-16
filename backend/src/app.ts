@@ -10,12 +10,11 @@ import { requestLogger } from './middleware/logger.middleware';
 import {
   generalRateLimit,
   authRateLimit,
-  registerRateLimit,
   uploadRateLimit,
   formRateLimit,
 } from './middleware/rate-limit.middleware';
 import { sanitizeInput, addXSSProtectionHeaders } from './lib/sanitizer';
-import { initializeCache, cache, shutdownCache } from './lib/cache';
+import { initializeCache, cache } from './lib/cache';
 
 // Import routes — single barrel entry point
 import {
@@ -148,7 +147,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-maintenance-token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-maintenance-token', 'x-post-access-token'],
 }));
 
 // Rate limiting - 通用速率限制
@@ -198,7 +197,7 @@ app.use('/api/minio', minioRoutes);
 app.use('/api/auth', authRateLimit, authRoutes);     // 认证路由速率限制
 app.use('/api/files', fileRoutes);
 app.use('/api/rss', rssRoutes);
-app.use('/api/ai', aiRoutes);
+app.use('/api/ai', formRateLimit, aiRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/current-status', currentStatusRoutes);

@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { success, error } from '../utils/response';
 import { aiClient } from '../services/ai.client';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.get('/health', async (req, res) => {
 });
 
 // POST /api/ai/summarize - Summarize article content
-router.post('/summarize', async (req, res) => {
+router.post('/summarize', authenticate, requireAdmin, async (req, res) => {
   try {
     const { content, max_length = 200 } = req.body;
     
@@ -39,7 +40,7 @@ router.post('/summarize', async (req, res) => {
 });
 
 // POST /api/ai/extract-keywords - Extract keywords
-router.post('/extract-keywords', async (req, res) => {
+router.post('/extract-keywords', authenticate, requireAdmin, async (req, res) => {
   try {
     const { content, max_keywords = 10 } = req.body;
     
@@ -55,7 +56,7 @@ router.post('/extract-keywords', async (req, res) => {
 });
 
 // POST /api/ai/generate-tags - Generate tags for article
-router.post('/generate-tags', async (req, res) => {
+router.post('/generate-tags', authenticate, requireAdmin, async (req, res) => {
   try {
     const { title, content, max_tags = 5 } = req.body;
     
@@ -71,7 +72,7 @@ router.post('/generate-tags', async (req, res) => {
 });
 
 // POST /api/ai/sentiment - Analyze sentiment
-router.post('/sentiment', async (req, res) => {
+router.post('/sentiment', authenticate, requireAdmin, async (req, res) => {
   try {
     const { content, language = 'zh' } = req.body;
     
@@ -112,7 +113,7 @@ router.post('/chat', async (req, res) => {
 });
 
 // GET /api/ai/analytics/overview - Get analytics overview
-router.get('/analytics/overview', async (req, res) => {
+router.get('/analytics/overview', authenticate, requireAdmin, async (req, res) => {
   try {
     const days = parseInt(req.query.days as string) || 30;
     const result = await aiClient.getAnalyticsOverview(days);
@@ -123,7 +124,7 @@ router.get('/analytics/overview', async (req, res) => {
 });
 
 // GET /api/ai/analytics/trending - Get trending topics
-router.get('/analytics/trending', async (req, res) => {
+router.get('/analytics/trending', authenticate, requireAdmin, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 10;
     const result = await aiClient.getTrendingTopics(limit);
@@ -134,7 +135,7 @@ router.get('/analytics/trending', async (req, res) => {
 });
 
 // POST /api/ai/recommend/posts - Get recommended posts
-router.post('/recommend/posts', async (req, res) => {
+router.post('/recommend/posts', authenticate, requireAdmin, async (req, res) => {
   try {
     const { user_id, post_id, limit = 5 } = req.body;
     

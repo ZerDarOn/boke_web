@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { PostController } from '../controllers/post.controller';
 import { validateBody } from '../middleware/validate.middleware';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { authenticate, optionalAuth, requireAdmin } from '../middleware/auth.middleware';
 import { postSchema } from '../schemas';
 import { z } from 'zod';
 import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
@@ -20,7 +20,7 @@ router.get('/tags', cacheMiddleware({ ttl: 600, keyPrefix: 'posts' }), PostContr
 
 router.get('/tags/popular', cacheMiddleware({ ttl: 600, keyPrefix: 'posts' }), PostController.getPopularTags);
 
-router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'post' }), PostController.getById);
+router.get('/:id', optionalAuth, PostController.getById);
 
 router.get('/:id/related', cacheMiddleware({ ttl: 300, keyPrefix: 'post' }), PostController.getRelated);
 

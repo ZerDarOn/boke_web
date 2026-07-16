@@ -12,6 +12,30 @@ interface CacheMiddlewareOptions {
 }
 
 type JsonResponseBody = (...args: any[]) => any;
+const inFlightCacheRequests = new Map<string, Promise<unknown>>();
+const inFlightResponses = new Map<string, Promise<void>>();
+
+function createDeferredResponse() {
+  let resolve: () => void = () => undefined;
+  const promise = new Promise<void>(completion => {
+    resolve = completion;
+  });
+
+  return { promise, resolve };
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`);
+    return `{${entries.join(',')}}`;
+  }
+
+  return JSON.stringify(value);
+}
 
 export function cacheMiddleware(options: CacheMiddlewareOptions = {}) {
   const {
@@ -39,29 +63,55 @@ export function cacheMiddleware(options: CacheMiddlewareOptions = {}) {
       : generateCacheKey(
           keyPrefix,
           req.path,
-          JSON.stringify(req.query),
+          stableSerialize(req.query),
           (req as any).user?.id
         );
 
     try {
       const cached = await cache.get<any>(cacheKey);
       
-      if (cached) {
+      if (cached !== null) {
         res.set('x-cache-status', 'HIT');
         res.json(cached);
         return;
       }
 
+      const inFlightResponse = inFlightResponses.get(cacheKey);
+      if (inFlightResponse) {
+        await inFlightResponse;
+        const cachedResponse = await cache.get<any>(cacheKey);
+        if (cachedResponse !== null) {
+          res.set('x-cache-status', 'HIT');
+          res.json(cachedResponse);
+          return;
+        }
+      }
+
       res.set('x-cache-status', 'MISS');
+      const deferredResponse = createDeferredResponse();
+      inFlightResponses.set(cacheKey, deferredResponse.promise);
 
       const originalJson: JsonResponseBody = res.json.bind(res);
       
       (res as any).json = (data: any) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          cache.set(cacheKey, data, ttl).catch(() => {});
+          cache.set(cacheKey, data, ttl)
+            .catch(() => undefined)
+            .finally(() => {
+              inFlightResponses.delete(cacheKey);
+              deferredResponse.resolve();
+            });
+        } else {
+          inFlightResponses.delete(cacheKey);
+          deferredResponse.resolve();
         }
         return originalJson(data);
       };
+
+      res.once('close', () => {
+        inFlightResponses.delete(cacheKey);
+        deferredResponse.resolve();
+      });
 
       next();
     } catch (error) {
@@ -104,10 +154,24 @@ async function withCacheFn<T>(
     return cached;
   }
 
-  const data = await fetcher();
-  await cache.set(key, data, ttl);
-  
-  return data;
+  const existingRequest = inFlightCacheRequests.get(key) as Promise<T> | undefined;
+  if (existingRequest) return existingRequest;
+
+  const request = (async () => {
+    const cachedAfterWait = await cache.get<T>(key);
+    if (cachedAfterWait !== null) return cachedAfterWait;
+
+    const data = await fetcher();
+    await cache.set(key, data, ttl);
+    return data;
+  })();
+
+  inFlightCacheRequests.set(key, request);
+  try {
+    return await request;
+  } finally {
+    inFlightCacheRequests.delete(key);
+  }
 }
 
 export const cacheTTL = {

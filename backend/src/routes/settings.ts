@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { SettingsController } from '../controllers/settings.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -11,9 +11,9 @@ router.get('/', SettingsController.getAll);
 router.get('/:key', SettingsController.getByKey);
 
 // PUT /api/settings - 更新站点配置（需要认证）
-router.put('/', authenticate, SettingsController.update);
+router.put('/', authenticate, requireAdmin, SettingsController.update);
 
 // PUT /api/settings/bulk - 批量更新配置（需要认证）
-router.put('/bulk', authenticate, SettingsController.bulkUpdate);
+router.put('/bulk', authenticate, requireAdmin, SettingsController.bulkUpdate);
 
 export default router;

@@ -24,7 +24,8 @@
     "db:seed-only": "tsx init-db.ts seed",
     "db:sync-schema": "npm run db:generate && npm run db:push",
     "init": "npm run db:generate && npm run db:migrate && npm run db:seed",
-    "test": "jest"
+    "test": "tsx --test tests/storage-path-security.test.ts tests/cache-performance.test.ts",
+    "test:legacy": "jest"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts",

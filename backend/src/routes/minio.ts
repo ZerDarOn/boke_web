@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { getMinioClient, getObjectKey } from '../config/minio';
 import { success, error } from '../utils/response';
 
@@ -45,7 +45,7 @@ router.get('/:type/:filename', async (req, res) => {
 });
 
 // 删除 MinIO 文件（代理）
-router.delete('/:type/:filename', authenticate, async (req, res) => {
+router.delete('/:type/:filename', authenticate, requireAdmin, async (req, res) => {
   try {
     const { type, filename } = req.params;
     const bucket = process.env.MINIO_BUCKET || 'ink-spirit-blog';

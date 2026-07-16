@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import rehypeRaw from 'rehype-raw';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePost, usePostNavList } from '../hooks/queries/posts';
 import { useScrollProgress } from '../hooks/useScrollProgress';
 import { useThemeClass } from '../hooks/useThemeClass';
 import { queryKeys } from '../hooks/api/query-keys';
-import { postsApi } from '../lib/api';
+import { postsApi, setPostAccessToken } from '../lib/api';
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,7 +28,7 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import { postMarkdownComponents } from '../components/markdown/contentMarkdownComponents';
 import type { Post } from '../lib/api';
 
-const DETAIL_REHYPE_PLUGINS = [rehypeRaw];
+const DETAIL_REHYPE_PLUGINS: [] = [];
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -97,7 +96,9 @@ const PostDetail: React.FC = () => {
 
     try {
       const result = await postsApi.verifyPassword(post.id, password);
-      if (result.success && result.data?.success) {
+      if (result.success && result.data?.success && result.data.accessToken) {
+        setPostAccessToken(post.id, result.data.accessToken);
+        setPostAccessToken(id!, result.data.accessToken);
         await queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(id!) });
         await refetch();
         setNeedPassword(false);

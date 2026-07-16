@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { getMinioClient, getObjectKey } from '../config/minio';
+import { resolveStoragePath } from '../lib/storage-path-security';
 
 // 文件元数据接口
 interface FileMetadata {
@@ -144,8 +145,8 @@ class FileService {
   }
 
   // 获取本地文件路径
-  private getLocalPath(key: string): string {
-    return path.join(LOCAL_STORAGE_DIR, key);
+  private getLocalPath(key: string, allowRoot = false): string {
+    return resolveStoragePath(LOCAL_STORAGE_DIR, key, { allowRoot });
   }
 
   // 获取文件列表
@@ -200,7 +201,7 @@ class FileService {
         }
       } else {
         // 使用本地文件系统
-        const localPath = this.getLocalPath(prefix);
+        const localPath = this.getLocalPath(prefix, true);
         
         // 清理不存在的元数据项
         for (const [key, meta] of this.metadata) {
@@ -414,7 +415,7 @@ class FileService {
         objects.on('end', () => resolve(files));
       });
     } else {
-      const localPath = this.getLocalPath(dirPath);
+      const localPath = this.getLocalPath(dirPath, true);
       if (!fs.existsSync(localPath)) return files;
       
       const scanDir = (dir: string, basePath: string) => {

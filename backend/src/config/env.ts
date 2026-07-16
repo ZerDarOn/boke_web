@@ -42,6 +42,13 @@ export function validateProductionEnv(): { valid: boolean; errors: string[] } {
     }
   }
 
+  if (process.env.MAINTENANCE_MODE === 'true') {
+    const maintenancePassword = process.env.MAINTENANCE_PASSWORD;
+    if (!maintenancePassword || maintenancePassword.length < 16) {
+      errors.push('MAINTENANCE_MODE=true requires a MAINTENANCE_PASSWORD with at least 16 characters');
+    }
+  }
+
   return {
     valid: errors.length === 0,
     errors,

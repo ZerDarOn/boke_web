@@ -62,28 +62,32 @@ export class SettingsService {
   // 设置单个配置
   static async set(key: string, value: any) {
     const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
-    
-    // Use raw SQL upsert
-    await prisma.$executeRaw`
-      INSERT INTO site_config (id, key, value, "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${key}, ${stringValue}, NOW(), NOW())
-      ON CONFLICT (key) 
-      DO UPDATE SET value = ${stringValue}, "updatedAt" = NOW()
-    `;
-    
+    await prisma.siteConfig.upsert({
+      where: { key },
+      create: { key, value: stringValue },
+      update: { value: stringValue },
+    });
     return { key, value: stringValue };
   }
 
   // 批量设置配置
   static async bulkSet(settings: Record<string, any>) {
-    const results = [];
-    
-    for (const [key, value] of Object.entries(settings)) {
-      const result = await this.set(key, value);
-      results.push(result);
-    }
-    
-    return results;
+    const entries = Object.entries(settings).map(([key, value]) => ({
+      key,
+      value: typeof value === 'object' ? JSON.stringify(value) : String(value),
+    }));
+
+    await prisma.$transaction(
+      entries.map(({ key, value }) =>
+        prisma.siteConfig.upsert({
+          where: { key },
+          create: { key, value },
+          update: { value },
+        })
+      )
+    );
+
+    return entries;
   }
 
   // 删除配置
