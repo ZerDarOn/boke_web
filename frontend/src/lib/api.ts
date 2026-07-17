@@ -29,6 +29,7 @@ export * from './api/health';
 export * from './api/files';
 export * from './api/users';
 export * from './api/settings';
+export * from './api/ai';
 
 export { api } from './api/client';
 export { getApiBaseUrl } from './apiConfig';

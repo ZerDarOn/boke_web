@@ -126,6 +126,7 @@ export const config = {
     UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
     CONTENT_DIR: process.env.CONTENT_DIR || 'content',
     AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
+    AI_INTERNAL_TOKEN: process.env.AI_INTERNAL_TOKEN || '',
     REDIS_URL: process.env.REDIS_URL || '',
     INIT_DB: process.env.INIT_DB || 'true',
     RESET_DB: process.env.RESET_DB || 'false',

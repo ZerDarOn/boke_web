@@ -2,6 +2,40 @@ import { Prisma, AccessLevel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma';
 import { PaginationParams } from '../types';
+import { aiClient } from './ai.client';
+import { apiLog } from '../lib/logger';
+
+function notifyPostIndex(postId: string): void {
+  void aiClient.syncPostIndex(postId)
+    .then((result) => {
+      apiLog.info('AI post index notification completed', {
+        postId,
+        action: result?.action || 'unknown',
+      });
+    })
+    .catch((error) => {
+      apiLog.warn('AI post index notification failed', {
+        postId,
+        errorType: error instanceof Error ? error.name : 'UnknownError',
+      });
+    });
+}
+
+function notifyPostIndexRemoval(postId: string): void {
+  void aiClient.removePostIndex(postId)
+    .then((result) => {
+      apiLog.info('AI post index removal completed', {
+        postId,
+        chunks: result?.chunks || 0,
+      });
+    })
+    .catch((error) => {
+      apiLog.warn('AI post index removal failed', {
+        postId,
+        errorType: error instanceof Error ? error.name : 'UnknownError',
+      });
+    });
+}
 
 export class PostService {
   // 获取文章列表（公开 + 密码保护，排除私密）
@@ -116,7 +150,9 @@ export class PostService {
     if (data.password) {
       data.password = await bcrypt.hash(data.password, 10);
     }
-    return prisma.post.create({ data });
+    const post = await prisma.post.create({ data });
+    notifyPostIndex(post.id);
+    return post;
   }
 
   // 更新文章
@@ -125,15 +161,19 @@ export class PostService {
     if (data.password && typeof data.password === 'string') {
       data.password = await bcrypt.hash(data.password, 10);
     }
-    return prisma.post.update({
+    const post = await prisma.post.update({
       where: { id },
       data,
     });
+    notifyPostIndex(post.id);
+    return post;
   }
 
   // 删除文章
   static async delete(id: string) {
-    return prisma.post.delete({ where: { id } });
+    const post = await prisma.post.delete({ where: { id } });
+    notifyPostIndexRemoval(post.id);
+    return post;
   }
 
   // 增加阅读量

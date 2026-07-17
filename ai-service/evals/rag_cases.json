@@ -1,0 +1,20 @@
+[
+  {
+    "id": "cyberspace-virtual-dom",
+    "query": "文章如何把虚拟 DOM 和柏拉图洞穴寓言联系起来？",
+    "should_answer": true,
+    "expected_slugs": ["reconstruct-reality-cyberspace"]
+  },
+  {
+    "id": "ink-webgl-tradeoff",
+    "query": "水墨组件为什么从 WebGL 转向 SVG 滤镜？",
+    "should_answer": true,
+    "expected_slugs": ["ink-component-library"]
+  },
+  {
+    "id": "unknown-private-life",
+    "query": "作者今天午饭具体吃了什么？",
+    "should_answer": false,
+    "expected_slugs": []
+  }
+]

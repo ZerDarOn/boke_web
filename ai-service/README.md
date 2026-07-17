@@ -8,6 +8,8 @@ Python FastAPI microservice for AI-powered features.
 - 🤖 **Tag Generation** - Auto-suggest tags for posts
 - 📊 **Data Analytics** - User behavior analysis, content trends
 - 💬 **LLM Integration** - OpenAI / Claude / Local models support
+- 📚 **Grounded RAG** - Public-content retrieval with validated inline citations
+- 🧪 **RAG Evaluation** - Model-free retrieval and refusal metrics
 - 🎯 **Smart Recommendations** - Content recommendations based on user history
 
 ## Tech Stack
@@ -53,6 +55,13 @@ HOST=0.0.0.0
 PORT=8000
 ```
 
+### Companion persona
+
+The public companion persona is configured in `config/companion_persona.json`.
+It controls the name, tone, page greetings and suggested questions, while RAG
+authorization, citation validation and refusal rules remain hard-coded safety
+boundaries. Set `COMPANION_PERSONA_PATH` to load a different JSON file.
+
 ## Running
 
 ```bash
@@ -64,6 +73,19 @@ gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
 ```
 
 ## API Endpoints
+
+All versioned endpoints use the `/api/v1` prefix.
+
+### Grounded RAG
+
+| Endpoint | Method | Description |
+|----------|----------|-------------|
+| `/api/v1/ai/chat` | POST | Answer from public evidence with validated citations and quotes |
+| `/api/v1/ai/companion/profile` | GET | Public name, role, greetings and suggested questions |
+| `/api/v1/ai/grounding/status` | GET | Process-local grounding/refusal counters (internal token) |
+| `/api/v1/ai/index/status` | GET | Active index status (internal token) |
+| `/api/v1/ai/index/reconcile` | POST | Repair missed post changes (internal token) |
+| `/api/v1/ai/reindex` | POST | Build and atomically activate a full index (internal token) |
 
 ### Content Analysis
 
@@ -98,8 +120,11 @@ mypy .
 # Linting
 ruff check .
 
-# Testing
-pytest
+# Deterministic unit tests
+python -m unittest discover -s tests
+
+# Retrieval evaluation (requires PostgreSQL, ChromaDB and embedding credentials)
+python scripts/evaluate_rag.py
 ```
 
 ## Architecture

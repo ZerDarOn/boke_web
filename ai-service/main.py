@@ -59,10 +59,19 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    generation_available = bool(
+        settings.OPENAI_API_KEY or
+        settings.ANTHROPIC_API_KEY or
+        settings.LOCAL_LLM_URL
+    )
     return {
         "status": "healthy",
         "service": "ai-service",
-        "database": "connected" if settings.DATABASE_URL else "not configured"
+        "database": "configured" if settings.DATABASE_URL else "not configured",
+        "capabilities": {
+            "generation": generation_available,
+            "knowledge_search": bool(settings.DATABASE_URL and settings.OPENAI_API_KEY),
+        },
     }
 
 

@@ -12,6 +12,10 @@
     --color-neon: hsl(150 100% 40%);
     --color-secondary: hsl(260 90% 65%);
 
+    /* 墨璃的临时墨印核心，未来替换为立绘时仍保留为加载底座。 */
+    --companion-surface-hsl: 165 24% 6%;
+    --companion-surface-raised-hsl: 160 18% 10%;
+
     /* 字体族（供 Tailwind fontFamily + 内联使用），由 Layout 运行时注入 */
     --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-serif: "Noto Serif SC", "SimSun", "STSong", serif;
@@ -323,6 +327,160 @@ html {
 
 .animate-pulse-slow {
   animation: pulse-slow 4s ease-in-out infinite;
+}
+
+@keyframes companion-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes companion-breathe {
+  0%, 100% {
+    opacity: 0.34;
+    transform: scale(0.88);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.04);
+  }
+}
+
+.companion-orb-halo {
+  position: absolute;
+  inset: -0.4rem;
+  border: 1px solid hsl(var(--color-neon-hsl) / 0.12);
+  border-radius: 9999px;
+  opacity: 0.7;
+  transition: border-color 300ms ease, transform 300ms ease;
+}
+
+.companion-orb-trigger:hover .companion-orb-halo,
+.companion-orb-trigger:focus-visible .companion-orb-halo {
+  border-color: hsl(var(--color-neon-hsl) / 0.32);
+  transform: scale(1.04);
+}
+
+.companion-orb-shell {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid hsl(var(--color-neon-hsl) / 0.3);
+  border-radius: 9999px;
+  color: var(--color-neon);
+  background:
+    radial-gradient(circle at 36% 28%, hsl(var(--color-neon-hsl) / 0.13), transparent 28%),
+    linear-gradient(145deg, hsl(var(--companion-surface-raised-hsl)), hsl(var(--companion-surface-hsl)) 68%);
+  box-shadow:
+    inset 0 1px 0 hsl(var(--color-neon-hsl) / 0.12),
+    inset 0 -18px 28px hsl(var(--companion-surface-hsl) / 0.72),
+    0 14px 34px hsl(var(--companion-surface-hsl) / 0.46),
+    0 0 26px hsl(var(--color-neon-hsl) / 0.16);
+  transition: border-color 300ms ease, box-shadow 300ms ease;
+}
+
+.companion-orb-trigger:hover .companion-orb-shell,
+.companion-orb-trigger:focus-visible .companion-orb-shell,
+.companion-orb-shell--open {
+  border-color: hsl(var(--color-neon-hsl) / 0.58);
+  box-shadow:
+    inset 0 1px 0 hsl(var(--color-neon-hsl) / 0.2),
+    inset 0 -18px 28px hsl(var(--companion-surface-hsl) / 0.66),
+    0 16px 38px hsl(var(--companion-surface-hsl) / 0.5),
+    0 0 34px hsl(var(--color-neon-hsl) / 0.3);
+}
+
+.companion-orb-ambient {
+  position: absolute;
+  width: 58%;
+  height: 58%;
+  border-radius: 9999px;
+  background: hsl(var(--color-neon-hsl) / 0.2);
+  filter: blur(14px);
+  animation: companion-breathe 4.8s ease-in-out infinite;
+}
+
+.companion-orb-glyph {
+  position: relative;
+  z-index: 1;
+  width: 78%;
+  height: 78%;
+  overflow: visible;
+}
+
+.companion-orb-track,
+.companion-orb-orbit,
+.companion-orb-seal {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.companion-orb-track {
+  stroke: currentColor;
+  stroke-width: 0.8;
+  opacity: 0.2;
+}
+
+.companion-orb-orbit {
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-dasharray: 3 8 18 6;
+  opacity: 0.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: companion-orbit 18s linear infinite;
+}
+
+.companion-orb-seal {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.72;
+}
+
+.companion-orb-ink {
+  fill: hsl(var(--companion-surface-hsl) / 0.88);
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+.companion-orb-core {
+  fill: currentColor;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+
+.companion-orb-name {
+  position: absolute;
+  inset-block-end: 0.52rem;
+  z-index: 2;
+  font-family: var(--font-serif);
+  font-size: 0.54rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  color: hsl(var(--color-neon-hsl) / 0.66);
+  transform: translateX(0.12em);
+}
+
+.companion-orb-status {
+  position: absolute;
+  inset-inline-end: 0.25rem;
+  inset-block-end: 0.55rem;
+  z-index: 3;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 2px solid hsl(var(--companion-surface-hsl));
+  border-radius: 9999px;
+  background: var(--color-neon);
+  box-shadow: 0 0 10px hsl(var(--color-neon-hsl) / 0.72);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .companion-orb-ambient,
+  .companion-orb-orbit {
+    animation: none;
+  }
 }
 
 /* 自定义滚动条样式 - 仅桌面端生效 */

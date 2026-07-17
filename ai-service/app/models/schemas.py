@@ -16,8 +16,8 @@ class HealthResponse(BaseModel):
 
 class SummarizeRequest(BaseModel):
     """Article summarization request"""
-    content: str = Field(..., description="Article content to summarize")
-    max_length: Optional[int] = Field(200, description="Maximum summary length")
+    content: str = Field(..., min_length=1, max_length=100_000, description="Article content to summarize")
+    max_length: int = Field(200, ge=50, le=1000, description="Maximum summary length")
 
 
 class SummarizeResponse(BaseModel):
@@ -29,8 +29,8 @@ class SummarizeResponse(BaseModel):
 
 class ExtractKeywordsRequest(BaseModel):
     """Keyword extraction request"""
-    content: str = Field(..., description="Content to extract keywords from")
-    max_keywords: Optional[int] = Field(10, description="Maximum number of keywords")
+    content: str = Field(..., min_length=1, max_length=100_000, description="Content to extract keywords from")
+    max_keywords: int = Field(10, ge=1, le=30, description="Maximum number of keywords")
 
 
 class ExtractKeywordsResponse(BaseModel):
@@ -41,9 +41,9 @@ class ExtractKeywordsResponse(BaseModel):
 
 class GenerateTagsRequest(BaseModel):
     """Tag generation request"""
-    title: str = Field(..., description="Article title")
-    content: str = Field(..., description="Article content")
-    max_tags: Optional[int] = Field(5, description="Maximum number of tags")
+    title: str = Field(..., min_length=1, max_length=300, description="Article title")
+    content: str = Field(..., min_length=1, max_length=100_000, description="Article content")
+    max_tags: int = Field(5, ge=1, le=20, description="Maximum number of tags")
 
 
 class GenerateTagsResponse(BaseModel):
@@ -69,7 +69,7 @@ class RecommendPostsRequest(BaseModel):
     """Post recommendation request"""
     user_id: Optional[str] = Field(None, description="User ID for personalization")
     post_id: str = Field(..., description="Current post ID")
-    limit: Optional[int] = Field(5, description="Number of recommendations")
+    limit: int = Field(5, ge=1, le=20, description="Number of recommendations")
 
 
 class RecommendPostsResponse(BaseModel):

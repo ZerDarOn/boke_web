@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    DEBUG: bool = True
+    DEBUG: bool = False
     LOG_LEVEL: str = "info"
 
     # CORS — 存为字符串让 pydantic-settings 能直接解析 .env，
@@ -34,10 +34,13 @@ class Settings(BaseSettings):
     
     # AI Services
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4"
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_FAST_MODEL: str = ""
+    OPENAI_STANDARD_MODEL: str = ""
     OPENAI_TEMPERATURE: float = 0.7
     OPENAI_MAX_TOKENS: int = 4000
     OPENAI_TIMEOUT: int = 30
+    AI_INTERNAL_TOKEN: str = ""
     
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-3-opus-20240229"

@@ -5,10 +5,35 @@
 
 import { Router } from 'express';
 import { success, error } from '../utils/response';
-import { aiClient } from '../services/ai.client';
+import { aiClient, type CompanionPageContext } from '../services/ai.client';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { apiLog } from '../lib/logger';
 
-const router = Router();
+const router: Router = Router();
+const MAX_CHAT_MESSAGE_LENGTH = 2000;
+const MAX_CHAT_HISTORY_MESSAGES = 10;
+const MAX_CHAT_HISTORY_CONTENT_LENGTH = 4000;
+const MAX_COMPANION_PATH_LENGTH = 240;
+const MAX_COMPANION_TITLE_LENGTH = 160;
+const COMPANION_PAGE_TYPES = new Set([
+  'default', 'home', 'posts', 'post', 'archives', 'announcement',
+  'projects', 'project', 'skills', 'timeline', 'gallery', 'diary',
+  'anime', 'games', 'about', 'network', 'dashboard', 'music',
+]);
+
+function isValidCompanionContext(value: unknown): value is CompanionPageContext | undefined {
+  if (value === undefined) return true;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const context = value as Record<string, unknown>;
+  return (
+    typeof context.page_type === 'string' &&
+    COMPANION_PAGE_TYPES.has(context.page_type) &&
+    typeof context.pathname === 'string' &&
+    context.pathname.length <= MAX_COMPANION_PATH_LENGTH &&
+    typeof context.title === 'string' &&
+    context.title.length <= MAX_COMPANION_TITLE_LENGTH
+  );
+}
 
 // GET /api/ai/health - Check AI service health
 router.get('/health', async (req, res) => {
@@ -90,22 +115,37 @@ router.post('/sentiment', authenticate, requireAdmin, async (req, res) => {
 // POST /api/ai/chat - 博客 AI 助手对话
 router.post('/chat', async (req, res) => {
   try {
-    const { message, history = [] } = req.body;
-    if (!message || typeof message !== 'string') {
-      return error(res, 'message is required', 400);
+    const { message, history = [], context } = req.body;
+    if (!message || typeof message !== 'string' || message.length > MAX_CHAT_MESSAGE_LENGTH) {
+      return error(res, `message must contain 1-${MAX_CHAT_MESSAGE_LENGTH} characters`, 400);
+    }
+
+    if (
+      !Array.isArray(history) ||
+      history.length > MAX_CHAT_HISTORY_MESSAGES ||
+      history.some(item =>
+        !item ||
+        !['user', 'assistant'].includes(item.role) ||
+        typeof item.content !== 'string' ||
+        item.content.length === 0 ||
+        item.content.length > MAX_CHAT_HISTORY_CONTENT_LENGTH
+      )
+    ) {
+      return error(res, 'history contains invalid messages', 400);
+    }
+
+    if (!isValidCompanionContext(context)) {
+      return error(res, 'context contains invalid page metadata', 400);
     }
 
     try {
-      const result = await aiClient.chat(message, history);
+      const result = await aiClient.chat(message.trim(), history, context);
       return success(res, result);
-    } catch {
-      // 扩展点：AI 服务 / 知识库尚未接入时的占位回复。
-      // 在 ai-service 实现 /api/v1/ai/chat（LLM + 博客内容 RAG）后，上面的调用会自动生效。
-      return success(res, {
-        reply:
-          '你好，我是这个博客的 AI 助手（骨架）🤖。\n对话与知识库能力还没接入——在 ai-service 里实现 /api/v1/ai/chat（接入 LLM + 博客内容向量库）后，我就能真正回答关于这个博客的问题了。',
-        sources: [],
+    } catch (err) {
+      apiLog.warn('AI chat unavailable', {
+        errorType: err instanceof Error ? err.name : 'UnknownError',
       });
+      return error(res, 'AI assistant temporarily unavailable', 503);
     }
   } catch (err: any) {
     return error(res, err.message, 500);
@@ -143,10 +183,65 @@ router.post('/recommend/posts', authenticate, requireAdmin, async (req, res) => 
       return error(res, 'Post ID is required', 400);
     }
 
-    const result = await aiClient.recommendPosts(user_id, post_id, limit);
+    const result = await aiClient.recommendPosts(post_id, user_id, limit);
     return success(res, result, 'Posts recommended successfully');
   } catch (err: any) {
     return error(res, err.message, 500);
+  }
+});
+
+router.get('/companion/profile', async (_req, res) => {
+  try {
+    return success(res, await aiClient.getCompanionProfile());
+  } catch (err) {
+    apiLog.warn('AI companion profile unavailable', {
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
+    return error(res, 'AI companion profile unavailable', 503);
+  }
+});
+
+router.get('/index/status', authenticate, requireAdmin, async (_req, res) => {
+  try {
+    return success(res, await aiClient.getIndexStatus());
+  } catch (err) {
+    apiLog.warn('AI index status unavailable', {
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
+    return error(res, 'AI index status unavailable', 503);
+  }
+});
+
+router.get('/grounding/status', authenticate, requireAdmin, async (_req, res) => {
+  try {
+    return success(res, await aiClient.getGroundingStatus());
+  } catch (err) {
+    apiLog.warn('AI grounding status unavailable', {
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
+    return error(res, 'AI grounding status unavailable', 503);
+  }
+});
+
+router.post('/index/reconcile', authenticate, requireAdmin, async (_req, res) => {
+  try {
+    return success(res, await aiClient.reconcileIndex(), 'AI index reconciled');
+  } catch (err) {
+    apiLog.warn('AI index reconciliation failed', {
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
+    return error(res, 'AI index reconciliation failed', 503);
+  }
+});
+
+router.post('/index/rebuild', authenticate, requireAdmin, async (_req, res) => {
+  try {
+    return success(res, await aiClient.rebuildIndex(), 'AI index rebuilt');
+  } catch (err) {
+    apiLog.warn('AI index rebuild failed', {
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
+    return error(res, 'AI index rebuild failed', 503);
   }
 });
 

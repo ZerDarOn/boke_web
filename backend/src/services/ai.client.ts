@@ -66,6 +66,42 @@ export interface RecommendPostsResponse {
   algorithm: string;
 }
 
+export type CompanionPageType =
+  | 'default'
+  | 'home'
+  | 'posts'
+  | 'post'
+  | 'archives'
+  | 'announcement'
+  | 'projects'
+  | 'project'
+  | 'skills'
+  | 'timeline'
+  | 'gallery'
+  | 'diary'
+  | 'anime'
+  | 'games'
+  | 'about'
+  | 'network'
+  | 'dashboard'
+  | 'music';
+
+export interface CompanionPageContext {
+  page_type: CompanionPageType;
+  pathname: string;
+  title: string;
+}
+
+export interface CompanionProfile {
+  version: number;
+  name: string;
+  public_role: string;
+  visitor_address: string;
+  traits: Record<string, number>;
+  greetings: Partial<Record<CompanionPageType, string>> & { default: string };
+  suggestions: string[];
+}
+
 /**
  * AI Service API Client
  */
@@ -76,6 +112,12 @@ class AIClient {
     this.baseURL = AI_SERVICE_URL;
   }
 
+  private get internalHeaders(): Record<string, string> {
+    return config.AI_INTERNAL_TOKEN
+      ? { 'x-ai-internal-token': config.AI_INTERNAL_TOKEN }
+      : {};
+  }
+
   /**
    * Health check
    */
@@ -84,7 +126,7 @@ class AIClient {
       const response = await axios.get(`${this.baseURL}/health`, {
         timeout: 5000,
       });
-      return response.data.status === 'healthy';
+      return response.data.status === 'healthy' && response.data.capabilities?.generation === true;
     } catch (error) {
       console.error('AI Service health check failed:', error);
       return false;
@@ -183,12 +225,84 @@ class AIClient {
    */
   async chat(
     message: string,
-    history: Array<{ role: string; content: string }> = []
-  ): Promise<{ reply: string; sources?: Array<{ title: string; url: string }> }> {
+    history: Array<{ role: string; content: string }> = [],
+    context?: CompanionPageContext
+  ): Promise<{
+    reply: string;
+    sources?: Array<{
+      citation: string;
+      title: string;
+      url: string;
+      score: number;
+      excerpt: string;
+    }>;
+    grounded?: boolean;
+    confidence?: number;
+    refusal_reason?: 'insufficient_evidence' | 'invalid_citations' | 'invalid_model_output' | null;
+  }> {
     const response = await axios.post(
       `${this.baseURL}/api/v1/ai/chat`,
-      { message, history },
+      { message, history, context },
       { timeout: REQUEST_TIMEOUT }
+    );
+    return response.data;
+  }
+
+  async getCompanionProfile(): Promise<CompanionProfile> {
+    const response = await axios.get(
+      `${this.baseURL}/api/v1/ai/companion/profile`,
+      { timeout: 5000 }
+    );
+    return response.data;
+  }
+
+  async syncPostIndex(postId: string): Promise<any> {
+    const response = await axios.put(
+      `${this.baseURL}/api/v1/ai/index/posts/${encodeURIComponent(postId)}`,
+      undefined,
+      { timeout: REQUEST_TIMEOUT, headers: this.internalHeaders }
+    );
+    return response.data;
+  }
+
+  async removePostIndex(postId: string): Promise<any> {
+    const response = await axios.delete(
+      `${this.baseURL}/api/v1/ai/index/posts/${encodeURIComponent(postId)}`,
+      { timeout: REQUEST_TIMEOUT, headers: this.internalHeaders }
+    );
+    return response.data;
+  }
+
+  async getIndexStatus(): Promise<any> {
+    const response = await axios.get(
+      `${this.baseURL}/api/v1/ai/index/status`,
+      { timeout: REQUEST_TIMEOUT, headers: this.internalHeaders }
+    );
+    return response.data;
+  }
+
+  async getGroundingStatus(): Promise<any> {
+    const response = await axios.get(
+      `${this.baseURL}/api/v1/ai/grounding/status`,
+      { timeout: REQUEST_TIMEOUT, headers: this.internalHeaders }
+    );
+    return response.data;
+  }
+
+  async reconcileIndex(): Promise<any> {
+    const response = await axios.post(
+      `${this.baseURL}/api/v1/ai/index/reconcile`,
+      undefined,
+      { timeout: REQUEST_TIMEOUT, headers: this.internalHeaders }
+    );
+    return response.data;
+  }
+
+  async rebuildIndex(): Promise<any> {
+    const response = await axios.post(
+      `${this.baseURL}/api/v1/ai/reindex`,
+      undefined,
+      { timeout: REQUEST_TIMEOUT, headers: this.internalHeaders }
     );
     return response.data;
   }

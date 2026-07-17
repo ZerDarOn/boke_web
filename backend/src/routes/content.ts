@@ -4,6 +4,7 @@ import { success, error, notFound } from '../utils/response';
 import { parseMarkdown, buildPrismaData, generateId, generateSlug, ParsedContent } from '../services/markdown.service';
 import * as response from '../utils/response';
 import prisma from '../lib/prisma';
+import { PostService } from '../services/post.service';
 import extractZip from 'extract-zip';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -350,7 +351,7 @@ async function deleteContent(type: string, id: string): Promise<void> {
   try {
     switch (type) {
       case 'post':
-        await prisma.post.delete({ where: { id } });
+        await PostService.delete(id);
         break;
       case 'project':
         await prisma.project.delete({ where: { id } });
@@ -389,7 +390,7 @@ async function saveContent(parsed: ParsedContent): Promise<any> {
   try {
     switch (parsed.type) {
       case 'post':
-        return await prisma.post.create({ data: prismaData });
+        return await PostService.create(prismaData);
 
       case 'project':
         return await prisma.project.create({ data: prismaData });

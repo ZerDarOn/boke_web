@@ -67,6 +67,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       REDIS_URL: redis://redis:6379/0
       AI_SERVICE_URL: http://ai-service:8000
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
+      COMPANION_PERSONA_PATH: ${COMPANION_PERSONA_PATH:-}
       # MinIO Configuration
       USE_MINIO: ${USE_MINIO:-true}
       MINIO_ENDPOINT: minio
@@ -99,6 +101,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LOCAL_LLM_URL: ${LOCAL_LLM_URL:-}
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
     depends_on:
       - db
       - redis
