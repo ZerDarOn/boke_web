@@ -62,7 +62,7 @@ export function useAdminActivitiesConfig() {
   return useQuery({
     queryKey: queryKeys.settings.key('activities'),
     queryFn: async (): Promise<AdminActivity[]> => {
-      // 1. 尝试�?settings 获取
+      // 1. 尝试�?settings 获取
       const result = await settingsApi.getByKey('activities');
       if (result.success && result.data?.value) {
         const raw = result.data.value;
@@ -72,7 +72,7 @@ export function useAdminActivitiesConfig() {
         }
       }
       
-      // 2. Fallback: �?timeline 获取
+      // 2. Fallback: �?timeline 获取
       try {
         const timelineResult = await timelineApi.getAll();
         if (timelineResult.success && timelineResult.data && timelineResult.data.length > 0) {
@@ -108,25 +108,31 @@ export function useSaveAdminActivities() {
   });
 }
 
-/** 读取音乐馆歌单清单（存于 SiteConfig �?music_sources 键，未配置时回退默认�?*/
+/** 读取音乐馆歌单清单（存于 SiteConfig 的 music_sources 键，未配置时回退默认歌单） */
 export function useMusicSources() {
   return useQuery({
     queryKey: queryKeys.settings.key('music_sources'),
     queryFn: async (): Promise<MusicSource[]> => {
-      const result = await settingsApi.getByKey('music_sources');
-      if (result.success && result.data?.value) {
-        const raw = result.data.value;
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed as MusicSource[];
+      try {
+        const result = await settingsApi.getByKey('music_sources');
+        if (result.success && result.data?.value) {
+          const raw = result.data.value;
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed as MusicSource[];
+          }
         }
+      } catch {
+        // API 不可用时直接用默认歌单，不重试
       }
       return DEFAULT_MUSIC_SOURCES;
     },
+    retry: 0, // 不重试：404 不是临时错误，重试没有任何意义
+    staleTime: 10 * 60 * 1000,
   });
 }
 
-/** 保存音乐馆歌单清�?*/
+/** 保存音乐馆歌单清�?*/
 export function useSaveMusicSources() {
   const qc = useQueryClient();
   return useMutation({
