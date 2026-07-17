@@ -81,6 +81,16 @@ export interface SiteConfig {
     aboutContactTitle: string;
     aboutContactCopyTip: string;
   };
+
+  // AI 模型配置（保存后自动写入 ai-service/.env）
+  aiConfig: {
+    provider: 'openai' | 'anthropic' | 'local';
+    apiKey: string;
+    model: string;
+    baseUrl: string;
+    maxTokens: number;
+    temperature: number;
+  };
 }
 
 export const defaultSiteConfig: SiteConfig = {
@@ -199,5 +209,13 @@ export const defaultSiteConfig: SiteConfig = {
     // 关于页面
     aboutContactTitle: '联系方式',
     aboutContactCopyTip: '点击卡片复制链接或访问'
-  }
+  },
+  aiConfig: {
+    provider: 'openai',
+    apiKey: '',
+    model: 'gpt-4o-mini',
+    baseUrl: '',
+    maxTokens: 2048,
+    temperature: 0.7,
+  },
 };

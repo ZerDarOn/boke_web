@@ -46,6 +46,14 @@ const defaultConfig: SiteConfig = {
     aboutContactTitle: '联系方式',
     aboutContactCopyTip: '点击卡片复制链接或访问',
   },
+  aiConfig: {
+    provider: 'openai',
+    apiKey: '',
+    model: 'gpt-4o-mini',
+    baseUrl: '',
+    maxTokens: 2048,
+    temperature: 0.7,
+  },
   heroBackgrounds: [],
 };
 
@@ -89,6 +97,10 @@ function mergeConfigs(
       apiConfig?.fontSettings ??
       localConfig?.fontSettings ??
       defaultConfig.fontSettings,
+    aiConfig:
+      apiConfig?.aiConfig ??
+      localConfig?.aiConfig ??
+      defaultConfig.aiConfig,
   };
 }
 

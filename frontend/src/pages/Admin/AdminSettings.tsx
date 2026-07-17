@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useSiteSettings, useSaveSiteConfig } from '../../hooks/queries/settings';
 import {
-  Settings, Save, Globe, Mail, Image, Layout, FileText, Type,
+  Settings, Save, Globe, Mail, Image, Layout, FileText, Type, Brain,
   Loader2, X, Check,
 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -13,8 +13,9 @@ const ContactSettingsTab = lazy(() => import('./settings/ContactSettingsTab'));
 const ThemeSettingsTab = lazy(() => import('./settings/ThemeSettingsTab'));
 const CopySettingsTab = lazy(() => import('./settings/CopySettingsTab'));
 const FontSettingsTab = lazy(() => import('./settings/FontSettingsTab'));
+const AIModelSettingsTab = lazy(() => import('./settings/AIModelSettingsTab'));
 
-type SettingsTabId = 'general' | 'hero' | 'contact' | 'theme' | 'copy' | 'font';
+type SettingsTabId = 'general' | 'hero' | 'contact' | 'theme' | 'copy' | 'font' | 'ai';
 
 const AdminSettings: React.FC = () => {
   const [config, setConfig] = useState<SiteConfig>(defaultSiteConfig);
@@ -132,6 +133,7 @@ const AdminSettings: React.FC = () => {
               { id: 'contact', label: '联系方式', icon: Mail },
               { id: 'theme', label: '主题设置', icon: Layout },
               { id: 'font', label: '字体设置', icon: Type },
+              { id: 'ai', label: 'AI 模型', icon: Brain },
               { id: 'copy', label: '页面文案', icon: FileText },
             ] as const
           ).map((tab) => (
@@ -165,6 +167,7 @@ const AdminSettings: React.FC = () => {
             {activeTab === 'contact' && <ContactSettingsTab {...tabProps} />}
             {activeTab === 'theme' && <ThemeSettingsTab {...tabProps} />}
             {activeTab === 'font' && <FontSettingsTab {...tabProps} />}
+            {activeTab === 'ai' && <AIModelSettingsTab {...tabProps} />}
             {activeTab === 'copy' && <CopySettingsTab {...tabProps} />}
           </Suspense>
         </div>

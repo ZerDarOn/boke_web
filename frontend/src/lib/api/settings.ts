@@ -41,6 +41,14 @@ export interface SiteConfig {
     mono: string;
     imports: string[];
   };
+  aiConfig?: {
+    provider: 'openai' | 'anthropic' | 'local';
+    apiKey: string;
+    model: string;
+    baseUrl: string;
+    maxTokens: number;
+    temperature: number;
+  };
 }
 
 export const settingsApi = {
