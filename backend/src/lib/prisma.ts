@@ -5,12 +5,17 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 const prismaOptions = {
-  log: process.env.NODE_ENV === 'development'
+  log: process.env.PRISMA_LOG_SQL === 'true'
     ? [
+        { emit: 'stdout' as const, level: 'query' as const },
+        { emit: 'stdout' as const, level: 'info' as const },
         { emit: 'stdout' as const, level: 'warn' as const },
         { emit: 'stdout' as const, level: 'error' as const },
       ]
-    : [{ emit: 'stdout' as const, level: 'error' as const }],
+    : [
+        { emit: 'stdout' as const, level: 'warn' as const },
+        { emit: 'stdout' as const, level: 'error' as const },
+      ],
   errorFormat: 'pretty' as const,
 };
 

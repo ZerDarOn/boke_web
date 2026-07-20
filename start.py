@@ -92,12 +92,15 @@ def run(cmd, cwd=None, capture=False):
         timeout=300
     )
 
-def run_bg(cmd, cwd=None):
+def run_bg(cmd, cwd=None, env_extra=None):
     """后台启动进程，返回 Popen，实时输出日志"""
     shell = isinstance(cmd, str)
     flags = 0
     if sys.platform == "win32":
         flags |= subprocess.CREATE_NEW_PROCESS_GROUP
+    env = os.environ.copy()
+    if env_extra:
+        env.update(env_extra)
     proc = subprocess.Popen(
         cmd, cwd=cwd, shell=shell,
         stdout=subprocess.PIPE,
@@ -105,6 +108,7 @@ def run_bg(cmd, cwd=None):
         creationflags=flags,
         encoding='utf-8',
         errors='replace',
+        env=env,
     )
     # 在后台线程中实时打印子进程输出
     import threading
@@ -371,9 +375,9 @@ def start_dev():
 
     log_title("启动服务")
 
-    # 后端
+    # 后端（开发模式开启 SQL 日志方便调试）
     log_step("启动后端 ")
-    backend_proc = run_bg("npm run dev", cwd=str(BACKEND_DIR))
+    backend_proc = run_bg("npm run dev", cwd=str(BACKEND_DIR), env_extra={"PRISMA_LOG_SQL": "true"})
     log_step_ok(f"后端启动中 (PID {backend_proc.pid})")
 
     log_info("等待后端就绪...")
@@ -383,7 +387,7 @@ def start_dev():
         log_warn("后端未响应，可能还在启动中")
 
     # AI 服务（可选，未配置 API Key 时占位回复）
-    log_step("启动 AI 服务 ")
+    log_step("启动 AI 服务 ")   # ← start_dev 独有的上下文
     ai_service_dir = ROOT_DIR / "ai-service"
     ai_proc = None
     if ai_service_dir.exists() and (ai_service_dir / "main.py").exists():
@@ -515,9 +519,22 @@ def start_share():
     log_step("Cloudflare 隧道 ")
     tunnel_url = None
     tunnel_proc = None
-    if command_exists("cloudflared"):
+
+    # 找 cloudflared：先 PATH，再用户目录，再项目目录
+    cloudflared_cmd = None
+    for candidate in [
+        "cloudflared",
+        shutil.which("cloudflared"),
+        os.path.expandvars(r"%USERPROFILE%\cloudflared.exe"),
+        str(ROOT_DIR / "cloudflared.exe"),
+    ]:
+        if candidate and (shutil.which(candidate) or os.path.exists(candidate)):
+            cloudflared_cmd = candidate
+            break
+
+    if cloudflared_cmd:
         tunnel_proc = subprocess.Popen(
-            ["cloudflared", "tunnel", "--url", "http://localhost:3000"],
+            [cloudflared_cmd, "tunnel", "--url", "http://localhost:3000"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             encoding="utf-8",
