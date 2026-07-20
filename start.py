@@ -41,7 +41,20 @@ def read_backend_port():
                 return int(m.group(1))
     return 3001
 
+def read_frontend_port():
+    """从 .port-config.json 读取 frontendPort，默认 3000"""
+    import json
+    config_path = ROOT_DIR / ".port-config.json"
+    if config_path.exists():
+        try:
+            cfg = json.loads(config_path.read_text(encoding='utf-8'))
+            return cfg.get("frontendPort", 3000)
+        except Exception:
+            pass
+    return 3000
+
 BACKEND_PORT = read_backend_port()
+FRONTEND_PORT = read_frontend_port()
 
 # ── Windows 终端颜色 ──────────────────────────────────────
 if sys.platform == "win32":
@@ -281,7 +294,7 @@ def install_dependencies():
 def init_ports():
     log_title("端口检查")
 
-    for port in (3000, BACKEND_PORT):
+    for port in (FRONTEND_PORT, BACKEND_PORT):
         log_step(f"端口 {port} ")
         if port_in_use(port):
             log_warn(f"端口 {port} 被占用，正在释放...")
@@ -297,7 +310,7 @@ def init_ports():
 def stop_services():
     log_title("停止服务")
 
-    services = [(3000, "前端"), (BACKEND_PORT, "后端"), (8000, "AI 服务")]
+    services = [(FRONTEND_PORT, "前端"), (BACKEND_PORT, "后端"), (8000, "AI 服务")]
     for port, name in services:
         log_step(f"{name} (端口 {port}) ")
         if port_in_use(port):
@@ -357,9 +370,9 @@ def show_status(mode):
     服务已启动 - {label}
   ════════════════════════════════════════════{C_RESET}
 
-  {C_CYAN}  前端:   http://localhost:3000
+  {C_CYAN}  前端:   http://localhost:{FRONTEND_PORT}
   后端:   http://localhost:{BACKEND_PORT}
-  管理:   http://localhost:3000/admin/login{C_RESET}
+  管理:   http://localhost:{FRONTEND_PORT}/admin/login{C_RESET}
 
   {C_GRAY}══════════════════════════════════════════════
     停止服务: python start.py stop
@@ -410,7 +423,7 @@ def start_dev():
     log_step_ok(f"前端启动中 (PID {frontend_proc.pid})")
 
     log_info("等待前端就绪...")
-    if wait_for_url("http://localhost:3000", timeout=20):
+    if wait_for_url(f"http://localhost:{FRONTEND_PORT}", timeout=20):
         log_ok("前端已就绪")
     else:
         log_warn("前端未响应，可能还在启动中")
@@ -510,7 +523,7 @@ def start_share():
     log_step_ok(f"前端启动中 (PID {frontend_proc.pid})")
 
     log_info("等待前端就绪...")
-    if not wait_for_url("http://localhost:3000", timeout=30):
+    if not wait_for_url(f"http://localhost:{FRONTEND_PORT}", timeout=30):
         log_err("前端启动超时，请检查端口 3000 或前端日志")
         log_info("提示：运行 python start.py stop 清理残留进程后重试")
         frontend_proc.terminate()
@@ -537,7 +550,7 @@ def start_share():
 
     if cloudflared_cmd:
         tunnel_proc = subprocess.Popen(
-            [cloudflared_cmd, "tunnel", "--url", "http://localhost:3000"],
+            [cloudflared_cmd, "tunnel", "--url", f"http://localhost:{FRONTEND_PORT}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             encoding="utf-8",
