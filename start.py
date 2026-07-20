@@ -410,7 +410,7 @@ def start_dev():
     log_step_ok(f"前端启动中 (PID {frontend_proc.pid})")
 
     log_info("等待前端就绪...")
-    if wait_for_port(3000, timeout=20):
+    if wait_for_url("http://localhost:3000", timeout=20):
         log_ok("前端已就绪")
     else:
         log_warn("前端未响应，可能还在启动中")
@@ -510,10 +510,13 @@ def start_share():
     log_step_ok(f"前端启动中 (PID {frontend_proc.pid})")
 
     log_info("等待前端就绪...")
-    if wait_for_port(3000, timeout=20):
-        log_ok("前端已就绪")
-    else:
-        log_warn("前端未响应，可能还在启动中")
+    if not wait_for_url("http://localhost:3000", timeout=30):
+        log_err("前端启动超时，请检查端口 3000 或前端日志")
+        log_info("提示：运行 python start.py stop 清理残留进程后重试")
+        frontend_proc.terminate()
+        backend_proc.terminate()
+        sys.exit(1)
+    log_ok("前端已就绪")
 
     # Cloudflare Quick Tunnel
     log_step("Cloudflare 隧道 ")
