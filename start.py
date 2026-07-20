@@ -479,6 +479,113 @@ def start_preview():
         frontend_proc.terminate()
         log_ok("服务已停止")
 
+# ── 内网穿透分享模式 ───────────────────────────────────────
+def start_share():
+    """开发模式 + Cloudflare Quick Tunnel：生成公网链接发给朋友预览"""
+    check_prerequisites()
+    init_env_files()
+    install_dependencies()
+    init_ports()
+
+    log_title("启动服务")
+
+    # 后端
+    log_step("启动后端 ")
+    backend_proc = run_bg("npm run dev", cwd=str(BACKEND_DIR))
+    log_step_ok(f"后端启动中 (PID {backend_proc.pid})")
+
+    log_info("等待后端就绪...")
+    if wait_for_url(f"http://localhost:{BACKEND_PORT}/api/health", timeout=30):
+        log_ok("后端已就绪")
+    else:
+        log_warn("后端未响应，可能还在启动中")
+
+    # 前端
+    log_step("启动前端 ")
+    frontend_proc = run_bg("npm run dev", cwd=str(FRONTEND_DIR))
+    log_step_ok(f"前端启动中 (PID {frontend_proc.pid})")
+
+    log_info("等待前端就绪...")
+    if wait_for_port(3000, timeout=20):
+        log_ok("前端已就绪")
+    else:
+        log_warn("前端未响应，可能还在启动中")
+
+    # Cloudflare Quick Tunnel
+    log_step("Cloudflare 隧道 ")
+    tunnel_url = None
+    tunnel_proc = None
+    if command_exists("cloudflared"):
+        tunnel_proc = subprocess.Popen(
+            ["cloudflared", "tunnel", "--url", "http://localhost:3000"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            errors="replace",
+        )
+        # 等 cloudflared 打印出 trycloudflare.com URL
+        import threading
+        tunnel_ready = threading.Event()
+
+        def _read_tunnel():
+            nonlocal tunnel_url
+            for line in tunnel_proc.stdout:
+                print(f"  {C_GRAY}{line.rstrip()}{C_RESET}", flush=True)
+                m = re.search(r"https://[a-zA-Z0-9.-]+\.trycloudflare\.com", line)
+                if m and not tunnel_ready.is_set():
+                    tunnel_url = m.group(0)
+                    tunnel_ready.set()
+
+        threading.Thread(target=_read_tunnel, daemon=True).start()
+
+        tunnel_ready.wait(timeout=30)
+        if tunnel_url:
+            log_step_ok(f"隧道已建立")
+        else:
+            log_warn("隧道建立超时，请检查网络或手动启动 cloudflared")
+    else:
+        log_warn("cloudflared 未安装，跳过隧道")
+        log_info("安装: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/")
+
+    # 显示状态
+    print(f"""
+  {C_GREEN}══════════════════════════════════════════════
+    服务已启动 - 分享模式
+  ════════════════════════════════════════════{C_RESET}
+
+  {C_CYAN}  本地前端: http://localhost:3000
+  本地后端: http://localhost:{BACKEND_PORT}""")
+    if tunnel_url:
+        print(f"""
+  {C_YELLOW}  公网链接 (发给朋友):
+  {C_WHITE}  {tunnel_url}{C_RESET}""")
+    print(f"""
+  {C_GRAY}══════════════════════════════════════════════
+    停止服务: python start.py stop
+  ════════════════════════════════════════════{C_RESET}
+""")
+
+    # 监控所有进程
+    try:
+        while True:
+            if backend_proc.poll() is not None:
+                log_err(f"后端进程已退出 (退出码 {backend_proc.returncode})")
+                break
+            if frontend_proc.poll() is not None:
+                log_err(f"前端进程已退出 (退出码 {frontend_proc.returncode})")
+                break
+            time.sleep(2)
+    except KeyboardInterrupt:
+        log_info("\n收到 Ctrl+C，正在停止服务...")
+        backend_proc.terminate()
+        frontend_proc.terminate()
+        try:
+            tunnel_proc.terminate()
+        except Exception:
+            pass
+        log_ok("服务已停止")
+
+
 # ── 仅初始化 ───────────────────────────────────────────────
 def start_init():
     check_prerequisites()
@@ -515,8 +622,8 @@ def main():
     )
     parser.add_argument(
         "mode", nargs="?", default="dev",
-        choices=["dev", "preview", "docker", "stop", "init"],
-        help="启动模式 (默认: dev)"
+        choices=["dev", "preview", "docker", "stop", "init", "share"],
+        help="启动模式 (默认: dev)；share = 开发模式 + Cloudflare 隧道分享"
     )
     args = parser.parse_args()
 
@@ -528,6 +635,7 @@ def main():
         "docker":  start_docker,
         "stop":    stop_services,
         "init":    start_init,
+        "share":   start_share,
     }
     actions[args.mode]()
 
