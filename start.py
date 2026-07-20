@@ -356,7 +356,7 @@ def start_docker():
     print()
     log_ok("Docker 服务已启动")
     print(f"""
-  {C_CYAN}  前端:         http://localhost:3000
+  {C_CYAN}  前端:         http://localhost:{FRONTEND_PORT}
   后端 API:     http://localhost:{BACKEND_PORT}
   AI 服务:      http://localhost:8000
   MinIO 控制台: http://localhost:9001{C_RESET}
@@ -586,7 +586,7 @@ def start_share():
     服务已启动 - 分享模式
   ════════════════════════════════════════════{C_RESET}
 
-  {C_CYAN}  本地前端: http://localhost:3000
+  {C_CYAN}  本地前端: http://localhost:{FRONTEND_PORT}
   本地后端: http://localhost:{BACKEND_PORT}""")
     if tunnel_url:
         print(f"""
