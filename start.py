@@ -622,6 +622,53 @@ def start_init():
     print()
     log_ok("初始化完成! 运行 python start.py dev 开始开发")
 
+# ── 交互式菜单 ─────────────────────────────────────────────
+def show_menu():
+    """无参数启动时显示交互式菜单"""
+    show_banner()
+
+    # 检测 cloudflared 是否可用
+    cf_candidates = [
+        "cloudflared",
+        shutil.which("cloudflared"),
+        os.path.expandvars(r"%USERPROFILE%\cloudflared.exe"),
+        str(ROOT_DIR / "cloudflared.exe"),
+    ]
+    has_cf = any(
+        c and (shutil.which(c) or os.path.exists(c))
+        for c in cf_candidates if c
+    )
+
+    tunnel_label = "开发 + 隧道（⚠ cloudflared 未安装）" if not has_cf else "开发 + Cloudflare 隧道（生成公网链接发给朋友）"
+
+    options = [
+        ("dev",     "开发模式（前后端热更新，SQL 日志全开）"),
+        ("share",   tunnel_label),
+        ("preview", "预览模式（先构建再启动，模拟生产）"),
+        ("init",    "初始化（安装依赖 + 数据库迁移 + 种子数据）"),
+        ("stop",    "停止所有运行中的服务"),
+    ]
+
+    print(f"  {C_CYAN}请选择启动模式:{C_RESET}")
+    print()
+    for i, (_, desc) in enumerate(options, 1):
+        print(f"  {C_BOLD}[{i}]{C_RESET} {desc}")
+    print()
+
+    while True:
+        try:
+            choice = input(f"  {C_GREEN}> 输入数字 1-{len(options)}:{C_RESET} ").strip()
+            if choice == "q" or choice == "Q":
+                print(f"  {C_GRAY}已取消{C_RESET}")
+                sys.exit(0)
+            idx = int(choice) - 1
+            if 0 <= idx < len(options):
+                return options[idx][0]
+        except (ValueError, IndexError):
+            pass
+        print(f"  {C_YELLOW}  请输入 1-{len(options)} 或 q 退出{C_RESET}")
+
+
 # ── 主入口 ─────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(
@@ -629,20 +676,23 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  python start.py              # 默认开发模式
+  python start.py              # 交互式菜单
   python start.py dev          # 开发模式（前后端热更新）
+  python start.py share        # 开发模式 + Cloudflare 隧道
   python start.py preview      # 预览模式（先构建再启动）
-  python start.py docker       # Docker Compose 全量启动
   python start.py stop         # 停止所有服务
   python start.py init         # 仅初始化环境（安装依赖 + 数据库）
 """
     )
     parser.add_argument(
-        "mode", nargs="?", default="dev",
+        "mode", nargs="?", default=None,
         choices=["dev", "preview", "docker", "stop", "init", "share"],
-        help="启动模式 (默认: dev)；share = 开发模式 + Cloudflare 隧道分享"
+        help="启动模式 (不传则显示交互式菜单)"
     )
     args = parser.parse_args()
+
+    if args.mode is None:
+        args.mode = show_menu()
 
     show_banner()
 
