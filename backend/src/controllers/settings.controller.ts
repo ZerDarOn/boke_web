@@ -3,6 +3,20 @@ import { SettingsService } from '../services/settings.service';
 import * as response from '../utils/response';
 import * as fs from 'fs';
 import * as path from 'path';
+import axios from 'axios';
+
+/**
+ * 通知 ai-service Python 进程重新加载 .env 配置。
+ * 失败不影响主流程——管理员可以手动重启 AI 服务。
+ */
+async function notifyAiReload(): Promise<void> {
+  try {
+    await axios.post('http://localhost:8000/api/v1/ai/reload-config', {}, { timeout: 3000 });
+    console.log('[AI Config] Python service reloaded successfully');
+  } catch (err: any) {
+    console.warn('[AI Config] Python service reload failed (may need manual restart):', err.message);
+  }
+}
 
 /**
  * 将 aiConfig 同步写入 ai-service/.env 文件。
@@ -122,6 +136,8 @@ export class SettingsController {
       // 如果提交了 AI 模型配置，同步写入 ai-service/.env
       if (settings.aiConfig && typeof settings.aiConfig === 'object') {
         syncAiEnv(settings.aiConfig);
+        // 后台静默通知 Python 服务热加载新配置（失败不阻塞保存）
+        notifyAiReload();
       }
 
       response.success(res, { 

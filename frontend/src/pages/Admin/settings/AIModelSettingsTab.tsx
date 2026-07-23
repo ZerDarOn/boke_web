@@ -206,9 +206,56 @@ const AIModelSettingsTab: React.FC<SettingsTabProps> = ({ config, updateConfig }
         )}
       </div>
 
+      {/* 知识库 */}
+      <div className="pt-4 border-t border-gray-200">
+        <h4 className="text-sm font-medium text-gray-700 mb-2">文章知识库索引</h4>
+        <p className="text-xs text-gray-400 mb-3">
+          将已发布文章的内容索引到 ChromaDB。索引后 AI 回答会引用原文证据（Smart RAG）。
+        </p>
+        <button
+          onClick={async () => {
+            setTestStatus('testing');
+            try {
+              const res = await fetch('/api/ai/index/rebuild', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+              });
+              if (res.ok) {
+                const data = await res.json();
+                setTestStatus('ok');
+                setTimeout(() => setTestStatus('idle'), 3000);
+              } else {
+                setTestStatus('fail');
+              }
+            } catch {
+              setTestStatus('fail');
+            }
+          }}
+          disabled={testStatus === 'testing'}
+          className="flex items-center gap-2 px-4 py-2 bg-violet-500 text-white rounded-lg text-sm hover:bg-violet-600 disabled:opacity-50 transition-colors"
+        >
+          {testStatus === 'testing' ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <RefreshCw size={16} />
+          )}
+          重建知识库索引
+        </button>
+        {testStatus === 'ok' && (
+          <span className="inline-flex items-center gap-1 text-sm text-green-600 ml-3">
+            <Check size={16} /> 索引完成
+          </span>
+        )}
+        {testStatus === 'fail' && (
+          <span className="inline-flex items-center gap-1 text-sm text-red-500 ml-3">
+            <AlertCircle size={16} /> 索引失败（请确认 AI 服务已启动）
+          </span>
+        )}
+      </div>
+
       {/* 提示 */}
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-        修改 AI 模型配置后，请点击页面顶部的"保存"按钮，然后重启 AI 服务使其生效。
+        修改 AI 模型配置后，点击页面顶部的"保存"按钮即可自动热加载，无需手动重启。
         {ai.provider === 'local' && ' 使用本地模型时，请确保 Custom Base URL 指向正确的 Ollama/vLLM 地址。'}
       </div>
 

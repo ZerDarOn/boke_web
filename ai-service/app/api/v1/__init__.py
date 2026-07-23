@@ -44,6 +44,36 @@ grounded_answer_service = GroundedAnswerService(ai_client, companion_persona)
 logger = logging.getLogger("ai-service.api")
 
 
+@ai_router.post("/reload-config", response_model=dict)
+async def reload_config():
+    """后台修改 AI 模型配置后调用此接口，无需重启 Python 进程即可重新加载 .env"""
+    try:
+        from app.core.config import get_settings
+        from app.services.ai_service import AIService
+
+        # 清除 pydantic-settings 缓存，重新读取 .env
+        get_settings.cache_clear()
+        new_settings = get_settings()
+
+        # 重建 AI 客户端（带上新的 API Key / Base URL）
+        global ai_client
+        ai_client = AIService()
+
+        logger.info(
+            "Config reloaded: openai=%s model=%s base_url=%s",
+            bool(new_settings.OPENAI_API_KEY),
+            new_settings.OPENAI_MODEL,
+            new_settings.OPENAI_BASE_URL or "(default)",
+        )
+        return {
+            "success": True,
+            "providers": await ai_client.provider_status(),
+            "model": new_settings.OPENAI_MODEL,
+        }
+    except Exception as e:
+        raise service_error("Config reload", e)
+
+
 def service_error(operation: str, error: Exception) -> HTTPException:
     logger.error("AI API operation failed operation=%s error_type=%s", operation, type(error).__name__)
     return HTTPException(status_code=500, detail=f"{operation} unavailable")

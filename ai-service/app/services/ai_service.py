@@ -162,6 +162,16 @@ class AIService:
     async def generate_json(self, prompt: str, task: AITask) -> Dict[str, Any]:
         return parse_json_object(await self.generate(prompt, task=task))
 
+    async def provider_status(self) -> Dict[str, Any]:
+        """Return availability of each configured provider (used by /reload-config)."""
+        result = {}
+        for p in self.providers:
+            try:
+                result[p.name] = await p.is_available()
+            except Exception:
+                result[p.name] = False
+        return result
+
 
 class ContentAnalyzer:
     def __init__(self, ai_service: Optional[AIService] = None):
