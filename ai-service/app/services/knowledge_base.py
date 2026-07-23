@@ -116,7 +116,10 @@ class KnowledgeBase:
             api_key = settings.OPENAI_API_KEY
             if not api_key:
                 raise RuntimeError("OPENAI_API_KEY not configured — needed for embeddings")
-            client = OpenAI(api_key=api_key)
+            extra = {}
+            if settings.OPENAI_BASE_URL:
+                extra["base_url"] = settings.OPENAI_BASE_URL
+            client = OpenAI(api_key=api_key, **extra)
 
             def embed(texts: List[str]) -> List[List[float]]:
                 resp = client.embeddings.create(

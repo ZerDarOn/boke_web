@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     
     # AI Services
     OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_FAST_MODEL: str = ""
     OPENAI_STANDARD_MODEL: str = ""

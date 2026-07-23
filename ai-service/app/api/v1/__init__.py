@@ -205,8 +205,11 @@ async def chat(req: ChatRequest):
     """博客 AI 助手对话（AiCompanion 右下角浮窗）— Smart RAG"""
     try:
         kb = get_kb()
-
-        chunks, needs_kb = await kb.search(req.message)
+        try:
+            chunks, needs_kb = await kb.search(req.message)
+        except Exception as e:
+            logger.warning("KB search failed, falling back to chat-only mode: %s", e)
+            chunks, needs_kb = [], False
         page_context = req.context.model_dump() if req.context else None
         logger.info(
             "Companion chat context page_type=%s has_title=%s",

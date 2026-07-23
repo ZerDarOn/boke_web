@@ -5,14 +5,15 @@ Request logging middleware
 import time
 import logging
 from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("ai-service")
 
 
-class LoggingMiddleware:
+class LoggingMiddleware(BaseHTTPMiddleware):
     """Log incoming requests with duration"""
 
-    async def __call__(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next):
         start = time.time()
         response = await call_next(request)
         duration = time.time() - start

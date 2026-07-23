@@ -50,7 +50,9 @@ def register_exception_handlers(app):
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         """Handle all unhandled exceptions"""
-        print(f"Unhandled exception: {exc}", exc_info=True)
+        import logging
+        logger = logging.getLogger("ai-service")
+        logger.exception(f"Unhandled exception: {exc}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={

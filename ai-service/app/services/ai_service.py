@@ -40,7 +40,10 @@ class OpenAIProvider(LLMProvider):
     def _get_client(self):
         if self._client is None:
             from openai import AsyncOpenAI
-            self._client = AsyncOpenAI(api_key=self.api_key)
+            init_params = {"api_key": self.api_key}
+            if settings.OPENAI_BASE_URL:
+                init_params["base_url"] = settings.OPENAI_BASE_URL
+            self._client = AsyncOpenAI(**init_params)
         return self._client
 
     @staticmethod
