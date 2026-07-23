@@ -216,12 +216,26 @@ async def chat(req: ChatRequest):
             req.context.page_type if req.context else "default",
             bool(req.context and req.context.title),
         )
-        result = await grounded_answer_service.answer(
-            req.message,
-            req.history,
-            chunks if needs_kb else [],
-            page_context,
-        )
+        # 无知识库片段时走纯聊天模式，不用 grounded answer（否则会返回"依据不足"）
+        if not needs_kb or not chunks:
+            persona_context = companion_persona.prompt_context(page_context or {})
+            reply = await ai_client.generate(
+                f"{persona_context}\n\n用户: {req.message}\n助手:"
+            )
+            result = {
+                "reply": reply.strip(),
+                "sources": [],
+                "grounded": False,
+                "confidence": 0.0,
+                "refusal_reason": None,
+            }
+        else:
+            result = await grounded_answer_service.answer(
+                req.message,
+                req.history,
+                chunks,
+                page_context,
+            )
         return ChatResponse(**result)
     except Exception as e:
         raise service_error("AI chat", e)
