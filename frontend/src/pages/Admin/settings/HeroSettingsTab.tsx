@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Upload } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Upload, Loader2 } from 'lucide-react';
 import { uploadImage } from '../../../lib/upload';
 import { useToastActions } from '../../../contexts/ToastContext';
 
@@ -7,6 +7,9 @@ import type { HeroSettingsTabProps } from './types';
 
 const HeroSettingsTab: React.FC<HeroSettingsTabProps> = ({ config, updateHeroContent, editingHero, setEditingHero, setConfig }) => {
   const toast = useToastActions();
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  // 用 ref 给每个 background 存一个独立的 hidden input，方便清空后重新选择
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const setBgImage = (id: string, url: string) => {
     setConfig(prev => ({
@@ -18,13 +21,21 @@ const HeroSettingsTab: React.FC<HeroSettingsTabProps> = ({ config, updateHeroCon
   };
 
   const handleUpload = async (id: string, file?: File) => {
-    if (!file) return;
+    if (!file || uploadingId) return;
+    setUploadingId(id);
     try {
       const url = await uploadImage(file, 'general');
       setBgImage(id, url);
       toast.success('背景图已上传');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '上传失败');
+    } catch (e: any) {
+      const msg = e?.message || '上传失败，请检查网络或文件格式';
+      toast.error(msg);
+      console.error('[HeroUpload]', e);
+    } finally {
+      setUploadingId(null);
+      // 清空 input，允许重复选择同一个文件
+      const input = fileInputRefs.current[id];
+      if (input) input.value = '';
     }
   };
 
@@ -92,13 +103,20 @@ const HeroSettingsTab: React.FC<HeroSettingsTabProps> = ({ config, updateHeroCon
                     placeholder="图片链接 https://… 或点右侧上传"
                     className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
-                  <label className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg cursor-pointer hover:bg-gray-700 transition-colors">
-                    <Upload size={14} /> 上传
+                  <label className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg transition-colors ${uploadingId === hero.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-800 text-white cursor-pointer hover:bg-gray-700'}`}>
+                    {uploadingId === hero.id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Upload size={14} />
+                    )}
+                    {uploadingId === hero.id ? '上传中…' : '上传'}
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
+                      ref={(el) => { fileInputRefs.current[hero.id] = el; }}
                       onChange={(e) => handleUpload(hero.id, e.target.files?.[0])}
+                      disabled={uploadingId === hero.id}
                     />
                   </label>
                 </div>
