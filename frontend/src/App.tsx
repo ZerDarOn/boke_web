@@ -36,6 +36,12 @@ const Gallery = lazy(() => import('./pages/Gallery'));
 const GalleryDetail = lazy(() => import('./pages/GalleryDetail'));
 const Music = lazy(() => import('./pages/Music'));
 
+// Divination Pages
+const Divination = lazy(() => import('./pages/Divination'));
+const TarotReading = lazy(() => import('./pages/divination/TarotReading'));
+const IChingDivination = lazy(() => import('./pages/divination/IChingDivination'));
+const AstrologyChart = lazy(() => import('./pages/divination/AstrologyChart'));
+
 // Admin Pages
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
@@ -182,6 +188,10 @@ const App: React.FC = () => {
             <Route path="gallery" element={<Gallery />} />
             <Route path="gallery/:id" element={<GalleryDetail />} />
             <Route path="music" element={<Music />} />
+            <Route path="divination" element={<Divination />} />
+            <Route path="divination/tarot" element={<TarotReading />} />
+            <Route path="divination/iching" element={<IChingDivination />} />
+            <Route path="divination/astrology" element={<AstrologyChart />} />
           </Route>
 
            {/* Maintenance */}

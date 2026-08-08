@@ -44,6 +44,7 @@ import {
   exportRoutes,
   errorRoutes,
   gameRoutes,
+  divinationRoutes,
 } from './routes';
 import fileService from './services/file.service';
 
@@ -207,6 +208,7 @@ app.use('/api/content', contentRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/error', errorRoutes);
 app.use('/api/games', gameRoutes);
+app.use('/api/divination', divinationRoutes);
 app.use('/rss.xml', rssRoutes);
 
 // 托管打包好的前端（单端口部署）：存在 frontend/dist 时，

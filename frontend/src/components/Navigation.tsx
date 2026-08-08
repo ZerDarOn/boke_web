@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Search, Palette, SidebarClose, SidebarOpen, Globe, Settings, ChevronDown, 
+import {
+  Search, Palette, SidebarClose, SidebarOpen, Globe, Settings, ChevronDown,
   Github, Video, Book, Camera, Heart, Network, Code, Clock, UserCheck, RotateCcw, Moon, Sun, BookOpen, Gamepad2,
-  Menu, X, Check, Music2
+  Menu, X, Check, Music2, Sparkles
 } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 import { THEME_PRESETS, presetPrimaryColor, presetSecondaryColor } from '../lib/themePresets';
@@ -139,7 +139,8 @@ const Navigation: React.FC<NavigationProps> = ({
             { label: lang === 'EN' ? 'Games' : '游戏', icon: Gamepad2, path: '/games' },
             { label: lang === 'EN' ? 'Diary' : '日记', icon: Book, path: '/diary' },
             { label: lang === 'EN' ? 'Gallery' : '相册', icon: Camera, path: '/gallery' },
-            { label: lang === 'EN' ? 'Music' : '音乐馆', icon: Music2, path: '/music' }
+            { label: lang === 'EN' ? 'Music' : '音乐馆', icon: Music2, path: '/music' },
+            { label: lang === 'EN' ? 'Divination' : '占卜屋', icon: Sparkles, path: '/divination' }
         ]
     },
     { 

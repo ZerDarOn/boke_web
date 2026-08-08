@@ -474,6 +474,7 @@ model User {
   lastLoginAt DateTime?
 
   posts       Post[]   @relation("PostAuthor")
+  divinations DivinationRecord[] @relation("UserDivinations")
 
   @@index([role])
   @@index([isActive])
@@ -582,4 +583,41 @@ model Game {
   @@index([platform])
   @@index([isHidden])
   @@map("games")
+}
+
+// 占卜类型
+enum DivinationType {
+  TAROT     // 塔罗牌
+  ICHING    // 易经卦象
+  ASTROLOGY // 星相学
+}
+
+// 占卜记录
+model DivinationRecord {
+  id        String         @id @default(cuid())
+  type      DivinationType
+  question  String?  // 用户的提问（可选）
+
+  // 占卜结果（JSON 存储完整结构化数据）
+  // tarot: { spread, cards: [{ name, reversed, position }] }
+  // iching: { hexagram, changingLines, changedHexagram }
+  // astrology: { birthDate, birthTime, birthPlace, chartData }
+  result    Json
+
+  // AI 解读（可选，用户点击"深度解读"后填充）
+  aiReading String?
+
+  // 是否公开（默认仅自己可见）
+  isPublic  Boolean  @default(false)
+
+  userId    String
+  user      User     @relation("UserDivinations", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("divination_records")
 }

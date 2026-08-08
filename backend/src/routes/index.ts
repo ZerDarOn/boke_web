@@ -9,6 +9,7 @@ export { default as contentRoutes } from './content';
 export { default as currentStatusRoutes } from './current-status';
 export { default as dashboardRoutes } from './dashboard';
 export { default as diaryRoutes } from './diary';
+export { default as divinationRoutes } from './divination';
 export { default as errorRoutes } from './error';
 export { default as exportRoutes } from './export';
 export { default as fileRoutes } from './files';

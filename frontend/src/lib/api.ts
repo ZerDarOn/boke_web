@@ -30,6 +30,7 @@ export * from './api/files';
 export * from './api/users';
 export * from './api/settings';
 export * from './api/ai';
+export * from './api/divination';
 
 export { api } from './api/client';
 export { getApiBaseUrl } from './apiConfig';

@@ -67,4 +67,10 @@ export const queryKeys = {
   history: () => ['history'] as const,
   files: (path?: string) => ['files', path ?? ''] as const,
   auth: { me: () => ['auth', 'me'] as const },
+  divination: {
+    all: ['divination'] as const,
+    list: (params?: Record<string, unknown>) =>
+      [...queryKeys.divination.all, 'list', params ?? {}] as const,
+    detail: (id: string) => [...queryKeys.divination.all, 'detail', id] as const,
+  },
 };
