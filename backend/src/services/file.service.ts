@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { getMinioClient, getObjectKey } from '../config/minio';
 import { resolveStoragePath } from '../lib/storage-path-security';
 
-// 文件元数据接口
+// 文件元数据接口（外部 API 返回用，不含 passwordHash）
 interface FileMetadata {
   name: string;
   type: 'file' | 'directory';
@@ -13,9 +13,13 @@ interface FileMetadata {
   size?: number;
   modifiedAt: string;
   protected?: boolean;
-  passwordHash?: string;
   fileType?: string;
   children?: FileMetadata[];
+}
+
+// 内部元数据（含 passwordHash，仅用于存储和校验，不通过 API 返回）
+interface InternalFileMetadata extends FileMetadata {
+  passwordHash?: string;
 }
 
 // 本地文件存储目录
@@ -32,7 +36,7 @@ const ensureLocalDir = () => {
 };
 
 // 加载元数据
-const loadMetadata = (): Map<string, FileMetadata> => {
+const loadMetadata = (): Map<string, InternalFileMetadata> => {
   try {
     if (fs.existsSync(METADATA_PATH)) {
       const data = fs.readFileSync(METADATA_PATH, 'utf-8');
@@ -46,7 +50,7 @@ const loadMetadata = (): Map<string, FileMetadata> => {
 };
 
 // 保存元数据
-const saveMetadata = (metadata: Map<string, FileMetadata>) => {
+const saveMetadata = (metadata: Map<string, InternalFileMetadata>) => {
   try {
     const json = Object.fromEntries(metadata);
     fs.writeFileSync(METADATA_PATH, JSON.stringify(json, null, 2));
@@ -69,7 +73,7 @@ const verifyPassword = (password: string, hash: string): boolean => {
 class FileService {
   private minioClient: Client | null;
   private bucket: string;
-  private metadata: Map<string, FileMetadata>;
+  private metadata: Map<string, InternalFileMetadata>;
   private useMinIO: boolean;
   private storageMode: 'minio' | 'local' = 'local';
 
@@ -193,7 +197,6 @@ class FileService {
               size: obj.size,
               modifiedAt: obj.lastModified?.toISOString() || new Date().toISOString(),
               protected: meta?.protected || false,
-              passwordHash: meta?.passwordHash,
               fileType: meta?.fileType,
               children: [],
             });
@@ -232,7 +235,6 @@ class FileService {
             size: stats.size,
             modifiedAt: stats.mtime.toISOString(),
             protected: meta?.protected || false,
-            passwordHash: meta?.passwordHash,
             fileType: meta?.fileType,
             children: [],
           });

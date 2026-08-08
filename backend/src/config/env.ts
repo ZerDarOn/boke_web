@@ -88,7 +88,13 @@ export const config = {
     PORT: parseInt(process.env.PORT || '3001'),
     NODE_ENV: process.env.NODE_ENV || 'development',
     DATABASE_URL: process.env.DATABASE_URL || '',
-    JWT_SECRET: process.env.JWT_SECRET || 'default-secret-change-me',
+    JWT_SECRET: process.env.JWT_SECRET || (() => {
+      // 开发环境允许 fallback 到默认值（带警告），生产环境直接报错
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('JWT_SECRET environment variable is required in production');
+      }
+      return 'default-secret-change-me';
+    })(),
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
     FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
     FRONTEND_URLS: (() => {

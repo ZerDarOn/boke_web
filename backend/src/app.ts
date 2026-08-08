@@ -125,8 +125,9 @@ allowedOrigins.forEach(origin => console.log(`  - ${origin}`));
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) {
-      callback(null, true);
+    // 拒绝无 Origin 或 null origin（sandbox iframe / data: URL 等可构造）
+    if (!origin || origin === 'null') {
+      callback(null, false);
       return;
     }
 

@@ -3,7 +3,8 @@ import { GalleryService } from '../services/gallery.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.middleware';
+import { formRateLimit } from '../middleware/rate-limit.middleware';
 import { galleryImageSchema, albumSchema, photoCommentSchema } from '../schemas';
 
 const router = Router();
@@ -83,8 +84,8 @@ router.post('/albums', authenticate, requireAdmin, validateBody(albumSchema), as
   }
 });
 
-// POST /api/gallery/:id/comments - 添加评论
-router.post('/:id/comments', validateBody(photoCommentSchema), async (req, res) => {
+// POST /api/gallery/:id/comments - 添加评论（需提供邮箱，限流防滥用）
+router.post('/:id/comments', formRateLimit, optionalAuth, validateBody(photoCommentSchema), async (req, res) => {
   try {
     const comment = await GalleryService.addComment(req.params.id, req.body);
     response.created(res, comment);

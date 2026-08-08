@@ -189,9 +189,8 @@ export async function syncBilibiliAnime(uid: string, opts: SyncOptions = {}): Pr
 
   // 兜底：把库里所有残留的 http 封面改成 https（避免被 CSP / 混合内容拦）
   if (!dryRun) {
-    await prisma.$executeRawUnsafe(
-      `UPDATE anime SET cover = replace(cover, 'http://', 'https://') WHERE cover LIKE 'http://%'`,
-    );
+    await prisma.$executeRaw
+      `UPDATE anime SET cover = replace(cover, 'http://', 'https://') WHERE cover LIKE 'http://%'`;
   }
 
   return { total: follows.length, created, updated, skipped };

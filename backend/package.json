@@ -39,6 +39,7 @@
   "author": "CYBER.RONIN",
   "license": "MIT",
   "dependencies": {
+    "@ink-spirit/shared": "1.0.0",
     "@prisma/client": "^5.22.0",
     "@types/archiver": "^7.0.0",
     "@types/pg": "^8.16.0",

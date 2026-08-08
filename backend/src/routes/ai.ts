@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { success, error } from '../utils/response';
 import { aiClient, type CompanionPageContext } from '../services/ai.client';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.middleware';
 import { apiLog } from '../lib/logger';
 
 const router: Router = Router();
@@ -112,8 +112,8 @@ router.post('/sentiment', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/ai/chat - 博客 AI 助手对话
-router.post('/chat', async (req, res) => {
+// POST /api/ai/chat - 博客 AI 助手对话（公开，但限流+optionalAuth 记录上下文）
+router.post('/chat', optionalAuth, async (req, res) => {
   try {
     const { message, history = [], context } = req.body;
     if (!message || typeof message !== 'string' || message.length > MAX_CHAT_MESSAGE_LENGTH) {

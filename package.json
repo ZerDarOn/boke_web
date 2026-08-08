@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "INK.SPIRIT - Cyber-Wuxia Personal Blog (Fullstack)",
   "private": true,
+  "workspaces": ["shared", "frontend", "backend"],
   "scripts": {
     "start": "node start.js dev",
     "start:dev": "node start.js dev",

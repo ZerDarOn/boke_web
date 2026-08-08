@@ -80,6 +80,7 @@ const GalleryDetail: React.FC = () => {
       id: `c${Date.now()}`,
       author: 'Visitor',
       content: commentInput.trim(),
+      email: '',
       date: new Date().toLocaleString('zh-CN', {
         year: 'numeric',
         month: '2-digit',

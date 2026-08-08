@@ -24,11 +24,14 @@ export function isMaintenanceEnabled(): boolean {
 }
 
 /**
- * Verify maintenance password
+ * Verify maintenance password (constant-time comparison to prevent timing attacks)
  */
 export function verifyPassword(password: string): boolean {
   if (!MAINTENANCE_PASSWORD) return false;
-  return password === MAINTENANCE_PASSWORD;
+  const a = Buffer.from(password);
+  const b = Buffer.from(MAINTENANCE_PASSWORD);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }
 
 /**

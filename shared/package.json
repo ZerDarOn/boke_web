@@ -6,6 +6,6 @@
   "types": "./index.ts",
   "exports": {
     ".": "./index.ts",
-    "./enums": "./enums.ts"
+    "./enums": "./types/enums.ts"
   }
 }

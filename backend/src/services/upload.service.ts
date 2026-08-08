@@ -163,23 +163,29 @@ async function uploadToLocal(
   return result;
 }
 
+// 安全辅助：对 filename 和 type 做 basename 截断，阻止路径穿越
+const safeName = (input: string): string => path.basename(input);
+
 // 删除文件
 export const deleteFile = async (
   filename: string,
   type: string = 'gallery'
 ): Promise<boolean> => {
   try {
+    const safeFilename = safeName(filename);
+    const safeType = safeName(type);
+
     if (USE_MINIO) {
       // 从 MinIO 删除
       const minioClient = getMinioClient();
       const bucket = process.env.MINIO_BUCKET || 'ink-spirit-blog';
 
       // 删除原图
-      const objectKey = getObjectKey(filename, type);
+      const objectKey = getObjectKey(safeFilename, safeType);
       await minioClient.removeObject(bucket, objectKey);
 
       // 删除缩略图
-      const thumbnailKey = getObjectKey(`thumb_${filename}`, type);
+      const thumbnailKey = getObjectKey(`thumb_${safeFilename}`, safeType);
       try {
         await minioClient.removeObject(bucket, thumbnailKey);
       } catch (err) {
@@ -190,8 +196,8 @@ export const deleteFile = async (
       return true;
     } else {
       // 从本地删除
-      const filePath = path.join(UPLOAD_DIR, type, filename);
-      const thumbnailPath = path.join(UPLOAD_DIR, type, `thumb_${filename}`);
+      const filePath = path.join(UPLOAD_DIR, safeType, safeFilename);
+      const thumbnailPath = path.join(UPLOAD_DIR, safeType, `thumb_${safeFilename}`);
 
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
@@ -219,14 +225,17 @@ export const getFileInfo = (
   thumbnailUrl?: string;
   path: string;
 } => {
-  const filePath = path.join(UPLOAD_DIR, type, filename);
-  const thumbnailPath = path.join(UPLOAD_DIR, type, `thumb_${filename}`);
+  const safeFilename = safeName(filename);
+  const safeType = safeName(type);
+
+  const filePath = path.join(UPLOAD_DIR, safeType, safeFilename);
+  const thumbnailPath = path.join(UPLOAD_DIR, safeType, `thumb_${safeFilename}`);
 
   return {
     exists: fs.existsSync(filePath),
-    url: getFileUrl(filename, type),
+    url: getFileUrl(safeFilename, safeType),
     thumbnailUrl: fs.existsSync(thumbnailPath)
-      ? getFileUrl(`thumb_${filename}`, type)
+      ? getFileUrl(`thumb_${safeFilename}`, safeType)
       : undefined,
     path: filePath,
   };

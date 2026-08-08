@@ -1,17 +1,19 @@
 import { z } from 'zod';
 
-// 本地定义共享类型
-export type ProjectStatus = 'ACTIVE' | 'ARCHIVED' | 'DEPLOYED';
-export type AnimeStatus = 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
-export type AnimeType = 'TV' | 'OVA' | 'Movie' | 'Special' | 'ONA';
-export type DiaryType = 'SHORT' | 'LONG';
-export type TimelineEventType = 'MILESTONE' | 'JOB' | 'LIFE';
-export type SkillRank = 'Master' | 'Expert' | 'Adept' | 'Novice';
-export type SkillNodeType = 'core' | 'major' | 'minor';
-export type ImageAspect = 'portrait' | 'landscape' | 'square';
-export type AnnouncementType = 'INFO' | 'WARNING' | 'SUCCESS' | 'IMPORTANT';
-export type AccessLevel = 'PUBLIC' | 'PRIVATE' | 'PASSWORD';
-export type HistoryIcon = 'FileText' | 'Briefcase' | 'Code' | 'Star' | 'Trophy' | 'Globe' | 'Zap' | 'Heart';
+// 从 shared 包导入共享类型（前后端单一数据源）
+export type {
+  ProjectStatus,
+  AnimeStatus,
+  AnimeType,
+  DiaryType,
+  TimelineEventType,
+  SkillRank,
+  SkillNodeType,
+  ImageAspect,
+  AnnouncementType,
+  AccessLevel,
+  HistoryIcon,
+} from '@ink-spirit/shared';
 
 /**
  * 可选 URL 字段：接受合法 URL 或空字符串（清空时）。
@@ -216,6 +218,7 @@ export const commentSchema = z.object({
 export const photoCommentSchema = z.object({
   author: z.string().min(1).max(100),
   content: z.string().min(1).max(500),
+  email: z.string().email(),
 });
 
 export const fileSchema = z.object({

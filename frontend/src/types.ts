@@ -154,6 +154,7 @@ export interface PhotoComment {
   id: string;
   author: string;
   content: string;
+  email: string;
   date: string;
 }
 

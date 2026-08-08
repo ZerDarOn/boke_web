@@ -5,6 +5,7 @@ import { authenticate, optionalAuth, requireAdmin } from '../middleware/auth.mid
 import { postSchema } from '../schemas';
 import { z } from 'zod';
 import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
+import { formRateLimit } from '../middleware/rate-limit.middleware';
 
 const router = Router();
 
@@ -24,11 +25,11 @@ router.get('/:id', optionalAuth, PostController.getById);
 
 router.get('/:id/related', cacheMiddleware({ ttl: 300, keyPrefix: 'post' }), PostController.getRelated);
 
-router.post('/:id/view', PostController.incrementView);
+router.post('/:id/view', formRateLimit, PostController.incrementView);
 
-router.post('/:id/like', PostController.incrementLike);
+router.post('/:id/like', formRateLimit, PostController.incrementLike);
 
-router.post('/:id/verify', validateBody(passwordSchema), PostController.verifyPassword);
+router.post('/:id/verify', formRateLimit, validateBody(passwordSchema), PostController.verifyPassword);
 
 router.post('/', authenticate, requireAdmin, validateBody(postSchema), invalidateCache('posts:*'), PostController.create);
 

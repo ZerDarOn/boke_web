@@ -100,8 +100,8 @@ router.get('/:type/:filename/info', async (req, res) => {
   }
 });
 
-// 获取已上传文件列表
-router.get('/', async (req, res) => {
+// 获取已上传文件列表（需管理员权限）
+router.get('/', authenticate, requireAdmin, async (req, res) => {
   try {
     const uploadsDir = path.join(process.cwd(), 'uploads');
     
