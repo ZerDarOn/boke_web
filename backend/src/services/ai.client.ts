@@ -248,6 +248,45 @@ class AIClient {
     return response.data;
   }
 
+  /**
+   * 流式聊天 — 代理 Python AI 服务的 SSE 流，透传给前端。
+   * 返回的是 Readable stream（text/event-stream），调用方直接 res.pipe。
+   */
+  async chatStream(
+    message: string,
+    history: Array<{ role: string; content: string }> = [],
+    context?: CompanionPageContext
+  ): Promise<import('stream').PassThrough> {
+    const response = await axios.post(
+      `${this.baseURL}/api/v1/ai/chat/stream`,
+      { message, history, context },
+      {
+        timeout: REQUEST_TIMEOUT,
+        responseType: 'stream',
+      }
+    );
+    return response.data as import('stream').PassThrough;
+  }
+
+  /**
+   * 占卜馆 AI 深度解读 / 追问
+   * 代理到 Python AI 微服务的 /api/v1/ai/divination。
+   */
+  async divinationReading(payload: {
+    kind: 'tarot' | 'iching' | 'astrology';
+    spread: string;
+    question?: string;
+    followup?: string;
+    previous_reading?: string;
+  }): Promise<{ reading: string }> {
+    const response = await axios.post(
+      `${this.baseURL}/api/v1/ai/divination`,
+      payload,
+      { timeout: REQUEST_TIMEOUT }
+    );
+    return response.data;
+  }
+
   async getCompanionProfile(): Promise<CompanionProfile> {
     const response = await axios.get(
       `${this.baseURL}/api/v1/ai/companion/profile`,

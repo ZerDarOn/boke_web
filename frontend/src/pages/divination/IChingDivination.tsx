@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreateDivination } from '@/hooks/queries/divination';
+import { getBazi, meihuaCast, type Bazi } from './bazi';
+import { getZhouyiByNumber, type ZhouyiHexagram } from './zhouyi-data';
+import DivinationAI from './DivinationAI';
 
 // ============================================================
 // 类型定义
@@ -24,7 +27,7 @@ interface TossResult {
 // 铜钱起卦算法
 // ============================================================
 function tossCoins(): TossResult {
-  // 3 枚铜钱，正面（字）=3，反面（背）=2
+  // 3 枚铜钱，背（无字面）=3，字（有字面）=2；三背=老阳(9)，三字=老阴(6)
   const coins = [
     Math.random() > 0.5 ? 3 : 2,
     Math.random() > 0.5 ? 3 : 2,
@@ -53,6 +56,79 @@ function getChangedHexagram(
   if (!hasChanging) return { changedSymbol: [], changedHexagram: null };
   const changedSymbol = lines.map(l => (l.changing ? 1 - l.value : l.value));
   return { changedSymbol, changedHexagram: findHexagram(changedSymbol) };
+}
+
+// ============================================================
+// 白话解读（易理白话 + 动爻提示 + 变卦启示 + 行动建议）
+// ============================================================
+const SHICHEN_LABELS: Record<number, string> = {
+  0: '子时 23-01',
+  2: '丑时 01-03',
+  4: '寅时 03-05',
+  6: '卯时 05-07',
+  8: '辰时 07-09',
+  10: '巳时 09-11',
+  12: '午时 11-13',
+  14: '未时 13-15',
+  16: '申时 15-17',
+  18: '酉时 17-19',
+  20: '戌时 19-21',
+  22: '亥时 21-23',
+};
+
+const YAO_MEANINGS = [
+  '初爻为根基之位，此事根基尚浅，宜先打牢基础，不宜冒进。',
+  '二爻为己身之位，关键在自身的心性与行动，守正安分即是良策。',
+  '三爻为进退之位，多有反复与犹疑，当审时度势，见机而行。',
+  '四爻为近君之位，宜亲近能者、借助大势，独木难支，须求助力。',
+  '五爻为尊位枢纽，事之成败在此一决，当以正大光明之道处之。',
+  '上爻为终局之位，物极必反，宜留退路，急流勇退方为明智。',
+];
+
+function buildPlainReading(
+  hex: Hexagram,
+  changed: Hexagram | null,
+  movingIndexes: number[],
+  q: string,
+): { summary: string; points: string[]; advice: string } {
+  const points: string[] = [];
+  const subject = q ? `你所问「${q}」一事` : '此事';
+
+  // 总论
+  let summary = `你占得「${hex.name}」。此卦之象，${hex.image}`;
+  if (hex.number === 1 || hex.number === 2) {
+    summary += '两卦纯一，气势纯粹，吉凶全由时位而定。';
+  }
+
+  // 动爻提示
+  if (movingIndexes.length === 0) {
+    points.push(`此卦六爻皆静，无有变爻。${subject}目前格局未变，按现势而行，宜守不宜攻。`);
+  } else if (movingIndexes.length === 1) {
+    points.push(`一爻发动，事机初现。${YAO_MEANINGS[movingIndexes[0]]}`);
+    points.push(`动爻所在之处，正是${subject}的关键节点，当在此处着力。`);
+  } else {
+    points.push(`${movingIndexes.length}爻发动，事态多变，机势交杂。`);
+    movingIndexes.forEach(i => points.push(YAO_MEANINGS[i]));
+    points.push('多爻齐动，不可固执一端，须随变而应，方能持中。');
+  }
+
+  // 变卦启示
+  if (changed) {
+    points.push(`动而之「${changed.name}」，${subject}将由「${hex.name}」之局面转向「${changed.name}」之局面，${changed.image}`);
+    if (changed.number < hex.number) {
+      points.push('由后卦之位观之，变卦序数在前，事态趋向收敛、归于平实。');
+    } else if (changed.number > hex.number) {
+      points.push('变卦序数在后，事态尚有进展与展开的空间。');
+    }
+  }
+
+  // 建议
+  const advice =
+    q
+      ? `总而言之：${subject}当前处「${hex.name}」之势${changed ? `，最终将归于「${changed.name}」` : ''}。建议顺应卦象所示，宜缓不宜急、宜诚不宜巧，心正则路自明。`
+      : `总而言之：当前处「${hex.name}」之势${changed ? `，最终将归于「${changed.name}」` : ''}。宜顺应时势，戒骄戒躁，守正则吉。`;
+
+  return { summary, points, advice };
 }
 
 // ============================================================
@@ -163,12 +239,12 @@ function Coin({
           background: 'rgba(5, 6, 10, 0.8)',
         }}
       />
-      {/* 字面：乾字 / 背面：纹饰 */}
+      {/* 背=3 显示纹饰 / 字=2 显示乾字 */}
       <span
         className="relative font-serif text-[9px] md:text-[10px] text-amber-300/70 select-none"
         style={{ opacity: spinning ? 0.4 : 1 }}
       >
-        {face === 3 ? '乾' : '✦'}
+        {face === 2 ? '乾' : '✦'}
       </span>
     </div>
   );
@@ -189,7 +265,7 @@ function YaoLine({
   return (
     <div className="flex items-center gap-3">
       {/* 爻位标签 */}
-      <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 w-6 text-right">
+      <span className="font-mono text-[9px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] w-6 text-right">
         {label}
       </span>
       {/* 爻线 */}
@@ -235,7 +311,7 @@ function YaoLine({
       {/* 爻性标注 */}
       <span
         className={`font-mono text-[9px] uppercase tracking-widest w-10 ${
-          changing ? 'text-amber-400' : 'text-white/30'
+          changing ? 'text-amber-400' : 'text-[hsla(var(--div-text-hsl)/0.3)]'
         }`}
       >
         {value === 1 ? '阳' : '阴'}
@@ -250,7 +326,7 @@ function YaoLine({
 // ============================================================
 function CornerFrame() {
   const cornerCls =
-    'absolute w-4 h-4 border-white/20';
+    'absolute w-4 h-4 border-[hsla(var(--div-line-hsl)/0.25)]';
   return (
     <>
       <div className={`${cornerCls} top-0 left-0 border-t border-l`} />
@@ -275,6 +351,16 @@ export default function IChingDivination() {
   const [coinFaces, setCoinFaces] = useState<number[]>([2, 2, 2]); // 当前铜钱显示面
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 起卦方式与生辰八字
+  type CastMethod = 'coins' | 'time' | 'bazi';
+  const [castMethod, setCastMethod] = useState<CastMethod>('coins');
+  const [baziData, setBaziData] = useState<Bazi | null>(null);
+  const [birthDate, setBirthDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  const [birthHour, setBirthHour] = useState<number>(12);
+
   // 清理定时器
   useEffect(() => {
     return () => {
@@ -282,8 +368,47 @@ export default function IChingDivination() {
     };
   }, []);
 
-  // 起卦流程：6 次抛掷，从下往上
-  const startDivination = useCallback(() => {
+  // 时间 / 生辰起卦（梅花易数：年支数 + 月 + 日 + 时）
+  const castByTime = useCallback((y: number, m: number, d: number, h: number, method: CastMethod) => {
+    const { symbol, movingLine } = meihuaCast(y, m, d, h);
+    const results: TossResult[] = symbol.map((v, i) => ({
+      value: v,
+      changing: i === movingLine,
+      sum: v ? 7 : 8, // 展示用（时间起卦无铜钱面值）
+    }));
+    if (method === 'bazi') {
+      setBaziData(getBazi(y, m, d, h));
+    } else {
+      setBaziData(null);
+    }
+    setLines(results);
+    setPhase('result');
+  }, []);
+
+  // 起卦入口：按方式分发
+  const startDivination = useCallback((method: CastMethod) => {
+    if (method === 'coins') {
+      startCoinsCast();
+      return;
+    }
+    const now = new Date();
+    if (method === 'time') {
+      castByTime(now.getFullYear(), now.getMonth() + 1, now.getDate(), now.getHours(), method);
+      return;
+    }
+    // 生辰起卦
+    const [yy, mm, dd] = birthDate.split('-').map(Number);
+    castByTime(
+      yy || now.getFullYear(),
+      mm || now.getMonth() + 1,
+      dd || now.getDate(),
+      birthHour,
+      method,
+    );
+  }, [birthDate, birthHour, castByTime]);
+
+  // 起卦流程（铜钱）：6 次抛掷，从下往上
+  const startCoinsCast = useCallback(() => {
     setPhase('tossing');
     setLines([]);
     setCurrentToss(0);
@@ -340,6 +465,7 @@ export default function IChingDivination() {
     setLines([]);
     setCurrentToss(-1);
     setCoinFaces([2, 2, 2]);
+    setBaziData(null);
   }, []);
 
   // 记录结果到后端（静默，不阻塞 UI）
@@ -397,7 +523,7 @@ export default function IChingDivination() {
   return (
     <div
       className="relative min-h-screen overflow-hidden"
-      style={{ background: '#05060a' }}
+      style={{ background: 'hsla(var(--div-bg-hsl))' }}
     >
       {/* 背景装饰：太极光环 */}
       <div
@@ -413,7 +539,7 @@ export default function IChingDivination() {
         <div className="w-full max-w-2xl flex items-center justify-between mb-12">
           <button
             onClick={() => navigate('/divination')}
-            className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-neon transition-colors flex items-center gap-2"
+            className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.4)] hover:text-neon transition-colors flex items-center gap-2"
           >
             <span>←</span>
             <span>返回</span>
@@ -422,7 +548,7 @@ export default function IChingDivination() {
             <div className="font-mono text-[10px] uppercase tracking-[0.4em] text-secondary mb-1">
               / ICHING
             </div>
-            <h1 className="font-serif font-black text-2xl md:text-3xl text-white tracking-tight">
+            <h1 className="font-serif font-black text-2xl md:text-3xl text-[hsl(var(--div-text-hsl))] tracking-tight">
               易卦
             </h1>
           </div>
@@ -454,10 +580,10 @@ export default function IChingDivination() {
               </div>
             </div>
 
-            <div className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-3">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-3">
               · 静心凝神 ·
             </div>
-            <p className="font-serif text-white/50 text-sm md:text-base text-center leading-relaxed mb-8">
+            <p className="font-serif text-[hsla(var(--div-text-hsl)/0.5)] text-sm md:text-base text-center leading-relaxed mb-8">
               闭目调息，心念归于一事
               <br />
               待心意澄明，再起卦象
@@ -470,33 +596,157 @@ export default function IChingDivination() {
               onChange={e => setQuestion(e.target.value)}
               placeholder="心中所问之事（可选）"
               maxLength={60}
-              className="w-full max-w-md bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-center font-serif text-sm text-white/80 placeholder:text-white/20 focus:outline-none focus:border-secondary/50 transition-colors mb-8"
+              className="w-full max-w-md bg-[hsla(var(--div-line-hsl)/0.06)] border border-[hsla(var(--div-line-hsl)/0.12)] rounded-lg px-4 py-3 text-center font-serif text-sm text-[hsla(var(--div-text-hsl)/0.8)] placeholder:text-[hsla(var(--div-text-hsl)/0.2)] focus:outline-none focus:border-secondary/50 transition-colors mb-8"
             />
 
-            <button
-              onClick={startDivination}
-              className="group relative px-10 py-4 font-serif text-lg text-white transition-all duration-500 hover:scale-105"
-              style={{
-                border: '1px solid hsl(var(--color-secondary-hsl) / 0.4)',
-                background: 'hsl(var(--color-secondary-hsl) / 0.08)',
-              }}
-            >
-              <span className="relative z-10">开始起卦</span>
-              <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{
-                  background:
-                    'radial-gradient(circle, hsl(var(--color-secondary-hsl) / 0.15), transparent 70%)',
-                }}
-              />
-            </button>
+            {/* 起卦方式选择 */}
+            <div className="w-full max-w-md mb-8">
+              <div className="grid grid-cols-3 gap-1 bg-[hsla(var(--div-line-hsl)/0.04)] border border-[hsla(var(--div-line-hsl)/0.12)] rounded-lg p-1 mb-6">
+                {([
+                  ['coins', '摇卦'],
+                  ['time', '时间起卦'],
+                  ['bazi', '生辰起卦'],
+                ] as [CastMethod, string][]).map(([m, label]) => (
+                  <button
+                    key={m}
+                    onClick={() => setCastMethod(m)}
+                    className={`py-2.5 font-mono text-[10px] uppercase tracking-widest rounded-md transition-all duration-300 ${
+                      castMethod === m
+                        ? 'bg-secondary/20 text-secondary border border-secondary/40'
+                        : 'text-[hsla(var(--div-text-hsl)/0.4)] hover:text-[hsla(var(--div-text-hsl)/0.7)] border border-transparent'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* 摇卦 */}
+              {castMethod === 'coins' && (
+                <div className="text-center">
+                  <p className="font-serif text-[hsla(var(--div-text-hsl)/0.4)] text-xs leading-relaxed mb-5">
+                    三枚铜钱，自下而上掷六次
+                    <br />
+                    三背为老阳（动），三字为老阴（动）
+                  </p>
+                  <button
+                    onClick={() => startDivination('coins')}
+                    className="group relative px-10 py-4 font-serif text-lg text-[hsl(var(--div-text-hsl))] transition-all duration-500 hover:scale-105"
+                    style={{
+                      border: '1px solid hsl(var(--color-secondary-hsl) / 0.4)',
+                      background: 'hsl(var(--color-secondary-hsl) / 0.08)',
+                    }}
+                  >
+                    <span className="relative z-10">开始摇卦</span>
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{
+                        background:
+                          'radial-gradient(circle, hsl(var(--color-secondary-hsl) / 0.15), transparent 70%)',
+                      }}
+                    />
+                  </button>
+                </div>
+              )}
+
+              {/* 时间起卦 */}
+              {castMethod === 'time' && (
+                <div className="text-center">
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-2">
+                    当下时刻
+                  </div>
+                  <div className="font-serif text-2xl text-secondary mb-1 tabular-nums">
+                    {new Date().toLocaleTimeString('zh-CN', { hour12: false })}
+                  </div>
+                  <p className="font-serif text-[hsla(var(--div-text-hsl)/0.4)] text-xs leading-relaxed mb-5">
+                    以当下年月日时推数起卦
+                    <br />
+                    （梅花易数 · 时间起卦法）
+                  </p>
+                  <button
+                    onClick={() => startDivination('time')}
+                    className="group relative px-10 py-4 font-serif text-lg text-[hsl(var(--div-text-hsl))] transition-all duration-500 hover:scale-105"
+                    style={{
+                      border: '1px solid hsl(var(--color-neon-hsl) / 0.4)',
+                      background: 'hsl(var(--color-neon-hsl) / 0.08)',
+                    }}
+                  >
+                    <span className="relative z-10">以当下时辰起卦</span>
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{
+                        background:
+                          'radial-gradient(circle, hsl(var(--color-neon-hsl) / 0.15), transparent 70%)',
+                      }}
+                    />
+                  </button>
+                </div>
+              )}
+
+              {/* 生辰起卦 */}
+              {castMethod === 'bazi' && (
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-3 mb-2">
+                    <div>
+                      <div className="font-mono text-[9px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-1.5">
+                        出生日期
+                      </div>
+                      <input
+                        type="date"
+                        value={birthDate}
+                        onChange={e => setBirthDate(e.target.value)}
+                        className="bg-[hsla(var(--div-line-hsl)/0.06)] border border-[hsla(var(--div-line-hsl)/0.12)] rounded-lg px-3 py-2 text-sm text-[hsla(var(--div-text-hsl)/0.8)] focus:outline-none focus:border-secondary/50 font-serif"
+                      />
+                    </div>
+                    <div>
+                      <div className="font-mono text-[9px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-1.5">
+                        时辰
+                      </div>
+                      <select
+                        value={birthHour}
+                        onChange={e => setBirthHour(Number(e.target.value))}
+                        className="bg-[hsla(var(--div-line-hsl)/0.06)] border border-[hsla(var(--div-line-hsl)/0.12)] rounded-lg px-3 py-2 text-sm text-[hsla(var(--div-text-hsl)/0.8)] focus:outline-none focus:border-secondary/50 font-serif"
+                      >
+                        {[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map(h => (
+                          <option key={h} value={h} className="bg-[hsla(var(--div-card-hsl))]">
+                            {SHICHEN_LABELS[h] ?? `${h}时`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <p className="font-serif text-[hsla(var(--div-text-hsl)/0.4)] text-xs leading-relaxed mb-5">
+                    依生辰排出四柱八字，再以八字时刻起卦
+                    <br />
+                    以出生时辰推命之格局
+                  </p>
+                  <button
+                    onClick={() => startDivination('bazi')}
+                    className="group relative px-10 py-4 font-serif text-lg text-[hsl(var(--div-text-hsl))] transition-all duration-500 hover:scale-105"
+                    style={{
+                      border: '1px solid hsl(var(--color-secondary-hsl) / 0.4)',
+                      background: 'hsl(var(--color-secondary-hsl) / 0.08)',
+                    }}
+                  >
+                    <span className="relative z-10">排盘起卦</span>
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{
+                        background:
+                          'radial-gradient(circle, hsl(var(--color-secondary-hsl) / 0.15), transparent 70%)',
+                      }}
+                    />
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="mt-10 flex items-center gap-2">
-              <div className="h-px w-8 bg-white/10" />
-              <span className="font-serif text-white/20 text-xs italic">
+              <div className="h-px w-8 bg-[hsla(var(--div-line-hsl)/0.1)]" />
+              <span className="font-serif text-[hsla(var(--div-text-hsl)/0.2)] text-xs italic">
                 易，无思也，无为也
               </span>
-              <div className="h-px w-8 bg-white/10" />
+              <div className="h-px w-8 bg-[hsla(var(--div-line-hsl)/0.1)]" />
             </div>
           </div>
         )}
@@ -508,7 +758,7 @@ export default function IChingDivination() {
             <div className="font-mono text-[10px] uppercase tracking-[0.4em] text-secondary mb-2">
               · 第 {Math.max(currentToss + 1, 1)} 爻 / 共六爻 ·
             </div>
-            <p className="font-serif text-white/40 text-sm mb-10">
+            <p className="font-serif text-[hsla(var(--div-text-hsl)/0.4)] text-sm mb-10">
               {currentToss >= 0
                 ? `正在起 ${yaoLabels[currentToss]} 爻`
                 : '凝神...'}
@@ -553,14 +803,52 @@ export default function IChingDivination() {
         {/* --- 阶段 3：卦象展示 + 卦辞解读 --- */}
         {phase === 'result' && currentHexagram && (
           <div className="flex-1 w-full max-w-2xl space-y-10">
+            {/* 生辰八字排盘（生辰起卦时显示） */}
+            {baziData && (
+              <div className="bg-[hsla(var(--div-line-hsl)/0.03)] border border-[hsla(var(--div-line-hsl)/0.12)] rounded-2xl p-6 md:p-8 animate-fade-up">
+                <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-secondary mb-5">
+                  / 生辰八字 · 四柱排盘
+                </div>
+                <div className="flex items-start justify-center gap-5 md:gap-10">
+                  {([
+                    ['年柱', baziData.yearPillar],
+                    ['月柱', baziData.monthPillar],
+                    ['日柱', baziData.dayPillar],
+                    ['时柱', baziData.hourPillar],
+                  ] as [string, { gan: string; zhi: string; ganWuxing: string; zhiWuxing: string; nayin: string }][]).map(([label, p]) => (
+                    <div key={label} className="text-center">
+                      <div className="font-mono text-[9px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-2">
+                        {label}
+                      </div>
+                      <div
+                        className="font-serif text-2xl md:text-3xl font-bold"
+                        style={{ color: 'var(--color-secondary)' }}
+                      >
+                        {p.gan}
+                      </div>
+                      <div className="font-serif text-2xl md:text-3xl font-bold text-[hsla(var(--div-text-hsl)/0.8)]">
+                        {p.zhi}
+                      </div>
+                      <div className="font-mono text-[9px] text-[hsla(var(--div-text-hsl)/0.35)] mt-2.5">
+                        {p.ganWuxing}{p.zhiWuxing} · {p.nayin}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-center mt-6 font-serif text-[hsla(var(--div-text-hsl)/0.4)] text-xs">
+                  {baziData.lunarText} · 属{baziData.shengxiao}
+                </div>
+              </div>
+            )}
+
             {/* 卦象展示 */}
-            <div className="relative bg-white/[0.02] border border-white/10 rounded-2xl p-8 md:p-10">
+            <div className="relative bg-[hsla(var(--div-line-hsl)/0.03)] border border-[hsla(var(--div-line-hsl)/0.12)] rounded-2xl p-8 md:p-10">
               <CornerFrame />
 
               <div className="flex flex-col md:flex-row items-center gap-8">
                 {/* 竖排卦名 + 卦号 */}
                 <div className="flex flex-row md:flex-col items-center gap-2 md:gap-1">
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-white/30">
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)]">
                     No.
                   </div>
                   <div
@@ -571,7 +859,7 @@ export default function IChingDivination() {
                   </div>
                   {/* 竖排卦名（旋转） */}
                   <div
-                    className="font-serif text-lg text-white/80 tracking-widest md:transform md:rotate-180"
+                    className="font-serif text-lg text-[hsla(var(--div-text-hsl)/0.8)] tracking-widest md:transform md:rotate-180"
                     style={{ writingMode: 'vertical-rl' }}
                   >
                     {currentHexagram.chineseName}
@@ -584,22 +872,27 @@ export default function IChingDivination() {
                     const reverseIndex = 5 - i; // 上爻在顶部
                     const line = lines[reverseIndex];
                     return (
-                      <YaoLine
+                      <div
                         key={i}
-                        value={line.value}
-                        changing={line.changing}
-                        label={yaoLabels[reverseIndex]}
-                      />
+                        className="animate-fade-up"
+                        style={{ animationDelay: `${120 + i * 140}ms`, animationFillMode: 'both' }}
+                      >
+                        <YaoLine
+                          value={line.value}
+                          changing={line.changing}
+                          label={yaoLabels[reverseIndex]}
+                        />
+                      </div>
                     );
                   })}
                 </div>
 
                 {/* 卦名 + 卦符号 */}
                 <div className="text-center md:text-right">
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-1">
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-1">
                     HEXAGRAM
                   </div>
-                  <h2 className="font-serif font-black text-2xl text-white mb-1">
+                  <h2 className="font-serif font-black text-2xl text-[hsl(var(--div-text-hsl))] mb-1">
                     {currentHexagram.name}
                   </h2>
                   {changingLineIndexes.length > 0 && (
@@ -612,31 +905,168 @@ export default function IChingDivination() {
             </div>
 
             {/* 卦辞解读 */}
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 md:p-10">
+            <div className="bg-[hsla(var(--div-line-hsl)/0.03)] border border-[hsla(var(--div-line-hsl)/0.12)] rounded-2xl p-8 md:p-10">
               <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-neon mb-6">
                 / 卦辞 · 彖传
               </div>
 
               {/* 卦辞 */}
               <div className="mb-6">
-                <div className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-2">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-2">
                   〔卦辞〕
                 </div>
-                <p className="font-serif text-white/80 text-base md:text-lg leading-relaxed">
+                <p className="font-serif text-[hsla(var(--div-text-hsl)/0.8)] text-base md:text-lg leading-relaxed">
                   {currentHexagram.judgment}
                 </p>
               </div>
 
               {/* 象辞（大象传） */}
               <div>
-                <div className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-2">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-2">
                   〔象辞〕
                 </div>
-                <p className="font-serif text-white/70 text-sm md:text-base leading-relaxed">
+                <p className="font-serif text-[hsla(var(--div-text-hsl)/0.7)] text-sm md:text-base leading-relaxed">
                   {currentHexagram.image}
                 </p>
               </div>
             </div>
+
+            {/* 白话解读 */}
+            {(() => {
+              const reading = buildPlainReading(
+                currentHexagram,
+                changedHexagram,
+                changingLineIndexes,
+                question,
+              );
+              return (
+                <div className="bg-neon/[0.03] border border-neon/20 rounded-2xl p-8 md:p-10 animate-fade-up">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-neon mb-6">
+                    / 白话解读
+                  </div>
+                  <p className="font-serif text-[hsla(var(--div-text-hsl)/0.8)] text-base leading-relaxed mb-5">
+                    {reading.summary}
+                  </p>
+                  <div className="space-y-2.5 mb-6">
+                    {reading.points.map((pt, i) => (
+                      <p key={i} className="flex gap-2.5 text-[hsla(var(--div-text-hsl)/0.6)] text-sm leading-relaxed">
+                        <span className="text-neon shrink-0">◆</span>
+                        <span className="font-serif">{pt}</span>
+                      </p>
+                    ))}
+                  </div>
+                  <div className="border-t border-[hsla(var(--div-line-hsl)/0.12)] pt-4">
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-neon/60 mb-2">
+                      〔建议〕
+                    </div>
+                    <p className="font-serif text-[hsla(var(--div-text-hsl)/0.7)] text-sm leading-relaxed">
+                      {reading.advice}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 现代深度解读（开源 64 卦全维度数据） */}
+            {(() => {
+              const deep = getZhouyiByNumber(currentHexagram.number);
+              if (!deep) return null;
+              const dims: [keyof ZhouyiHexagram['reading'], string, string][] = [
+                ['shiyi', '事业', '◇'],
+                ['aiqing', '爱情', '♥'],
+                ['caiyun', '财运', '◎'],
+                ['kaoshi', '学业', '✎'],
+                ['jiankang', '健康', '☾'],
+                ['chuxing', '出行', '➤'],
+                ['guansi', '官司', '⚖'],
+                ['jiazhai', '家宅', '⌂'],
+              ];
+              return (
+                <div className="bg-[hsla(var(--div-line-hsl)/0.03)] border border-[hsla(var(--div-line-hsl)/0.12)] rounded-2xl p-8 md:p-10 animate-fade-up">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-secondary mb-6">
+                    / 现代解卦
+                  </div>
+                  {/* 核心意象 */}
+                  {deep.coreImage && (
+                    <p className="font-serif text-[hsla(var(--div-text-hsl)/0.8)] text-base leading-relaxed mb-6">
+                      {deep.coreImage}
+                    </p>
+                  )}
+                  {/* 8 维度 */}
+                  <div className="grid gap-4 md:grid-cols-2 mb-6">
+                    {dims.map(([k, label, icon]) => {
+                      const v = deep.reading[k];
+                      if (!v) return null;
+                      return (
+                        <div key={k} className="bg-[hsla(var(--div-line-hsl)/0.03)] border border-[hsla(var(--div-line-hsl)/0.06)] rounded-xl p-4">
+                          <div className="font-mono text-[10px] tracking-widest text-secondary/70 mb-2">
+                            {icon} {label}
+                          </div>
+                          <p className="font-serif text-[hsla(var(--div-text-hsl)/0.6)] text-xs leading-relaxed">
+                            {v}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* 宜 / 忌 */}
+                  <div className="grid gap-4 md:grid-cols-2 mb-6">
+                    <div className="rounded-xl p-4" style={{ background: 'hsl(var(--color-neon-hsl) / 0.04)', border: '1px solid hsl(var(--color-neon-hsl) / 0.15)' }}>
+                      <div className="font-mono text-[10px] tracking-widest text-neon/70 mb-2">
+                        ▲ 宜
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {deep.yi.map((y, i) => (
+                          <span key={i} className="font-serif text-xs text-[hsla(var(--div-text-hsl)/0.6)] px-2.5 py-1 rounded-full bg-[hsla(var(--div-line-hsl)/0.06)] border border-[hsla(var(--div-line-hsl)/0.12)]">
+                            {y}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-xl p-4" style={{ background: 'hsl(var(--color-secondary-hsl) / 0.04)', border: '1px solid hsl(var(--color-secondary-hsl) / 0.15)' }}>
+                      <div className="font-mono text-[10px] tracking-widest text-secondary/70 mb-2">
+                        ▼ 忌
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {deep.ji.map((j, i) => (
+                          <span key={i} className="font-serif text-xs text-[hsla(var(--div-text-hsl)/0.6)] px-2.5 py-1 rounded-full bg-[hsla(var(--div-line-hsl)/0.06)] border border-[hsla(var(--div-line-hsl)/0.12)]">
+                            {j}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {/* 卦义白话（古人占断） */}
+                  {deep.guaYi && (
+                    <div className="border-t border-[hsla(var(--div-line-hsl)/0.06)] pt-4">
+                      <div className="font-mono text-[10px] tracking-widest text-[hsla(var(--div-text-hsl)/0.4)] mb-2">
+                        〔古断〕
+                      </div>
+                      <p className="font-serif text-[hsla(var(--div-text-hsl)/0.55)] text-xs leading-relaxed">
+                        {deep.guaYi}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* AI 深度解读（用户主动选择才调用） */}
+            <DivinationAI
+              kind="iching"
+              spread={[
+                `占得「${currentHexagram.name}」卦（第 ${currentHexagram.number} 卦）`,
+                `卦辞：${currentHexagram.judgment}`,
+                `卦象（自下而上）：${lines.map(l => (l.value ? '⚊' : '⚋')).join(' ')}`,
+                changingLineIndexes.length > 0
+                  ? `动爻：${changingLineIndexes.map(i => yaoLabels[i]).join('、')}爻`
+                  : '六爻皆静',
+                changedHexagram ? `变卦：${changedHexagram.name}` : '',
+              ]
+                .filter(Boolean)
+                .join('\n')}
+              question={question.trim() || undefined}
+            />
 
             {/* 变卦解读 */}
             {changedHexagram && (
@@ -665,13 +1095,13 @@ export default function IChingDivination() {
                     })}
                   </div>
                   <div className="text-center">
-                    <div className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-1">
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-1">
                       No.
                     </div>
                     <div className="font-serif text-xl text-amber-300 mb-1">
                       {String(changedHexagram.number).padStart(2, '0')}
                     </div>
-                    <div className="font-serif text-sm text-white/60">
+                    <div className="font-serif text-sm text-[hsla(var(--div-text-hsl)/0.6)]">
                       {changedHexagram.chineseName}
                     </div>
                   </div>
@@ -679,18 +1109,18 @@ export default function IChingDivination() {
 
                 {/* 变卦辞 */}
                 <div className="mb-4">
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-2">
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-2">
                     〔卦辞〕
                   </div>
-                  <p className="font-serif text-white/70 text-sm md:text-base leading-relaxed">
+                  <p className="font-serif text-[hsla(var(--div-text-hsl)/0.7)] text-sm md:text-base leading-relaxed">
                     {changedHexagram.judgment}
                   </p>
                 </div>
                 <div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-2">
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.3)] mb-2">
                     〔象辞〕
                   </div>
-                  <p className="font-serif text-white/60 text-sm leading-relaxed">
+                  <p className="font-serif text-[hsla(var(--div-text-hsl)/0.6)] text-sm leading-relaxed">
                     {changedHexagram.image}
                   </p>
                 </div>
@@ -701,7 +1131,7 @@ export default function IChingDivination() {
             <div className="flex justify-center pb-8">
               <button
                 onClick={reset}
-                className="px-8 py-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/60 border border-white/10 rounded-lg hover:border-neon/50 hover:text-neon transition-all duration-500"
+                className="px-8 py-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[hsla(var(--div-text-hsl)/0.6)] border border-[hsla(var(--div-line-hsl)/0.12)] rounded-lg hover:border-neon/50 hover:text-neon transition-all duration-500"
               >
                 重新起卦
               </button>
@@ -712,11 +1142,11 @@ export default function IChingDivination() {
         {/* 底部装饰 */}
         <div className="mt-auto pt-12">
           <div className="flex items-center gap-3 justify-center">
-            <div className="h-px w-8 bg-white/10" />
-            <span className="font-serif text-white/20 text-xs italic">
+            <div className="h-px w-8 bg-[hsla(var(--div-line-hsl)/0.1)]" />
+            <span className="font-serif text-[hsla(var(--div-text-hsl)/0.2)] text-xs italic">
               极深研几
             </span>
-            <div className="h-px w-8 bg-white/10" />
+            <div className="h-px w-8 bg-[hsla(var(--div-line-hsl)/0.1)]" />
           </div>
         </div>
       </div>

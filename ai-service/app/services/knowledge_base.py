@@ -2,16 +2,18 @@
 Knowledge Base Service — Smart RAG with embedding + semantic search
 
 Architecture:
-  Query → Embed → ChromaDB search → relevance check →
+  Query → Embed → vector search → relevance check →
     ├─ HIGH relevance → prepend context → LLM (knowledge-grounded answer)
     └─ LOW  relevance → system prompt only → LLM (chat normally)
 
 Indexing:
   Fetches published posts from PostgreSQL, chunks by paragraph,
-  embeds via OpenAI, stores in persistent ChromaDB.
+  embeds via OpenAI, stores in a persistent pure-Python vector index
+  (numpy cosine search — no native compilation dependencies).
 """
 
 import os
+import json
 import hashlib
 import logging
 import asyncio
@@ -20,7 +22,249 @@ from datetime import datetime, timezone
 from typing import Any, List, Mapping, Optional
 from dataclasses import dataclass
 
+import numpy as np
+
 logger = logging.getLogger("ai-service.kb")
+
+# ─────────────────────────────────────────────────────────
+# Pure-Python vector store (drop-in replacement for the subset
+# of the ChromaDB API used below — no chroma-hnswlib needed)
+# ─────────────────────────────────────────────────────────
+
+
+class MemoryCollection:
+    """In-memory collection with cosine search, persisted as .npz snapshots."""
+
+    def __init__(self, name: str, metadata: Optional[dict] = None):
+        self.name = name
+        self.metadata = metadata or {}
+        self._ids: List[str] = []
+        self._documents: List[str] = []
+        self._metadatas: List[dict] = []
+        self._embeddings: List[List[float]] = []
+
+    def count(self) -> int:
+        return len(self._ids)
+
+    def get(
+        self,
+        where: Optional[dict] = None,
+        include: Optional[List[str]] = None,
+    ) -> dict:
+        include = include or []
+        ids: List[str] = []
+        metadatas: List[dict] = []
+        documents: List[str] = []
+        for i, chunk_id in enumerate(self._ids):
+            if where is not None:
+                metadata = self._metadatas[i]
+                if any(metadata.get(key) != value for key, value in where.items()):
+                    continue
+            ids.append(chunk_id)
+            if "metadatas" in include:
+                metadatas.append(self._metadatas[i])
+            if "documents" in include:
+                documents.append(self._documents[i])
+        result: dict = {"ids": ids}
+        if "metadatas" in include:
+            result["metadatas"] = metadatas
+        if "documents" in include:
+            result["documents"] = documents
+        return result
+
+    def add(
+        self,
+        ids=None,
+        embeddings=None,
+        documents=None,
+        metadatas=None,
+    ) -> None:
+        self._ids.extend(ids or [])
+        self._embeddings.extend(embeddings or [])
+        self._documents.extend(documents or [])
+        self._metadatas.extend(metadatas or [])
+
+    def upsert(
+        self,
+        ids=None,
+        embeddings=None,
+        documents=None,
+        metadatas=None,
+    ) -> None:
+        index_by_id = {chunk_id: i for i, chunk_id in enumerate(self._ids)}
+        for chunk_id, embedding, document, metadata in zip(
+            ids or [],
+            embeddings or [],
+            documents or [],
+            metadatas or [],
+        ):
+            index = index_by_id.get(chunk_id)
+            if index is None:
+                index_by_id[chunk_id] = len(self._ids)
+                self._ids.append(chunk_id)
+                self._embeddings.append(embedding)
+                self._documents.append(document)
+                self._metadatas.append(metadata)
+            else:
+                self._embeddings[index] = embedding
+                self._documents[index] = document
+                self._metadatas[index] = metadata
+
+    def delete(self, ids=None, where=None) -> None:
+        if ids is not None:
+            to_delete = set(ids)
+            kept = [
+                (chunk_id, embedding, document, metadata)
+                for chunk_id, embedding, document, metadata in zip(
+                    self._ids,
+                    self._embeddings,
+                    self._documents,
+                    self._metadatas,
+                )
+                if chunk_id not in to_delete
+            ]
+            self._ids = [item[0] for item in kept]
+            self._embeddings = [item[1] for item in kept]
+            self._documents = [item[2] for item in kept]
+            self._metadatas = [item[3] for item in kept]
+        elif where is not None:
+            kept = [
+                (chunk_id, embedding, document, metadata)
+                for chunk_id, embedding, document, metadata in zip(
+                    self._ids,
+                    self._embeddings,
+                    self._documents,
+                    self._metadatas,
+                )
+                if not any(metadata.get(key) != value for key, value in where.items())
+            ]
+            self._ids = [item[0] for item in kept]
+            self._embeddings = [item[1] for item in kept]
+            self._documents = [item[2] for item in kept]
+            self._metadatas = [item[3] for item in kept]
+
+    def query(
+        self,
+        query_embeddings=None,
+        n_results: int = 10,
+        include: Optional[List[str]] = None,
+    ) -> dict:
+        include = include or []
+        empty = {"ids": [[]], "documents": [[]], "metadatas": [[]], "distances": [[]]}
+        query_embeddings = list(query_embeddings or [])
+        if not self._ids or not query_embeddings:
+            return empty
+
+        matrix = np.asarray(self._embeddings, dtype=np.float32)
+        norms = np.linalg.norm(matrix, axis=1)
+        ids_out: List[List[str]] = []
+        documents_out: List[List[str]] = []
+        metadatas_out: List[List[dict]] = []
+        distances_out: List[List[float]] = []
+
+        for query in query_embeddings:
+            query = np.asarray(query, dtype=np.float32).ravel()
+            query_norm = np.linalg.norm(query)
+            similarities = (matrix @ query) / np.maximum(norms * query_norm, 1e-9)
+            k = min(int(n_results), len(self._ids))
+            if k <= 0:
+                ids_out.append([])
+                documents_out.append([])
+                metadatas_out.append([])
+                distances_out.append([])
+                continue
+            order = np.argsort(-similarities)[:k].tolist()
+            ids_out.append([self._ids[i] for i in order])
+            if "documents" in include:
+                documents_out.append([self._documents[i] for i in order])
+            if "metadatas" in include:
+                metadatas_out.append([self._metadatas[i] for i in order])
+            distances_out.append([float(1 - similarities[i]) for i in order])
+
+        result: dict = {"ids": ids_out, "distances": distances_out}
+        if "documents" in include:
+            result["documents"] = documents_out
+        if "metadatas" in include:
+            result["metadatas"] = metadatas_out
+        return result
+
+    # ── persistence ────────────────────────────────────
+
+    def persist(self, path: str) -> None:
+        """Atomically write the collection snapshot to <path> (.npz)."""
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        embeddings = (
+            np.asarray(self._embeddings, dtype=np.float32)
+            if self._embeddings
+            else np.zeros((0, 1), dtype=np.float32)
+        )
+        payload = json.dumps(
+            {
+                "ids": self._ids,
+                "documents": self._documents,
+                "metadatas": self._metadatas,
+            },
+            ensure_ascii=False,
+        )
+        # np.savez appends ".npz" to the given path, so the temp file is
+        # <path>.<uuid>.npz; replace() then moves it into place atomically.
+        temporary = f"{path}.{uuid.uuid4().hex}"
+        try:
+            np.savez_compressed(
+                temporary,
+                embeddings=embeddings,
+                payload=np.array([payload], dtype="U"),
+            )
+            os.replace(f"{temporary}.npz", path)
+        finally:
+            leftover = f"{temporary}.npz"
+            if os.path.exists(leftover):
+                os.remove(leftover)
+
+    @classmethod
+    def load(cls, name: str, path: str) -> "MemoryCollection":
+        collection = cls(name=name)
+        if not os.path.exists(path):
+            return collection
+        with np.load(path, allow_pickle=False) as data:
+            payload = json.loads(str(data["payload"][0]))
+            collection._ids = list(payload["ids"])
+            collection._documents = list(payload["documents"])
+            collection._metadatas = list(payload["metadatas"])
+            collection._embeddings = data["embeddings"].tolist()
+        return collection
+
+
+class MemoryIndexClient:
+    """Manages versioned collection snapshots on disk (no native deps)."""
+
+    def __init__(self, persist_dir: str):
+        self._persist_dir = persist_dir
+        os.makedirs(persist_dir, exist_ok=True)
+
+    def collection_path(self, name: str) -> str:
+        return os.path.join(self._persist_dir, f"{name}.npz")
+
+    def create_collection(self, name: str, metadata: Optional[dict] = None) -> MemoryCollection:
+        return MemoryCollection(name=name, metadata=metadata)
+
+    def get_or_create_collection(self, name: str, metadata: Optional[dict] = None) -> MemoryCollection:
+        path = self.collection_path(name)
+        if os.path.exists(path):
+            return MemoryCollection.load(name, path)
+        return MemoryCollection(name=name, metadata=metadata)
+
+    def list_collections(self) -> List[str]:
+        return [
+            filename[: -len(".npz")]
+            for filename in os.listdir(self._persist_dir)
+            if filename.endswith(".npz")
+        ]
+
+    def delete_collection(self, name: str) -> None:
+        path = self.collection_path(name)
+        if os.path.exists(path):
+            os.remove(path)
 
 # ─────────────────────────────────────────────────────────
 # Types
@@ -38,44 +282,42 @@ class DocumentChunk:
 
 
 # ─────────────────────────────────────────────────────────
-# ChromaDB Wrapper
+# Knowledge Base
 # ─────────────────────────────────────────────────────────
 
 
 class KnowledgeBase:
-    """Smart RAG knowledge base backed by ChromaDB."""
+    """Smart RAG knowledge base backed by a pure-Python vector index."""
 
     COLLECTION_NAME = "blog_posts"
     ACTIVE_COLLECTION_FILE = "active_collection.txt"
-    EMBEDDING_BATCH_SIZE = 64
-    RELEVANCE_THRESHOLD = 0.45  # 低于此分数视为不相关，走纯聊天模式
+    EMBEDDING_BATCH_SIZE = 10  # Qwen text-embedding-v3 单批上限 10 条
+    RELEVANCE_THRESHOLD = 0.6  # Qwen embedding 相似度偏高，0.45 会把闲聊误判为知识问题
     CHUNK_SIZE = 600             # 每个 chunk 的字符数
     CHUNK_OVERLAP = 80           # 相邻 chunk 的重叠字符数
 
     def __init__(self, persist_dir: str = None):
-        import chromadb
-        from chromadb.config import Settings as ChromaSettings
-
         if persist_dir is None:
-            persist_dir = os.path.join(os.path.dirname(__file__), "..", "..", "chroma_data")
+            persist_dir = os.path.join(os.path.dirname(__file__), "..", "..", "kb_data")
 
         os.makedirs(persist_dir, exist_ok=True)
         self._persist_dir = os.path.abspath(persist_dir)
         self._active_collection_path = os.path.join(self._persist_dir, self.ACTIVE_COLLECTION_FILE)
 
-        self._client = chromadb.PersistentClient(
-            path=persist_dir,
-            settings=ChromaSettings(anonymized_telemetry=False),
-        )
+        self._client = MemoryIndexClient(persist_dir)
         self._collection = self._client.get_or_create_collection(
             name=self._read_active_collection_name(),
-            metadata={"hnsw:space": "cosine"},
+            metadata={"space": "cosine"},
         )
         self._embedding_fn = None  # lazy init
         self._mutation_lock = asyncio.Lock()
         self._last_operation: Optional[str] = None
         self._last_mutation_at: Optional[str] = None
         self._last_error: Optional[str] = None
+
+    def _persist_active_collection(self) -> None:
+        """Write the active collection snapshot to disk."""
+        self._collection.persist(self._client.collection_path(self._collection.name))
 
     def _read_active_collection_name(self) -> str:
         try:
@@ -113,17 +355,20 @@ class KnowledgeBase:
         if self._embedding_fn is None:
             from app.core.config import settings
             from openai import OpenAI
-            api_key = settings.OPENAI_API_KEY
+            # 优先使用独立的 embedding 配置，未配置则回退到 OPENAI_API_KEY
+            api_key = settings.EMBEDDING_API_KEY or settings.OPENAI_API_KEY
             if not api_key:
-                raise RuntimeError("OPENAI_API_KEY not configured — needed for embeddings")
+                raise RuntimeError("EMBEDDING_API_KEY / OPENAI_API_KEY not configured — needed for embeddings")
             extra = {}
-            if settings.OPENAI_BASE_URL:
-                extra["base_url"] = settings.OPENAI_BASE_URL
+            base_url = settings.EMBEDDING_BASE_URL or settings.OPENAI_BASE_URL
+            if base_url:
+                extra["base_url"] = base_url
             client = OpenAI(api_key=api_key, **extra)
+            model = settings.EMBEDDING_MODEL or "text-embedding-3-small"
 
             def embed(texts: List[str]) -> List[List[float]]:
                 resp = client.embeddings.create(
-                    model="text-embedding-3-small",
+                    model=model,
                     input=texts,
                 )
                 return [d.embedding for d in resp.data]
@@ -234,6 +479,113 @@ class KnowledgeBase:
         finally:
             await conn.close()
 
+    # ── 占卜知识（内置，无需数据库）─────────────────────
+
+    DIVINATION_POST_ID_PREFIX = "div-"
+
+    @staticmethod
+    def _is_divination_post_id(post_id: str) -> bool:
+        return post_id.startswith(KnowledgeBase.DIVINATION_POST_ID_PREFIX)
+
+    def _load_divination_documents(self) -> List[dict]:
+        """
+        从 frontend 读取占卜数据（塔罗/易经/星座），构造成与 posts 同构的文档
+        （{id, title, slug, content}），id 以 "div-" 开头。文件缺失时返回空列表。
+        """
+        base = os.path.join(
+            os.path.dirname(__file__),
+            "..", "..", "..",
+            "frontend", "src", "pages", "divination",
+        )
+        documents: List[dict] = []
+
+        # 塔罗（tarot-zhtw.json）
+        tarot_path = os.path.join(base, "tarot-zhtw.json")
+        if os.path.exists(tarot_path):
+            try:
+                with open(tarot_path, encoding="utf-8") as fp:
+                    cards = json.load(fp)
+                for card_id, card in (cards or {}).items():
+                    if not isinstance(card, dict):
+                        continue
+                    name = card.get("name", f"牌{card_id}")
+                    positive = card.get("positive") or {}
+                    reversed_ = card.get("reversed") or {}
+                    content = (
+                        f"塔罗牌「{name}」。牌面象征：{card.get('explain', '')}\n"
+                        f"正位解读：含义 {positive.get('meaning', '')}；行为特质 {positive.get('behavior', '')}；"
+                        f"感情 {positive.get('marriage', '')}；两性关系 {positive.get('sexuality', '')}；相关 {positive.get('related', '')}\n"
+                        f"逆位解读：含义 {reversed_.get('meaning', '')}；行为特质 {reversed_.get('behavior', '')}；"
+                        f"感情 {reversed_.get('marriage', '')}；两性关系 {reversed_.get('sexuality', '')}；相关 {reversed_.get('related', '')}"
+                    )
+                    documents.append({
+                        "id": f"{self.DIVINATION_POST_ID_PREFIX}tarot-{card_id}",
+                        "title": f"塔罗牌·{name}",
+                        "slug": f"tarot-{card_id}",
+                        "content": content,
+                    })
+            except (OSError, ValueError) as error:
+                logger.warning("Knowledge divination tarot load failed error=%s", type(error).__name__)
+
+        # 易经（zhouyi.json）
+        zhouyi_path = os.path.join(base, "zhouyi.json")
+        if os.path.exists(zhouyi_path):
+            try:
+                with open(zhouyi_path, encoding="utf-8") as fp:
+                    hexagrams = json.load(fp)
+                for num, gua in (hexagrams or {}).items():
+                    if not isinstance(gua, dict):
+                        continue
+                    name = gua.get("name", f"第{num}卦")
+                    reading = gua.get("reading") or {}
+                    content = (
+                        f"易经「{name}」卦（第{num}卦，{gua.get('fullName', '')}）。"
+                        f"卦辞：{gua.get('judgment', '')} {gua.get('judgmentTrans', '')}\n"
+                        f"彖传：{gua.get('tuan', '')}\n象传：{gua.get('image', '')}\n"
+                        f"古解：{gua.get('guaYi', '')} 吉凶：{gua.get('jixiong', '')}\n"
+                        f"事业：{reading.get('shiyi', '')}\n爱情：{reading.get('aiqing', '')}\n财运：{reading.get('caiyun', '')}\n"
+                        f"学业：{reading.get('kaoshi', '')}\n健康：{reading.get('jiankang', '')}\n出行：{reading.get('chuxing', '')}\n"
+                        f"官司：{reading.get('guansi', '')}\n家宅：{reading.get('jiazhai', '')}\n"
+                        f"宜：{'、'.join(gua.get('yi') or [])}\n忌：{'、'.join(gua.get('ji') or [])}"
+                    )
+                    documents.append({
+                        "id": f"{self.DIVINATION_POST_ID_PREFIX}zhouyi-{num}",
+                        "title": f"易经·{name}",
+                        "slug": f"zhouyi-{num}",
+                        "content": content,
+                    })
+            except (OSError, ValueError) as error:
+                logger.warning("Knowledge divination zhouyi load failed error=%s", type(error).__name__)
+
+        # 星座（zodiac-deep.json）
+        zodiac_path = os.path.join(base, "zodiac-deep.json")
+        if os.path.exists(zodiac_path):
+            try:
+                with open(zodiac_path, encoding="utf-8") as fp:
+                    signs = json.load(fp)
+                for key, sign in (signs or {}).items():
+                    if not isinstance(sign, dict):
+                        continue
+                    name = sign.get("name", key)
+                    content = (
+                        f"星座「{name}」({sign.get('nameEn', '')}，{sign.get('dateRange', '')})。"
+                        f"关键词：{sign.get('keyword', '')}；元素：{sign.get('element', '')}；"
+                        f"特质：{'、'.join(sign.get('coreTraits') or [])}\n"
+                        f"性格：{sign.get('personality', '')}\n内心世界：{sign.get('innerWorld', '')}\n"
+                        f"爱情：{sign.get('love', '')}\n事业：{sign.get('career', '')}\n财运：{sign.get('finance', '')}\n"
+                        f"健康：{sign.get('health', '')}\n成长课题：{sign.get('growth', '')}"
+                    )
+                    documents.append({
+                        "id": f"{self.DIVINATION_POST_ID_PREFIX}zodiac-{key}",
+                        "title": f"星座·{name}",
+                        "slug": f"zodiac-{key}",
+                        "content": content,
+                    })
+            except (OSError, ValueError) as error:
+                logger.warning("Knowledge divination zodiac load failed error=%s", type(error).__name__)
+
+        return documents
+
     async def _remove_post_unlocked(self, post_id: str) -> dict:
         existing = await asyncio.to_thread(
             self._collection.get,
@@ -312,6 +664,7 @@ class KnowledgeBase:
                     if rows
                     else await self._remove_post_unlocked(post_id)
                 )
+                await asyncio.to_thread(self._persist_active_collection)
                 self._record_operation("sync_post")
                 logger.info(
                     "Knowledge index post sync post_id=%s action=%s chunks=%d",
@@ -329,6 +682,7 @@ class KnowledgeBase:
         async with self._mutation_lock:
             try:
                 result = await self._remove_post_unlocked(post_id)
+                await asyncio.to_thread(self._persist_active_collection)
                 self._record_operation("remove_post")
                 logger.info(
                     "Knowledge index post removal post_id=%s chunks=%d",
@@ -354,11 +708,12 @@ class KnowledgeBase:
     async def _reindex_unlocked(self) -> dict:
         """
         Fetch all published posts from PostgreSQL, chunk them,
-        embed, and replace the ChromaDB collection.
+        embed, and replace the active collection.
         """
         rows = await self._fetch_public_posts()
+        div_docs = self._load_divination_documents()
 
-        # 分块
+        # 分块（文章 + 占卜知识）
         all_chunks: List[DocumentChunk] = []
         for row in rows:
             post_chunks = self._chunk_post(row["title"], row["content"], self.CHUNK_SIZE, self.CHUNK_OVERLAP)
@@ -372,19 +727,33 @@ class KnowledgeBase:
                     content=chunk_text,
                     index=i,
                 ))
+        for doc in div_docs:
+            doc_chunks = self._chunk_post(doc["title"], doc["content"], self.CHUNK_SIZE, self.CHUNK_OVERLAP)
+            for i, chunk_text in enumerate(doc_chunks):
+                chunk_id = self._chunk_id(doc["id"], i)
+                all_chunks.append(DocumentChunk(
+                    id=chunk_id,
+                    post_id=doc["id"],
+                    post_title=doc["title"],
+                    post_slug=doc["slug"],
+                    content=chunk_text,
+                    index=i,
+                ))
 
-        # 嵌入 & 写入 ChromaDB
+        # 嵌入 & 写入向量库
         texts = [f"[{c.post_title}]\n{c.content}" for c in all_chunks]
         embeddings = await self._embed_texts(texts) if texts else []
         content_hashes = {
             str(row["id"]): self._content_hash(row) for row in rows
         }
+        for doc in div_docs:
+            content_hashes[doc["id"]] = self._content_hash(doc)
 
         # Build a complete version before atomically switching the active pointer.
         staging_name = f"{self.COLLECTION_NAME}_{uuid.uuid4().hex}"
         staging_collection = self._client.create_collection(
             name=staging_name,
-            metadata={"hnsw:space": "cosine"},
+            metadata={"space": "cosine"},
         )
 
         try:
@@ -405,6 +774,17 @@ class KnowledgeBase:
                         for c in all_chunks
                     ],
                 )
+        except Exception:
+            self._client.delete_collection(name=staging_name)
+            logger.exception("Knowledge index build failed; active collection preserved")
+            raise
+
+        # Persist the snapshot first, then atomically switch the active pointer.
+        try:
+            await asyncio.to_thread(
+                staging_collection.persist,
+                self._client.collection_path(staging_name),
+            )
         except Exception:
             self._client.delete_collection(name=staging_name)
             logger.exception("Knowledge index build failed; active collection preserved")
@@ -466,10 +846,16 @@ class KnowledgeBase:
         async with self._mutation_lock:
             try:
                 rows = await self._fetch_public_posts()
-                public_ids = {str(row["id"]) for row in rows}
+                div_docs = self._load_divination_documents()
+                public_ids = {str(row["id"]) for row in rows} | {
+                    doc["id"] for doc in div_docs
+                }
                 summary = {"updated": 0, "unchanged": 0, "removed": 0}
                 for row in rows:
                     result = await self._upsert_post_unlocked(row)
+                    summary[result["action"]] += 1
+                for doc in div_docs:
+                    result = await self._upsert_post_unlocked(doc)
                     summary[result["action"]] += 1
 
                 snapshot = await asyncio.to_thread(
@@ -485,6 +871,7 @@ class KnowledgeBase:
                     await self._remove_post_unlocked(orphan_id)
                     summary["removed"] += 1
 
+                await asyncio.to_thread(self._persist_active_collection)
                 self._record_operation("reconcile")
                 logger.info(
                     "Knowledge index reconciled updated=%d unchanged=%d removed=%d",
@@ -547,9 +934,16 @@ class KnowledgeBase:
             for metadata in results["metadatas"][0]
             if metadata and metadata.get("post_id")
         }
-        # The database is the authorization source of truth. Fail closed when the
-        # current public state cannot be verified, even if stale vectors exist.
-        public_post_ids = await self._fetch_public_post_ids(candidate_post_ids)
+        # 占卜知识（div-*）为内置内容，无需数据库校验；其余以数据库为
+        # 授权来源，Fail closed——无法验证当前公开状态时宁可丢弃。
+        db_post_ids = {
+            post_id
+            for post_id in candidate_post_ids
+            if not self._is_divination_post_id(post_id)
+        }
+        div_post_ids = candidate_post_ids - db_post_ids
+        public_post_ids = await self._fetch_public_post_ids(db_post_ids)
+        public_post_ids |= div_post_ids
         matches = self._filter_public_matches(
             results["ids"][0],
             results["documents"][0],

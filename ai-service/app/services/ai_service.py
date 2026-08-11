@@ -24,6 +24,10 @@ class LLMProvider(ABC):
     async def generate(self, prompt: str, **kwargs: Any) -> str:
         raise NotImplementedError
 
+    async def generate_stream(self, prompt: str, **kwargs: Any):
+        """Yield text chunks as they arrive. Default: generate then yield once."""
+        yield await self.generate(prompt, **kwargs)
+
     @abstractmethod
     async def is_available(self) -> bool:
         raise NotImplementedError
@@ -70,6 +74,23 @@ class OpenAIProvider(LLMProvider):
 
         response = await self._get_client().chat.completions.create(**request)
         return response.choices[0].message.content or ""
+
+    async def generate_stream(self, prompt: str, **kwargs: Any):
+        task = kwargs.get("task", AITask.CHAT)
+        policy = get_task_policy(task)
+        request: Dict[str, Any] = {
+            "model": self._select_model(task),
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": kwargs.get("temperature", settings.OPENAI_TEMPERATURE),
+            "max_tokens": kwargs.get("max_tokens", policy.max_output_tokens),
+            "timeout": kwargs.get("timeout", settings.OPENAI_TIMEOUT),
+            "stream": True,
+        }
+        stream = await self._get_client().chat.completions.create(**request)
+        async for chunk in stream:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield delta.content
 
 
 class AnthropicProvider(LLMProvider):
@@ -161,6 +182,20 @@ class AIService:
 
     async def generate_json(self, prompt: str, task: AITask) -> Dict[str, Any]:
         return parse_json_object(await self.generate(prompt, task=task))
+
+    async def generate_stream(self, prompt: str, task: AITask = AITask.CHAT, **kwargs: Any):
+        """Stream text chunks from the first available provider."""
+        for provider in self.providers:
+            if not await provider.is_available():
+                continue
+            try:
+                async for chunk in provider.generate_stream(prompt, task=task, **kwargs):
+                    yield chunk
+                return
+            except Exception as exc:
+                logger.warning("AI stream provider failed provider=%s error=%s", provider.name, type(exc).__name__)
+                continue
+        yield "（所有 AI 服务均不可用，请稍后再试。）"
 
     async def provider_status(self) -> Dict[str, Any]:
         """Return availability of each configured provider (used by /reload-config)."""

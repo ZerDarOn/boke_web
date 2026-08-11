@@ -60,6 +60,7 @@ const AdminLayout: React.FC = () => {
         { icon: '📤', label: '内容导出', path: '/admin/export' },
         { icon: '📁', label: '文件管理', path: '/admin/files' },
         { icon: '⚙️', label: '系统设置', path: '/admin/settings' },
+        { icon: '🤖', label: 'AI 服务配置', path: '/admin/ai' },
      ];
 
   // 根据当前路由动态设置激活菜单

@@ -35,6 +35,7 @@ htmlcov/
 
 # Knowledge Base (vector DB data — local only)
 chroma_data/
+kb_data/
 
 # Logs
 *.log

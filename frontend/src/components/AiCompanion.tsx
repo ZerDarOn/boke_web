@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Send, ShieldCheck, Sparkles, X, Loader2 } from 'lucide-react';
+import { BookOpen, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { aiApi, type ChatMessage, type CompanionProfile } from '../lib/api';
 import { getCompanionPageContext } from '../lib/companionPageContext';
@@ -72,23 +72,110 @@ const AiCompanion: React.FC = () => {
     setMessages(next);
     setInput('');
     setLoading(true);
+
+    // 预先插入一条空的 assistant 消息，流式接收时逐步填充
+    const assistantIndex = next.length;
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      { role: 'assistant', content: '' },
+    ]);
+
     try {
       const history = next.slice(-8).map(({ role, content }) => ({ role, content }));
-      const res = await aiApi.chat(text, history, pageContext);
-      const reply = res.success && res.data ? res.data.reply : '抱歉，我暂时无法回答（服务未连接）。';
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        {
-          role: 'assistant',
-          content: reply,
-          sources: res.data?.sources,
-          grounded: res.data?.grounded,
-          confidence: res.data?.confidence,
-          refusalReason: res.data?.refusal_reason,
+      const token = localStorage.getItem('token');
+      const resp = await fetch('/api/ai/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-      ]);
+        body: JSON.stringify({ message: text, history, context: pageContext }),
+      });
+
+      if (!resp.ok || !resp.body) {
+        throw new Error('stream failed');
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let accumulated = '';
+      const sources: ChatMessage['sources'] = [];
+      let grounded: boolean | undefined;
+      let confidence: number | undefined;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (!payload) continue;
+          try {
+            const evt = JSON.parse(payload);
+            if (evt.type === 'meta') {
+              grounded = evt.grounded;
+              confidence = evt.confidence;
+              if (evt.sources) sources.push(...evt.sources);
+            } else if (evt.type === 'delta') {
+              accumulated += evt.content;
+              setMessages((currentMessages) => {
+                const updated = [...currentMessages];
+                if (updated[assistantIndex]) {
+                  updated[assistantIndex] = {
+                    ...updated[assistantIndex],
+                    content: accumulated,
+                  };
+                }
+                return updated;
+              });
+            } else if (evt.type === 'done') {
+              // 最终补全元数据
+              setMessages((currentMessages) => {
+                const updated = [...currentMessages];
+                if (updated[assistantIndex]) {
+                  updated[assistantIndex] = {
+                    ...updated[assistantIndex],
+                    content: accumulated || '（无回复）',
+                    sources: sources.length > 0 ? sources : undefined,
+                    grounded,
+                    confidence,
+                  };
+                }
+                return updated;
+              });
+            } else if (evt.type === 'error') {
+              setMessages((currentMessages) => {
+                const updated = [...currentMessages];
+                if (updated[assistantIndex]) {
+                  updated[assistantIndex] = {
+                    ...updated[assistantIndex],
+                    content: '出错了，请稍后再试。',
+                  };
+                }
+                return updated;
+              });
+            }
+          } catch {
+            // ignore parse errors on partial lines
+          }
+        }
+      }
     } catch {
-      setMessages((m) => [...m, { role: 'assistant', content: '出错了，请稍后再试。' }]);
+      setMessages((currentMessages) => {
+        const updated = [...currentMessages];
+        if (updated[assistantIndex]) {
+          updated[assistantIndex] = {
+            ...updated[assistantIndex],
+            content: '抱歉，我暂时无法回答（服务未连接）。',
+          };
+        }
+        return updated;
+      });
     } finally {
       setLoading(false);
     }
@@ -190,7 +277,7 @@ const AiCompanion: React.FC = () => {
             {loading && (
               <div className="flex justify-start">
                 <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10">
-                  <Loader2 size={16} className="text-neon animate-spin" />
+                  <span className="inline-block w-2 h-4 bg-neon/70 animate-pulse rounded-sm" />
                 </div>
               </div>
             )}

@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     # Local LLM
     LOCAL_LLM_URL: str = ""
     LOCAL_LLM_MODEL: str = ""
+
+    # Embedding (独立配置 — chat 和 embedding 可用不同 Provider)
+    EMBEDDING_API_KEY: str = ""
+    EMBEDDING_BASE_URL: str = ""
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
     
     # Cache
     REDIS_URL: str = "redis://localhost:6379/0"

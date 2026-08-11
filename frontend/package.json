@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@cometpisces/tarot-kit": "^0.2.0",
+    "@cometpisces/tarot-kit-images": "^0.2.0",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-query-devtools": "^5.91.3",
     "aplayer": "^1.10.1",

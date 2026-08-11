@@ -81,7 +81,7 @@ function DivinationCanvas() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 pointer-events-none"
-      style={{ background: '#05060a' }}
+      style={{ background: 'hsla(var(--div-bg-hsl))' }}
     />
   );
 }
@@ -216,17 +216,17 @@ export default function Divination() {
           <div className="font-mono text-[10px] uppercase tracking-[0.4em] text-neon mb-4">
             / DIVINATION CHAMBER
           </div>
-          <h1 className="font-serif font-black text-4xl md:text-6xl text-white tracking-tight mb-3">
+          <h1 className="font-serif font-black text-4xl md:text-6xl text-[hsl(var(--div-text-hsl))] tracking-tight mb-3">
             占卜屋
           </h1>
-          <p className="font-serif text-white/40 text-sm md:text-base tracking-wide">
+          <p className="font-serif text-[hsla(var(--div-text-hsl)/0.45)] text-sm md:text-base tracking-wide">
             虚空之中，自有回响
           </p>
           {/* 装饰线 */}
           <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="h-px w-12 bg-white/20" />
+            <div className="h-px w-12 bg-[hsla(var(--div-line-hsl)/0.25)]" />
             <div className="w-1.5 h-1.5 rounded-full bg-neon animate-pulse-slow" />
-            <div className="h-px w-12 bg-white/20" />
+            <div className="h-px w-12 bg-[hsla(var(--div-line-hsl)/0.25)]" />
           </div>
         </div>
 
@@ -240,7 +240,7 @@ export default function Divination() {
                 onMouseEnter={() => setHovered(i)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={() => navigate(door.path)}
-                className="group relative bg-[#0a0a0a]/80 backdrop-blur-sm border border-white/10 rounded-2xl p-8 md:p-10 flex flex-col items-center text-center transition-all duration-500 hover:-translate-y-2 hover:border-neon/50 overflow-hidden"
+                className="group relative bg-[hsla(var(--div-card-hsl)/0.85)] backdrop-blur-sm border border-[hsla(var(--div-line-hsl)/0.12)] rounded-2xl p-8 md:p-10 flex flex-col items-center text-center transition-all duration-500 hover:-translate-y-2 hover:border-neon/50 overflow-hidden"
                 style={{
                   boxShadow: isHovered ? `0 20px 60px hsl(var(--color-neon-hsl) / 0.12)` : undefined,
                 }}
@@ -270,15 +270,15 @@ export default function Divination() {
                 />
 
                 {/* 标题 */}
-                <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/30 mb-2">
+                <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-[hsla(var(--div-text-hsl)/0.35)] mb-2">
                   {door.subtitle}
                 </div>
-                <h2 className="font-serif font-black text-2xl text-white mb-4">
+                <h2 className="font-serif font-black text-2xl text-[hsl(var(--div-text-hsl))] mb-4">
                   {door.title}
                 </h2>
 
                 {/* 描述 */}
-                <p className="font-serif text-white/40 text-sm whitespace-pre-line leading-relaxed">
+                <p className="font-serif text-[hsla(var(--div-text-hsl)/0.45)] text-sm whitespace-pre-line leading-relaxed">
                   {door.desc}
                 </p>
 
@@ -291,8 +291,8 @@ export default function Divination() {
                 </div>
 
                 {/* 右上角赛博印章 */}
-                <div className="absolute top-4 right-4 w-8 h-8 border border-white/10 rounded flex items-center justify-center group-hover:border-neon/30 transition-colors">
-                  <span className="font-mono text-[9px] text-white/20 group-hover:text-neon/50 transition-colors">
+                <div className="absolute top-4 right-4 w-8 h-8 border border-[hsla(var(--div-line-hsl)/0.12)] rounded flex items-center justify-center group-hover:border-neon/30 transition-colors">
+                  <span className="font-mono text-[9px] text-[hsla(var(--div-text-hsl)/0.25)] group-hover:text-neon/50 transition-colors">
                     {String(i + 1).padStart(2, '0')}
                   </span>
                 </div>
@@ -304,7 +304,7 @@ export default function Divination() {
         {/* 登录提示 */}
         {!user && (
           <div className="mt-12 text-center">
-            <p className="font-mono text-xs text-white/30 tracking-wide">
+            <p className="font-mono text-xs text-[hsla(var(--div-text-hsl)/0.35)] tracking-wide">
               · 占卜结果需登录后方可记录 ·
             </p>
           </div>
@@ -313,9 +313,9 @@ export default function Divination() {
         {/* 底部 */}
         <div className="mt-auto pt-16">
           <div className="flex items-center gap-3 justify-center">
-            <div className="h-px w-8 bg-white/10" />
-            <span className="font-serif text-white/20 text-xs italic">命由天定，运由心生</span>
-            <div className="h-px w-8 bg-white/10" />
+            <div className="h-px w-8 bg-[hsla(var(--div-line-hsl)/0.12)]" />
+            <span className="font-serif text-[hsla(var(--div-text-hsl)/0.25)] text-xs italic">命由天定，运由心生</span>
+            <div className="h-px w-8 bg-[hsla(var(--div-line-hsl)/0.12)]" />
           </div>
         </div>
       </div>

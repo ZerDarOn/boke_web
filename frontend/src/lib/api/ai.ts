@@ -78,4 +78,36 @@ export const aiApi = {
     apiRequest<CompanionProfile>('/api/ai/companion/profile', {
       auth: false,
     }),
+
+  /** 占卜馆 AI 深度解读 / 追问（不经过 RAG，直接 LLM 生成）。 */
+  divination: async (payload: {
+    kind: 'tarot' | 'iching' | 'astrology';
+    spread: string;
+    question?: string;
+    followup?: string;
+    previous_reading?: string;
+  }) =>
+    apiRequest<{ reading: string }>('/api/ai/divination', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify(payload),
+    }),
+
+  /** 后台：获取 AI 服务配置（密钥脱敏）。 */
+  getAiSettings: async () =>
+    apiRequest<{
+      settings: Array<{
+        key: string;
+        value: string;
+        masked: boolean;
+        set: boolean;
+      }>;
+    }>('/api/ai/settings'),
+
+  /** 后台：更新 AI 服务配置（写入 ai-service/.env）。 */
+  updateAiSettings: async (settings: Record<string, string>) =>
+    apiRequest<{ saved: boolean; message: string }>('/api/ai/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ settings }),
+    }),
 };

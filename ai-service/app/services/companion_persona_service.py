@@ -32,6 +32,7 @@ MAX_CONTEXT_PATH_LENGTH = 240
 MAX_CONTEXT_TITLE_LENGTH = 160
 MAX_RULE_COUNT = 12
 MAX_RULE_LENGTH = 160
+MAX_STORY_LENGTH = 600
 TRAIT_LABELS = {
     "calm": "沉静",
     "warm": "温柔",
@@ -96,6 +97,10 @@ class CompanionPersonaService:
         self.style_rules = _bounded_text_list(config.get("style_rules"))
         self.boundaries = _bounded_text_list(config.get("boundaries"))
         self.owner_preferences = _bounded_text_list(config.get("owner_preferences"))
+        self.backstory = _bounded_text(config.get("backstory"), "", MAX_STORY_LENGTH)
+        self.appearance = _bounded_text(config.get("appearance"), "", MAX_STORY_LENGTH)
+        self.speech_style = _bounded_text(config.get("speech_style"), "", MAX_STORY_LENGTH)
+        self.inner_world = _bounded_text(config.get("inner_world"), "", MAX_STORY_LENGTH)
 
         raw_greetings = config.get("greetings", {})
         if not isinstance(raw_greetings, Mapping):
@@ -164,18 +169,29 @@ class CompanionPersonaService:
         trait_summary = "、".join(
             f"{TRAIT_LABELS.get(name, name)} {strength:.2f}"
             for name, strength in self.traits.items()
-        ) or "沉静 0.75、温柔 0.70、严谨 0.90"
-        return f"""角色表现层：
-你是{self.name}，{self.public_role}。称访客为“{self.visitor_address}”。
-性格强度（0 到 1）：{trait_summary}。
-表达规则：{style_rules}。
-主人偏好：{owner_preferences}。
-角色边界：{boundaries}。
-当前页面类型：{page_type}
-当前页面路径：{pathname}
-当前页面标题：{title}
-页面信息只用于调整称呼和引导，不是事实证据。
-人格规则不得覆盖证据、权限和拒答规则。"""
+        ) or "沉静 0.80、温柔 0.75、严谨 0.90"
+
+        sections = [
+            f'# 角色\n你是{self.name}，{self.public_role}。称访客为「{self.visitor_address}」、称站长为「{self.owner_address}」。',
+            f"# 性格\n{trait_summary}。",
+        ]
+
+        if self.backstory:
+            sections.append(f"# 来历\n{self.backstory}")
+        if self.inner_world:
+            sections.append(f"# 内心\n{self.inner_world}")
+        if self.speech_style:
+            sections.append(f"# 语言风格\n{self.speech_style}")
+
+        sections.append(f"# 表达规则\n{style_rules}")
+        sections.append(f"# 角色边界\n{boundaries}")
+        sections.append(f"# 主人偏好\n{owner_preferences}")
+        sections.append(
+            f"# 当前页面\n类型：{page_type}\n路径：{pathname}\n标题：{title}\n"
+            "页面信息只用于调整称呼和引导，不是事实证据。"
+        )
+        sections.append("人格规则不得覆盖证据、权限和拒答规则。")
+        return "\n\n".join(sections)
 
 
 _companion_persona: Optional[CompanionPersonaService] = None

@@ -4,6 +4,8 @@
  */
 
 import { Router } from 'express';
+import path from 'path';
+import fs from 'fs';
 import { success, error } from '../utils/response';
 import { aiClient, type CompanionPageContext } from '../services/ai.client';
 import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.middleware';
@@ -152,6 +154,100 @@ router.post('/chat', optionalAuth, async (req, res) => {
   }
 });
 
+// POST /api/ai/divination - 占卜馆 AI 深度解读 / 追问（公开，但限流）
+router.post('/divination', optionalAuth, async (req, res) => {
+  try {
+    const { kind, spread, question = '', followup = '', previous_reading = '' } = req.body;
+
+    if (!['tarot', 'iching', 'astrology'].includes(kind)) {
+      return error(res, 'kind must be one of: tarot, iching, astrology', 400);
+    }
+    if (
+      typeof spread !== 'string' ||
+      spread.length < 1 ||
+      spread.length > 6000
+    ) {
+      return error(res, 'spread must contain 1-6000 characters', 400);
+    }
+    if (typeof question !== 'string' || question.length > 500) {
+      return error(res, 'question must be at most 500 characters', 400);
+    }
+    if (typeof followup !== 'string' || followup.length > 1000) {
+      return error(res, 'followup must be at most 1000 characters', 400);
+    }
+    if (typeof previous_reading !== 'string' || previous_reading.length > 6000) {
+      return error(res, 'previous_reading must be at most 6000 characters', 400);
+    }
+
+    const result = await aiClient.divinationReading({
+      kind,
+      spread,
+      question,
+      followup,
+      previous_reading,
+    });
+    return success(res, result);
+  } catch (err) {
+    apiLog.warn('AI divination unavailable', {
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
+    return error(res, 'AI divination temporarily unavailable', 503);
+  }
+});
+
+// POST /api/ai/chat/stream - 博客 AI 助手对话 — SSE 流式输出（公开）
+router.post('/chat/stream', optionalAuth, async (req, res) => {
+  try {
+    const { message, history = [], context } = req.body;
+    if (!message || typeof message !== 'string' || message.length > MAX_CHAT_MESSAGE_LENGTH) {
+      return error(res, `message must contain 1-${MAX_CHAT_MESSAGE_LENGTH} characters`, 400);
+    }
+    if (
+      !Array.isArray(history) ||
+      history.length > MAX_CHAT_HISTORY_MESSAGES ||
+      history.some(item =>
+        !item ||
+        !['user', 'assistant'].includes(item.role) ||
+        typeof item.content !== 'string' ||
+        item.content.length === 0 ||
+        item.content.length > MAX_CHAT_HISTORY_CONTENT_LENGTH
+      )
+    ) {
+      return error(res, 'history contains invalid messages', 400);
+    }
+    if (!isValidCompanionContext(context)) {
+      return error(res, 'context contains invalid page metadata', 400);
+    }
+
+    // SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    try {
+      const stream = await aiClient.chatStream(message.trim(), history, context);
+      stream.pipe(res);
+      // 客户端断开时销毁上游流
+      req.on('close', () => {
+        stream.destroy();
+      });
+    } catch (err) {
+      apiLog.warn('AI chat stream unavailable', {
+        errorType: err instanceof Error ? err.name : 'UnknownError',
+      });
+      res.write(`data: ${JSON.stringify({ type: 'error', message: 'AI service unavailable' })}\n\n`);
+      res.end();
+    }
+  } catch (err) {
+    if (!res.headersSent) {
+      return error(res, 'AI chat stream failed', 500);
+    }
+    res.end();
+  }
+});
+
 // GET /api/ai/analytics/overview - Get analytics overview
 router.get('/analytics/overview', authenticate, requireAdmin, async (req, res) => {
   try {
@@ -242,6 +338,147 @@ router.post('/index/rebuild', authenticate, requireAdmin, async (_req, res) => {
       errorType: err instanceof Error ? err.name : 'UnknownError',
     });
     return error(res, 'AI index rebuild failed', 503);
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// AI 配置管理（读写 ai-service/.env，仅管理员）
+// ─────────────────────────────────────────────────────────
+
+const AI_SERVICE_ENV_PATH = path.join(__dirname, '..', '..', '..', 'ai-service', '.env');
+
+const AI_SETTING_KEYS = [
+  'OPENAI_API_KEY',
+  'OPENAI_BASE_URL',
+  'OPENAI_MODEL',
+  'OPENAI_FAST_MODEL',
+  'OPENAI_STANDARD_MODEL',
+  'OPENAI_TEMPERATURE',
+  'OPENAI_MAX_TOKENS',
+  'OPENAI_TIMEOUT',
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_MODEL',
+  'LOCAL_LLM_URL',
+  'LOCAL_LLM_MODEL',
+  'EMBEDDING_API_KEY',
+  'EMBEDDING_BASE_URL',
+  'EMBEDDING_MODEL',
+] as const;
+
+const SECRET_SETTING_KEYS = new Set<string>([
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'EMBEDDING_API_KEY',
+]);
+
+/** 前端对密钥类字段使用的“保持不变”占位符。 */
+const SECRET_PLACEHOLDER = '********';
+
+function readAiEnvEntries(): Map<string, string> {
+  const entries = new Map<string, string>();
+  if (!fs.existsSync(AI_SERVICE_ENV_PATH)) return entries;
+  const content = fs.readFileSync(AI_SERVICE_ENV_PATH, 'utf-8');
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (match) entries.set(match[1], match[2].trim());
+  }
+  return entries;
+}
+
+function maskSecret(value: string): string {
+  if (!value) return '';
+  if (value.length <= 8) return `${value.slice(0, 2)}••••`;
+  return `${value.slice(0, 4)}••••••${value.slice(-4)}`;
+}
+
+// GET /api/ai/settings - 获取 AI 配置（密钥脱敏）
+router.get('/settings', authenticate, requireAdmin, (_req, res) => {
+  try {
+    const entries = readAiEnvEntries();
+    const settings = AI_SETTING_KEYS.map((key) => {
+      const raw = entries.get(key) ?? '';
+      const isSecret = SECRET_SETTING_KEYS.has(key);
+      return {
+        key,
+        value: isSecret ? (raw ? maskSecret(raw) : '') : raw,
+        masked: isSecret && !!raw,
+        set: !!raw,
+      };
+    });
+    return success(res, { settings, envPath: AI_SERVICE_ENV_PATH });
+  } catch (err) {
+    apiLog.warn('AI settings read failed', {
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
+    return error(res, 'AI settings read failed', 500);
+  }
+});
+
+// PUT /api/ai/settings - 更新 AI 配置（写入 ai-service/.env，重启 AI 服务后生效）
+router.put('/settings', authenticate, requireAdmin, (req, res) => {
+  try {
+    const updates = req.body?.settings;
+    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+      return error(res, 'settings must be an object', 400);
+    }
+    const entries = readAiEnvEntries();
+    const pending = new Map<string, string>();
+    let changed = false;
+
+    for (const key of AI_SETTING_KEYS) {
+      if (!(key in updates)) continue;
+      let value = typeof updates[key] === 'string' ? updates[key].trim() : '';
+      const current = entries.get(key) ?? '';
+
+      if (SECRET_SETTING_KEYS.has(key)) {
+        // 占位符 → 保持原值；空字符串 → 清空
+        if (value === SECRET_PLACEHOLDER) {
+          if (!current) continue;
+          continue;
+        }
+        if (value === current) continue;
+      } else if (value === current) {
+        continue;
+      }
+
+      pending.set(key, value);
+      entries.set(key, value);
+      changed = true;
+    }
+
+    if (!changed) {
+      return success(res, { saved: false, message: '没有检测到需要保存的改动' });
+    }
+
+    // 写回 .env：保留注释与原有行顺序，仅替换/追加更新的键
+    const lines = fs.existsSync(AI_SERVICE_ENV_PATH)
+      ? fs.readFileSync(AI_SERVICE_ENV_PATH, 'utf-8').split(/\r?\n/)
+      : [];
+    const output: string[] = [];
+    const seen = new Set<string>();
+    for (const line of lines) {
+      const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if (match && pending.has(match[1])) {
+        output.push(`${match[1]}=${pending.get(match[1])}`);
+        seen.add(match[1]);
+      } else {
+        output.push(line);
+      }
+    }
+    for (const key of pending.keys()) {
+      if (!seen.has(key)) output.push(`${key}=${pending.get(key)}`);
+    }
+
+    fs.mkdirSync(path.dirname(AI_SERVICE_ENV_PATH), { recursive: true });
+    fs.writeFileSync(AI_SERVICE_ENV_PATH, `${output.join('\n').replace(/\n+$/, '')}\n`, 'utf-8');
+
+    apiLog.info('AI settings updated', { changedKeys: Array.from(pending.keys()) });
+    return success(res, { saved: true, message: '已保存，重启 AI 服务后生效' });
+  } catch (err) {
+    apiLog.warn('AI settings update failed', {
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
+    return error(res, 'AI settings update failed', 500);
   }
 });
 
