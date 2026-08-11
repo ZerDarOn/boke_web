@@ -44,6 +44,12 @@ export class PostController {
 
       // 检查访问权限
       const isAdmin = req.user?.role === 'ADMIN';
+
+      // 草稿（未发布）只有管理员可访问
+      if (!post.isPublished && !isAdmin) {
+        return response.notFound(res, 'Post not found');
+      }
+
       if (post.accessLevel === 'PRIVATE' && !isAdmin) {
         return response.forbidden(res, 'This post is private');
       }
@@ -93,11 +99,6 @@ export class PostController {
           success: true,
           accessToken: createPostAccessToken(id),
         });
-        return response.success(res, {
-          success: true,
-          accessToken: createPostAccessToken(id),
-        });
-        // 在 session 中记录已验证
       } else {
         response.unauthorized(res, 'Invalid password');
       }

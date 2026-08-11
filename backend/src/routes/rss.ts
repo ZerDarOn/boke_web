@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma';
+import { publicPostWhere } from '../lib/post-access-policy';
 
 const router = Router();
 
@@ -11,7 +12,7 @@ router.get('/', async (req, res) => {
 
     // 获取最新的 20 篇文章
     const posts = await prisma.post.findMany({
-      where: { isPublished: true },
+      where: publicPostWhere,
       orderBy: { date: 'desc' },
       take: 20,
       include: {

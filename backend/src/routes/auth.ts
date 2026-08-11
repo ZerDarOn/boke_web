@@ -215,7 +215,7 @@ router.post('/refresh', async (req, res) => {
       return error(res, '无效的刷新令牌', 401);
     }
 
-    // 检查用户是否存在
+    // 检查用户是否存在且未被禁用
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -223,11 +223,16 @@ router.post('/refresh', async (req, res) => {
         username: true,
         email: true,
         role: true,
+        isActive: true,
       },
     });
 
     if (!user) {
       return error(res, '用户不存在', 401);
+    }
+
+    if (!user.isActive) {
+      return error(res, '账户已被禁用', 403);
     }
 
     // 生成新的访问令牌

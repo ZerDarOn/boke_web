@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import { publicPostWhere } from '../lib/post-access-policy';
 
 export class SearchService {
   static async search(query: string) {
@@ -8,7 +9,7 @@ export class SearchService {
       // 搜索文章
       prisma.post.findMany({
         where: {
-          isPublished: true,
+          ...publicPostWhere,
           OR: [
             { title: { contains: searchPattern, mode: 'insensitive' } },
             { content: { contains: searchPattern, mode: 'insensitive' } },

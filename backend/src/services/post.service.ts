@@ -4,6 +4,7 @@ import prisma from '../lib/prisma';
 import { PaginationParams } from '../types';
 import { aiClient } from './ai.client';
 import { apiLog } from '../lib/logger';
+import { publicPostWhere } from '../lib/post-access-policy';
 
 function notifyPostIndex(postId: string): void {
   void aiClient.syncPostIndex(postId)
@@ -48,8 +49,7 @@ export class PostService {
     const { pagination, category, tag, search } = params;
 
     const where: Prisma.PostWhereInput = {
-      isPublished: true,
-      accessLevel: { not: 'PRIVATE' }, // 排除私密文章
+      ...publicPostWhere,
       ...(category && { category }),
       ...(tag && { tags: { has: tag } }),
       ...(search && {
@@ -203,8 +203,8 @@ export class PostService {
 
     return prisma.post.findMany({
       where: {
+        ...publicPostWhere,
         id: { not: id },
-        isPublished: true,
         OR: [
           { tags: { hasSome: post.tags } },
           { category: post.category },
@@ -228,7 +228,7 @@ export class PostService {
     const categories = await prisma.post.groupBy({
       by: ['category'],
       _count: { category: true },
-      where: { isPublished: true },
+      where: publicPostWhere,
     });
 
     return categories.map((c) => ({
@@ -240,7 +240,7 @@ export class PostService {
   // 获取所有标签
   static async getAllTags() {
     const posts = await prisma.post.findMany({
-      where: { isPublished: true },
+      where: publicPostWhere,
       select: { tags: true },
     });
 
@@ -260,7 +260,7 @@ export class PostService {
   // 获取热门标签
   static async getPopularTags(limit = 20) {
     const posts = await prisma.post.findMany({
-      where: { isPublished: true },
+      where: publicPostWhere,
       select: { tags: true, viewCount: true },
     });
 
