@@ -47,7 +47,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         if (inline) {
           return (
             <code
-              className={`px-2 py-1 bg-gray-100 dark:bg-white/10 text-neon font-mono text-sm rounded border border-gray-200 dark:border-white/20 ${className ?? ''}`}
+              className={`px-1.5 py-0.5 bg-gray-100 dark:bg-white/10 text-neon font-mono text-[0.875em] rounded border border-gray-200 dark:border-white/15 ${className ?? ''}`}
               {...props}
             >
               {children}
