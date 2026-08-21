@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useCreateDivination } from '@/hooks/queries/divination';
+import { useAuth } from '@/contexts/AuthContext';
 import { getBazi, meihuaCast, type Bazi } from './bazi';
 import { getZhouyiByNumber, type ZhouyiHexagram } from './zhouyi-data';
 import DivinationAI from './DivinationAI';
@@ -341,8 +342,8 @@ function CornerFrame() {
 // 主组件
 // ============================================================
 export default function IChingDivination() {
-  const navigate = useNavigate();
   const createDivination = useCreateDivination();
+  const { user } = useAuth();
 
   const [phase, setPhase] = useState<Phase>('idle');
   const [question, setQuestion] = useState('');
@@ -460,17 +461,18 @@ export default function IChingDivination() {
 
   // 重置
   const reset = useCallback(() => {
+    createDivination.reset();
     if (timerRef.current) clearTimeout(timerRef.current);
     setPhase('idle');
     setLines([]);
     setCurrentToss(-1);
     setCoinFaces([2, 2, 2]);
     setBaziData(null);
-  }, []);
+  }, [createDivination]);
 
   // 记录结果到后端（静默，不阻塞 UI）
   useEffect(() => {
-    if (phase !== 'result' || lines.length !== 6) return;
+    if (!user || phase !== 'result' || lines.length !== 6) return;
     const symbol = lines.map(l => l.value);
     const hexagram = findHexagram(symbol);
     const { changedHexagram } = getChangedHexagram(lines);
@@ -506,7 +508,7 @@ export default function IChingDivination() {
       // 记录失败不影响展示
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, lines]);
+  }, [phase, lines, user]);
 
   // 计算最终卦象
   const currentSymbol = lines.length === 6 ? lines.map(l => l.value) : null;
@@ -537,13 +539,13 @@ export default function IChingDivination() {
       <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-10 md:py-16">
         {/* ========== 顶部：返回 + 标题 ========== */}
         <div className="w-full max-w-2xl flex items-center justify-between mb-12">
-          <button
-            onClick={() => navigate('/divination')}
-            className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.4)] hover:text-neon transition-colors flex items-center gap-2"
+          <Link
+            to="/divination"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md px-2 font-mono text-xs uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.58)] transition-colors hover:text-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon/60"
           >
             <span>←</span>
-            <span>返回</span>
-          </button>
+            <span>返回占卜屋</span>
+          </Link>
           <div className="text-center">
             <div className="font-mono text-[10px] uppercase tracking-[0.4em] text-secondary mb-1">
               / ICHING
@@ -1054,6 +1056,7 @@ export default function IChingDivination() {
             {/* AI 深度解读（用户主动选择才调用） */}
             <DivinationAI
               kind="iching"
+              recordId={createDivination.data?.data?.id}
               spread={[
                 `占得「${currentHexagram.name}」卦（第 ${currentHexagram.number} 卦）`,
                 `卦辞：${currentHexagram.judgment}`,

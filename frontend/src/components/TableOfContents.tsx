@@ -73,7 +73,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ content }) => {
   return (
     <div
       className={`sticky top-28 bg-gradient-to-br from-white via-white to-gray-50 dark:from-[#1a1a1a] dark:via-[#1a1a1a] dark:to-[#0d0d0d] border border-gray-200/50 dark:border-white/5 rounded-xl shadow-lg shadow-gray-200/50 dark:shadow-black/30 transition-all duration-300 overflow-hidden ${
-        isCollapsed ? 'w-12' : 'w-full lg:w-64'
+        isCollapsed ? 'w-12' : 'w-full lg:w-52'
       }`}
     >
       <button
@@ -117,7 +117,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ content }) => {
                   <span className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
                     activeId === item.id ? 'bg-neon shadow-lg shadow-neon/50' : 'bg-gray-300 dark:bg-gray-600 group-hover:bg-neon/50'
                   }`} />
-                  <span className="text-sm font-medium font-sans truncate">{item.title}</span>
+            <span className="text-xs font-medium font-sans truncate">{item.title}</span>
                 </div>
                 {activeId === item.id && (
                   <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-transparent via-neon to-transparent rounded-full" />

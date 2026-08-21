@@ -18,7 +18,8 @@ export type CompanionPageType =
   | 'about'
   | 'network'
   | 'dashboard'
-  | 'music';
+  | 'music'
+  | 'divination';
 
 export interface CompanionPageContext {
   page_type: CompanionPageType;
@@ -106,8 +107,38 @@ export const aiApi = {
 
   /** 后台：更新 AI 服务配置（写入 ai-service/.env）。 */
   updateAiSettings: async (settings: Record<string, string>) =>
-    apiRequest<{ saved: boolean; message: string }>('/api/ai/settings', {
+    apiRequest<{ saved: boolean; message: string; reloaded?: boolean; rebuildRequired?: boolean }>('/api/ai/settings', {
       method: 'PUT',
       body: JSON.stringify({ settings }),
+    }),
+
+  getIndexStatus: async () =>
+    apiRequest<{
+      collection: string;
+      posts: number;
+      chunks: number;
+      last_operation: string | null;
+      last_mutation_at: string | null;
+      last_error_type: string | null;
+    }>('/api/ai/index/status'),
+
+  getGroundingStatus: async () =>
+    apiRequest<{
+      scope: string;
+      requests: number;
+      grounded_answers: number;
+      grounded_rate: number;
+      provider_errors: number;
+      refusals: Record<string, number>;
+    }>('/api/ai/grounding/status'),
+
+  reconcileIndex: async () =>
+    apiRequest<{ updated: number; unchanged: number; removed: number }>('/api/ai/index/reconcile', {
+      method: 'POST',
+    }),
+
+  rebuildIndex: async () =>
+    apiRequest<{ indexed: number; posts: number; chunks: number }>('/api/ai/index/rebuild', {
+      method: 'POST',
     }),
 };

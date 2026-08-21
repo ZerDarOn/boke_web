@@ -21,6 +21,7 @@ function resolveCompanionPageType(pathname: string): CompanionPageType {
   if (pathname === '/network') return 'network';
   if (pathname === '/dashboard') return 'dashboard';
   if (pathname === '/music') return 'music';
+  if (pathname === '/divination' || pathname.startsWith('/divination/')) return 'divination';
   return 'default';
 }
 

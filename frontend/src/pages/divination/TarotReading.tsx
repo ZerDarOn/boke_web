@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useCreateDivination } from '@/hooks/queries/divination';
+import { useAuth } from '@/contexts/AuthContext';
 import { getImagePath } from '@cometpisces/tarot-kit-images';
 import { getDeepReading, getZhtwName, type DeepReading } from './tarot-deep';
 import DivinationAI from './DivinationAI';
@@ -203,7 +204,7 @@ async function drawCardsAdaptive(count: number): Promise<DrawnCard[]> {
  * ------------------------------------------------------------------ */
 
 type Stage = 'select' | 'shuffle' | 'draw' | 'reveal' | 'result';
-type Spread = 'single' | 'three-card';
+type Spread = 'single' | 'three-card' | 'relationship' | 'choice' | 'celtic-cross';
 
 interface FinalCard {
   name: string;
@@ -225,6 +226,17 @@ interface FinalCard {
 const POSITIONS: Record<Spread, string[]> = {
   single: ['当下'],
   'three-card': ['过去', '现在', '未来'],
+  relationship: ['你的状态', '对方状态', '关系核心', '当前阻碍', '发展建议'],
+  choice: ['问题核心', '选择 A 的优势', '选择 A 的代价', '选择 B 的优势', '选择 B 的代价'],
+  'celtic-cross': ['现状', '挑战', '根基', '近期过去', '可能方向', '近期未来', '自我态度', '外部环境', '希望与恐惧', '最终结果'],
+};
+
+const SPREAD_LABELS: Record<Spread, string> = {
+  single: '单张灵牌',
+  'three-card': '三张时空牌阵',
+  relationship: '关系镜像牌阵',
+  choice: '双路抉择牌阵',
+  'celtic-cross': '凯尔特十字牌阵',
 };
 
 /* ------------------------------------------------------------------ *
@@ -683,8 +695,8 @@ function TarotCardFace({ card }: { card: FinalCard }) {
 }
 
 // 把整副牌的信息组织成一段连贯的综合解读
-function buildReadingSummary(cards: FinalCard[], q: string): string {
-  const spreadName = cards.length === 1 ? '单张灵牌' : cards.length === 3 ? '三张时空牌阵' : '五张凯尔特十字牌阵';
+function buildReadingSummary(cards: FinalCard[], q: string, spread: Spread): string {
+  const spreadName = SPREAD_LABELS[spread];
   const parts: string[] = [];
   parts.push(`本次为${spreadName}${q ? `,向虚空询问「${q}」` : ''},牌面已然昭示。`);
   cards.forEach(c => {
@@ -872,6 +884,27 @@ const SPREADS: SpreadOption[] = [
     desc: '追溯过去、洞察现在、预见未来',
     positions: ['过去', '现在', '未来'],
   },
+  {
+    id: 'relationship',
+    title: '关系镜像',
+    subtitle: 'RELATIONSHIP MIRROR',
+    desc: '看见双方状态、关系核心与下一步建议',
+    positions: POSITIONS.relationship,
+  },
+  {
+    id: 'choice',
+    title: '双路抉择',
+    subtitle: 'TWO PATHS',
+    desc: '比较两种选择各自的机会与代价',
+    positions: POSITIONS.choice,
+  },
+  {
+    id: 'celtic-cross',
+    title: '凯尔特十字',
+    subtitle: 'CELTIC CROSS',
+    desc: '用十个位置完整梳理复杂局势与发展脉络',
+    positions: POSITIONS['celtic-cross'],
+  },
 ];
 
 /* ------------------------------------------------------------------ *
@@ -879,8 +912,8 @@ const SPREADS: SpreadOption[] = [
  * ------------------------------------------------------------------ */
 
 export default function TarotReading() {
-  const navigate = useNavigate();
   const createMutation = useCreateDivination();
+  const { user } = useAuth();
 
   const [stage, setStage] = useState<Stage>('select');
   const [spread, setSpread] = useState<Spread>('single');
@@ -906,7 +939,7 @@ export default function TarotReading() {
 
   // 洗牌结束 -> 抽牌阶段
   const handleShuffleDone = useCallback(async () => {
-    const count = spread === 'single' ? 1 : 3;
+    const count = POSITIONS[spread].length;
     const cards = await drawCardsAdaptive(count);
     setDrawn(cards);
     setFlipped(new Array(count).fill(false));
@@ -978,7 +1011,7 @@ export default function TarotReading() {
     // 保存记录（仅一次）
     if (!saved) {
       setSaved(true);
-      createMutation.mutate({
+      if (user) createMutation.mutate({
         type: 'TAROT',
         question: question.trim() || undefined,
         result: {
@@ -992,33 +1025,34 @@ export default function TarotReading() {
         },
       });
     }
-  }, [stage, drawn, spread, question, saved, createMutation]);
+  }, [stage, drawn, spread, question, saved, createMutation, user]);
 
   // 重新占卜
   const handleReset = useCallback(() => {
+    createMutation.reset();
     setStage('select');
     setDrawn([]);
     setFlipped([]);
     setFinalCards([]);
     setQuestion('');
     setSaved(false);
-  }, []);
+  }, [createMutation]);
 
   /* -------------------- 渲染各阶段 -------------------- */
 
-  const count = spread === 'single' ? 1 : 3;
+  const count = POSITIONS[spread].length;
 
   return (
     <div className="relative min-h-screen" style={{ background: 'hsla(var(--div-bg-hsl))' }}>
       <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12 md:py-16 max-w-4xl mx-auto">
         {/* 顶部：返回 + 标题 */}
         <div className="w-full mb-12">
-          <button
-            onClick={() => navigate('/divination')}
-            className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.4)] hover:text-neon transition-colors mb-6 flex items-center gap-2"
+          <Link
+            to="/divination"
+            className="mb-6 inline-flex min-h-10 items-center gap-2 rounded-md px-2 font-mono text-xs uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.58)] transition-colors hover:text-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon/60"
           >
             <span>←</span> 返回占卜屋
-          </button>
+          </Link>
           <div className="text-center">
             <div className="font-mono text-[10px] uppercase tracking-[0.4em] text-neon mb-3">
               / TAROT READING
@@ -1167,11 +1201,11 @@ export default function TarotReading() {
                 DRAW YOUR {count === 1 ? 'CARD' : 'CARDS'}
               </div>
               <p className="font-serif text-[hsla(var(--div-text-hsl)/0.5)] text-sm mb-10">
-                {count === 1 ? '点击牌背，翻开你的牌' : '依次点击牌背，翻开三张牌'}
+                {count === 1 ? '点击牌背，翻开你的牌' : `依次点击牌背，翻开 ${count} 张牌`}
               </p>
 
               {/* 牌堆 + 抽出的牌 */}
-              <div className="flex items-end justify-center gap-6 md:gap-10 w-full">
+              <div className="flex w-full flex-col items-center justify-center gap-10 lg:flex-row lg:items-end">
                 {/* 牌堆（剩余） */}
                 <div className="relative w-24 h-36 md:w-28 md:h-40 flex-shrink-0">
                   {Array.from({ length: Math.max(1, 8 - flipped.filter(Boolean).length) }).map((_, i) => (
@@ -1192,9 +1226,9 @@ export default function TarotReading() {
                 </div>
 
                 {/* 抽出的牌位 */}
-                <div className={`grid gap-4 ${count === 1 ? 'grid-cols-1' : 'grid-cols-3'} justify-items-center`}>
+                <div className={`grid justify-items-center gap-4 ${count === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-5'}`}>
                   {drawn.map((_, i) => (
-                    <div key={i} style={{ width: count === 1 ? '180px' : '140px' }}>
+                    <div key={i} style={{ width: count === 1 ? '180px' : count > 5 ? '112px' : '140px' }}>
                       <TarotCard
                         flipped={flipped[i]}
                         onFlip={() => handleFlip(i)}
@@ -1227,10 +1261,10 @@ export default function TarotReading() {
                 / YOUR READING
               </div>
 
-              <div className={`grid gap-6 mb-10 ${count === 1 ? 'grid-cols-1 max-w-[200px] mx-auto' : 'grid-cols-1 md:grid-cols-3'}`}>
+              <div className={`mb-10 grid gap-6 ${count === 1 ? 'mx-auto max-w-[200px] grid-cols-1' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'}`}>
                 {finalCards.map((c, i) => (
                   <div key={i} style={{ width: count === 1 ? '100%' : undefined }} className="mx-auto" >
-                    <div style={{ width: count === 3 ? '160px' : undefined, margin: '0 auto' }}>
+                    <div style={{ width: count >= 5 ? '120px' : count > 1 ? '150px' : undefined, margin: '0 auto' }}>
                       <TarotCard
                         flipped={true}
                         card={c}
@@ -1406,15 +1440,16 @@ export default function TarotReading() {
               <div className="bg-neon/[0.03] border border-neon/20 rounded-2xl p-6 mb-10">
                 <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-neon mb-4">/ 综合解读</div>
                 <p className="font-serif text-[hsla(var(--div-text-hsl)/0.7)] text-sm leading-relaxed whitespace-pre-line">
-                  {buildReadingSummary(finalCards, question)}
+                  {buildReadingSummary(finalCards, question, spread)}
                 </p>
               </div>
 
               {/* AI 深度解读（用户主动选择才调用） */}
               <DivinationAI
                 kind="tarot"
-                spread={finalCards
-                  .map(c => `${c.position}：${c.nameZh}（${c.reversed ? '逆位' : '正位'}）`)
+                recordId={createMutation.data?.data?.id}
+                spread={[`牌阵：${SPREAD_LABELS[spread]}`, ...finalCards
+                  .map(c => `${c.position}：${c.nameZh}（${c.reversed ? '逆位' : '正位'}）`)]
                   .join('\n')}
                 question={question.trim() || undefined}
               />
@@ -1435,6 +1470,11 @@ export default function TarotReading() {
                   记录失败，但不影响你的占卜
                 </div>
               )}
+              {!user && (
+                <div className="mb-6 text-center font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.42)]">
+                  访客模式 · 结果仅保留在当前页面
+                </div>
+              )}
 
               {/* 提问回显 */}
               {question.trim() && (
@@ -1453,13 +1493,19 @@ export default function TarotReading() {
 
         {/* 底部：重新占卜 */}
         {(stage === 'result' || stage === 'draw') && (
-          <div className="mt-8">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <button
               onClick={handleReset}
               className="font-mono text-[10px] uppercase tracking-widest text-[hsla(var(--div-text-hsl)/0.6)] hover:text-neon border border-[hsla(var(--div-line-hsl)/0.25)] hover:border-neon/50 rounded-lg px-6 py-3 transition-all duration-300 hover:-translate-y-1"
             >
               ↻ 重新占卜
             </button>
+            <Link
+              to="/divination"
+              className="rounded-lg border border-neon/35 px-6 py-3 font-mono text-xs uppercase tracking-widest text-neon transition-colors hover:bg-neon/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon/60"
+            >
+              ← 返回占卜馆
+            </Link>
           </div>
         )}
 

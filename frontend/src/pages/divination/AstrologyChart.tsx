@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useCreateDivination } from '@/hooks/queries/divination';
+import { useAuth } from '@/contexts/AuthContext';
 import { getZodiacDeep } from './zodiac-data';
 import DivinationAI from './DivinationAI';
 
@@ -566,8 +567,8 @@ function buildAstroReading(
 }
 
 export default function AstrologyChart() {
-  const navigate = useNavigate();
   const createDivination = useCreateDivination();
+  const { user } = useAuth();
 
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('12:00');
@@ -613,7 +614,7 @@ export default function AstrologyChart() {
       setSelectedSignIdx(sunIdx);
 
       // 记录到后端（不阻塞 UI；失败静默）
-      createDivination.mutate({
+      if (user) createDivination.mutate({
         type: 'ASTROLOGY',
         question: question || undefined,
         result: {
@@ -636,6 +637,7 @@ export default function AstrologyChart() {
   };
 
   const handleReset = () => {
+    createDivination.reset();
     setResult(null);
     setSelectedSignIdx(null);
     setGenerating(false);
@@ -667,13 +669,13 @@ export default function AstrologyChart() {
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8 md:py-12">
         {/* 顶部：返回 + 标题 */}
         <header className="flex items-center gap-4 mb-10">
-          <button
-            onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-full border border-[hsla(var(--div-line-hsl)/0.12)] flex items-center justify-center text-[hsla(var(--div-text-hsl)/0.5)] hover:text-neon hover:border-neon/40 transition-colors"
-            aria-label="返回"
+          <Link
+            to="/divination"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[hsla(var(--div-line-hsl)/0.18)] text-[hsla(var(--div-text-hsl)/0.62)] transition-colors hover:border-neon/50 hover:text-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon/60"
+            aria-label="返回占卜屋"
           >
             <span className="font-mono text-lg">←</span>
-          </button>
+          </Link>
           <div>
             <div className="font-mono text-[10px] uppercase tracking-widest text-neon/70">/ ASTROLOGY</div>
             <h1 className="font-serif font-black text-3xl md:text-4xl text-[hsl(var(--div-text-hsl))] tracking-tight">星相</h1>
@@ -860,6 +862,7 @@ export default function AstrologyChart() {
             {/* AI 深度解读（用户主动选择才调用） */}
             <DivinationAI
               kind="astrology"
+              recordId={createDivination.data?.data?.id}
               spread={[
                 `出生信息：${birthDate || '未填写'} ${birthTime || ''}`,
                 `太阳星座：${result.sunSign.name}（${result.sunSign.element}象）`,

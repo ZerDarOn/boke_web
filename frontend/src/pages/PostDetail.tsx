@@ -389,15 +389,10 @@ const PostDetail: React.FC = () => {
 
       {/* 内容区 + 目录 */}
       <div className="mb-12">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* 目录 */}
-          <div className="w-full lg:flex-shrink-0 lg:w-auto">
-            <TableOfContents content={post.content} />
-          </div>
-
           {/* 文章内容 */}
-          <div className="flex-1 min-w-0">
-            <div className="prose prose-lg dark:prose-invert max-w-none">
+        <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_13rem] gap-8">
+          <div className="min-w-0">
+            <div className="prose prose-lg dark:prose-invert max-w-3xl">
               <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-white/10 p-8 md:p-12 relative overflow-hidden">
                 {/* 装饰角标 */}
                 <div className="absolute top-0 right-0 w-20 h-20 opacity-5">
@@ -417,6 +412,11 @@ const PostDetail: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* 目录：桌面端放在右侧，避免挤压文章正文；移动端自然排在正文之后 */}
+          <div className="w-full lg:w-52">
+            <TableOfContents content={post.content} />
           </div>
         </div>
       </div>

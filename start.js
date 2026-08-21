@@ -7,7 +7,7 @@
 const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const portManager = require('./portManager');
+let portManager;
 
 const MODE = process.argv[2] || 'dev';
 const ROOT_DIR = __dirname;
@@ -270,6 +270,16 @@ const main = async () => {
     showHelp();
     process.exit(0);
   }
+
+  // 生产构建只调用 Vite，不应因开发启动器的可选端口管理模块而失败。
+  if (mode !== 'build') {
+    try {
+      portManager = require('./portManager');
+    } catch {
+      log.error('缺少 portManager.js，无法启动开发、预览或清理模式。可直接使用 npm run build:frontend 完成构建。');
+      process.exit(1);
+    }
+  }
   
   showBanner();
   
@@ -290,8 +300,10 @@ const main = async () => {
   
   log.title(`🚀 ${modeDescriptions[mode] || mode}`);
   
-  // 清理残留进程
-  await portManager.cleanupZombieProcesses();
+  // 开发/预览模式才需要端口管理；构建模式不依赖该可选模块。
+  if (portManager) {
+    await portManager.cleanupZombieProcesses();
+  }
   
   const processes = [];
   

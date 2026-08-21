@@ -1,4 +1,5 @@
 import { apiRequest, getAuthHeaders, getAuthToken } from './request';
+import type { CursorConfig } from '../../config/cursor-config';
 
 export interface SiteConfig {
   blogName: string;
@@ -15,6 +16,7 @@ export interface SiteConfig {
   primaryColor: string;
   secondaryColor: string;
   defaultTheme: 'light' | 'dark';
+  cursorConfig?: CursorConfig;
   pageCopy: {
     diaryTitle: string;
     diarySubtitle: string;

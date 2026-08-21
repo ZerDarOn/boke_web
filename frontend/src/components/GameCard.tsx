@@ -108,6 +108,12 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
           {game.title}
         </h3>
 
+        {(game.notes || game.description) && (
+          <p className="mb-3 text-xs leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-2">
+            {game.notes || game.description}
+          </p>
+        )}
+
         {/* Status */}
         <div className="mb-3">
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold font-mono uppercase tracking-wider ${getStatusColor(game.status)}`}>

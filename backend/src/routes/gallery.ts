@@ -6,6 +6,7 @@ import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.middleware';
 import { formRateLimit } from '../middleware/rate-limit.middleware';
 import { galleryImageSchema, albumSchema, photoCommentSchema } from '../schemas';
+import { log, logError } from '../lib/logger';
 
 const router = Router();
 
@@ -88,7 +89,42 @@ router.post('/albums', authenticate, requireAdmin, validateBody(albumSchema), as
 router.post('/:id/comments', formRateLimit, optionalAuth, validateBody(photoCommentSchema), async (req, res) => {
   try {
     const comment = await GalleryService.addComment(req.params.id, req.body);
+    log('info', 'GalleryComment', 'Photo comment created', {
+      commentId: comment.id,
+      photoId: req.params.id,
+    });
     response.created(res, comment);
+  } catch (error: any) {
+    logError('GalleryComment', error instanceof Error ? error : 'Failed to create photo comment', {
+      photoId: req.params.id,
+    });
+    response.badRequest(res, error.message);
+  }
+});
+
+router.put('/albums/:id', authenticate, requireAdmin, validateBody(albumSchema.partial()), async (req, res) => {
+  try {
+    const album = await GalleryService.updateAlbum(req.params.id, req.body);
+    response.success(res, album);
+  } catch (error: any) {
+    response.badRequest(res, error.message);
+  }
+});
+
+router.delete('/albums/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await GalleryService.deleteAlbum(req.params.id);
+    response.noContent(res);
+  } catch (error: any) {
+    response.error(res, error.message || 'Failed to delete album');
+  }
+});
+
+// PUT /api/gallery/:id - 更新照片
+router.put('/:id', authenticate, requireAdmin, validateBody(galleryImageSchema.partial()), async (req, res) => {
+  try {
+    const image = await GalleryService.update(req.params.id, req.body);
+    response.success(res, image);
   } catch (error: any) {
     response.badRequest(res, error.message);
   }

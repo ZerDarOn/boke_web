@@ -40,8 +40,14 @@ export interface Album {
   photos?: GalleryImage[];
 }
 
+export interface CreatePhotoCommentInput {
+  author: string;
+  content: string;
+  email: string;
+}
+
 export const galleryApi = {
-  // GET /api/gallery - 获取相册列表
+  // GET /api/gallery - 获取照片列表
   getAll: async (params?: {
     page?: number;
     limit?: number;
@@ -58,6 +64,42 @@ export const galleryApi = {
   // GET /api/gallery/:id - 获取图片详情
   getById: async (id: string) => {
     return apiRequest<GalleryImage>(`/api/gallery/${id}`);
+  },
+
+  // GET /api/gallery/albums - 获取相册列表
+  getAlbums: async () => {
+    return apiRequest<Album[]>('/api/gallery/albums');
+  },
+
+  // GET /api/gallery/albums/:id - 获取相册及其全部照片
+  getAlbumById: async (id: string) => {
+    return apiRequest<Album>(`/api/gallery/albums/${id}`);
+  },
+
+  createAlbum: async (data: Partial<Album>) => {
+    return apiRequest<Album>('/api/gallery/albums', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateAlbum: async (id: string, data: Partial<Album>) => {
+    return apiRequest<Album>(`/api/gallery/albums/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteAlbum: async (id: string) => {
+    return apiRequest<void>(`/api/gallery/albums/${id}`, { method: 'DELETE' });
+  },
+
+  // POST /api/gallery/:id/comments - 添加照片评论
+  addComment: async (id: string, data: CreatePhotoCommentInput) => {
+    return apiRequest<PhotoComment>(`/api/gallery/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 
   // POST /api/gallery - 创建图片

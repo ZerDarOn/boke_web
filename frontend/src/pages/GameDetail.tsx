@@ -23,7 +23,7 @@ import {
 const GameDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { data: game, isLoading: loading, error: queryError } = useGameItem(id);
-  const { data: allGames = [] } = useGameList();
+  const { data: allGames = [] } = useGameList({ limit: 500 });
   const error = queryError?.message ?? null;
   const scrollProgress = useScrollProgress();
   const theme = useThemeClass();
@@ -404,11 +404,21 @@ const GameDetail: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {game.screenshots.map((shot, idx) => (
-                    <div
+                    <a
                       key={idx}
+                      href={shot}
+                      target="_blank"
+                      rel="noreferrer"
                       className="aspect-video rounded-lg overflow-hidden bg-gray-100 dark:bg-[#050505] border border-gray-200 dark:border-white/10"
-                      style={{ backgroundColor: shot }}
-                    />
+                      aria-label={`查看 ${game.title} 的第 ${idx + 1} 张截图`}
+                    >
+                      <img
+                        src={shot}
+                        alt={`${game.title} 截图 ${idx + 1}`}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                      />
+                    </a>
                   ))}
                 </div>
               </div>

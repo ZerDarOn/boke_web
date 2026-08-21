@@ -141,6 +141,17 @@ quotes 必须为每个 citation 提供一段能在对应证据中逐字找到的
 
 用户问题：{query}"""
 
+    @staticmethod
+    def _source_url(item: dict) -> str:
+        post_id = str(item.get("post_id", ""))
+        if post_id.startswith("div-tarot-"):
+            return "/divination/tarot"
+        if post_id.startswith("div-zhouyi-"):
+            return "/divination/iching"
+        if post_id.startswith("div-zodiac-"):
+            return "/divination/astrology"
+        return f"/posts/{item['slug']}"
+
     @classmethod
     def _validate_result(
         cls,
@@ -193,7 +204,7 @@ quotes 必须为每个 citation 提供一段能在对应证据中逐字找到的
             {
                 "citation": item["citation"],
                 "title": item["title"],
-                "url": f"/posts/{item['slug']}",
+                "url": cls._source_url(item),
                 "score": round(item["score"], 3),
                 "excerpt": verified_quotes[item["citation"]],
             }

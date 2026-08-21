@@ -81,7 +81,9 @@ const AnimeDetail: React.FC = () => {
     }
   };
 
-  const progress = (anime.currentEp / anime.episodes) * 100;
+  const progress = anime.episodes > 0
+    ? Math.min((anime.currentEp / anime.episodes) * 100, 100)
+    : 0;
   
   const formatDate = (date?: string) => {
     if (!date) return '';

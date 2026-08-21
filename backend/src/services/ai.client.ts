@@ -84,7 +84,8 @@ export type CompanionPageType =
   | 'about'
   | 'network'
   | 'dashboard'
-  | 'music';
+  | 'music'
+  | 'divination';
 
 export interface CompanionPageContext {
   page_type: CompanionPageType;
@@ -342,6 +343,15 @@ class AIClient {
       `${this.baseURL}/api/v1/ai/reindex`,
       undefined,
       { timeout: REQUEST_TIMEOUT, headers: this.internalHeaders }
+    );
+    return response.data;
+  }
+
+  async reloadConfig(): Promise<{ success: boolean; providers?: Record<string, boolean>; model?: string }> {
+    const response = await axios.post(
+      `${this.baseURL}/api/v1/ai/reload-config`,
+      undefined,
+      { timeout: 10000, headers: this.internalHeaders }
     );
     return response.data;
   }

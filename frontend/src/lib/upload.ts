@@ -129,4 +129,27 @@ export const uploadImages = async (
   }
 };
 
+export const uploadCursor = async (file: File): Promise<string> => {
+  const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+  if (!['.cur', '.png'].includes(extension)) {
+    throw new Error('请选择 .cur 或透明 .png 光标文件');
+  }
+  if (file.size > 1024 * 1024) {
+    throw new Error('光标文件不能超过 1MB');
+  }
+
+  const formData = new FormData();
+  formData.append('cursor', file);
+  const response = await fetch(`${API_BASE_URL}/api/upload/cursor`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', ...getAuthHeaders() },
+    body: formData,
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.success || !result.data?.originalUrl) {
+    throw new Error(result.error || '光标上传失败');
+  }
+  return result.data.originalUrl;
+};
+
 export default uploadImage;

@@ -9,7 +9,7 @@ const Games: React.FC = () => {
   const [platform, setPlatform] = useState<string | null>(null);
 
   const apiParams = useMemo(() => {
-    const params: { status?: string; platform?: string; favorite?: boolean; limit?: number } = { limit: 100 };
+    const params: { status?: string; platform?: string; favorite?: boolean; limit?: number } = { limit: 500 };
     if (filter !== 'ALL' && filter !== 'FAVORITE') {
       params.status = filter;
     }

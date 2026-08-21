@@ -20,6 +20,10 @@ const emptyForm: Partial<MusicSource> = {
   type: 'playlist',
   sourceId: '',
   enabled: true,
+  category: '',
+  description: '',
+  pinned: false,
+  order: 0,
 };
 
 const serverLabel = (v: string) => MUSIC_SERVERS.find((s) => s.value === v)?.label || v;
@@ -86,6 +90,10 @@ const AdminMusic: React.FC = () => {
         type: (formData.type as MusicSource['type']) || 'playlist',
         sourceId: formData.sourceId!.trim(),
         enabled: formData.enabled ?? true,
+        category: formData.category?.trim(),
+        description: formData.description?.trim(),
+        pinned: formData.pinned ?? false,
+        order: Number(formData.order) || 0,
       };
       next = [...sources, created];
     }
@@ -136,6 +144,7 @@ const AdminMusic: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">歌单名</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">音源</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">类型</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">分组</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">状态</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
@@ -152,6 +161,7 @@ const AdminMusic: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">{serverLabel(s.server)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">{typeLabel(s.type)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">{s.category || '未分组'}{s.pinned ? ' · 置顶' : ''}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500 dark:text-gray-400">{s.sourceId}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
@@ -227,6 +237,22 @@ const AdminMusic: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">分组</label>
+                  <input value={formData.category || ''} onChange={(e) => setFormData({ ...formData, category: e.target.value })} placeholder="如：夜晚、通勤" className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">排序</label>
+                  <input type="number" value={formData.order ?? 0} onChange={(e) => setFormData({ ...formData, order: Number(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">歌单说明</label>
+                <textarea value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white" placeholder="前台搜索与识别使用，不会影响播放" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">音源</label>
                   <select
                     value={formData.server || 'netease'}
@@ -272,6 +298,10 @@ const AdminMusic: React.FC = () => {
                   className="w-4 h-4 accent-neon"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">在前台显示这个歌单</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={formData.pinned ?? false} onChange={(e) => setFormData({ ...formData, pinned: e.target.checked })} className="w-4 h-4 accent-neon" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">置顶显示</span>
               </label>
 
               <div className="flex justify-end gap-3 pt-4">

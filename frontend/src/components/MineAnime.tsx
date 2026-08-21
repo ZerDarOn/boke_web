@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PlayCircle, CheckCircle, PauseCircle, XCircle, Heart, HeartOff, Loader2 } from 'lucide-react';
 import { useAnimeList } from '../hooks/queries/anime';
@@ -6,6 +6,7 @@ import { useAnimeList } from '../hooks/queries/anime';
 const MineAnime: React.FC = () => {
   const [filter, setFilter] = useState<'FAVORITE' | 'ALL' | 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED'>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
   const { data: animeList = [], isLoading: loading, error: queryError } = useAnimeList({ limit: 500 });
   const error = queryError?.message ?? null;
 
@@ -15,12 +16,17 @@ const MineAnime: React.FC = () => {
   };
   const availableTypes = Array.from(new Set(animeList.map((a) => a.type).filter(Boolean)));
 
-  const filteredList = animeList.filter((item) => {
+  const filteredList = useMemo(() => animeList.filter((item) => {
     const statusOk =
       filter === 'ALL' ? true : filter === 'FAVORITE' ? item.favorite : item.status === filter;
     const typeOk = typeFilter === 'ALL' ? true : item.type === typeFilter;
-    return statusOk && typeOk;
-  });
+    const query = searchTerm.trim().toLocaleLowerCase();
+    const searchableText = [item.title, item.synopsis, item.notes, ...item.genres, ...item.tags]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase();
+    return statusOk && typeOk && (!query || searchableText.includes(query));
+  }), [animeList, filter, searchTerm, typeFilter]);
 
   const getStatusIcon = (status: string) => {
       switch(status) {
@@ -91,6 +97,17 @@ const MineAnime: React.FC = () => {
               ))}
           </div>
       </div>
+
+      <label className="mb-8 block max-w-md">
+        <span className="sr-only">搜索追番</span>
+        <input
+          type="search"
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder="搜索标题、标签、点评…"
+          className="w-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-ink outline-none transition-colors placeholder:text-gray-400 focus:border-neon dark:border-white/10 dark:bg-[#111] dark:text-white"
+        />
+      </label>
 
       {/* Type Filter（类型筛选：番剧 / 剧场版 / OVA…，仅当存在多种类型时显示） */}
       {availableTypes.length > 1 && (
@@ -176,15 +193,24 @@ const MineAnime: React.FC = () => {
                             <div className="h-1.5 w-full bg-gray-100 dark:bg-[#222] overflow-hidden">
                                 <div
                                   className="h-full bg-neon transition-all duration-500"
-                                  style={{ width: `${(item.currentEp / item.episodes) * 100}%` }}
+                                  style={{ width: `${item.episodes > 0 ? Math.min((item.currentEp / item.episodes) * 100, 100) : 0}%` }}
                                 ></div>
                             </div>
                         </div>
+
+                        {(item.notes || item.synopsis) && (
+                          <p className="mt-3 text-xs leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-2">
+                            {item.notes || item.synopsis}
+                          </p>
+                        )}
                    </div>
 
                 </Link>
            ))}
        </div>
+       {filteredList.length === 0 && (
+         <div className="py-16 text-center text-sm text-gray-400">没有符合当前条件的追番记录。</div>
+       )}
         </>
       )}
      </div>

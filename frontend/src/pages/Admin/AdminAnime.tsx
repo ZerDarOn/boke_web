@@ -16,15 +16,19 @@ interface Anime {
   id: string;
   title: string;
   cover: string;
+  bannerImage?: string;
   type: 'TV' | 'OVA' | 'Movie' | 'Special' | 'ONA';
   episodes: number;
+  aired?: string;
   currentEp: number;
   status: 'WATCHING' | 'COMPLETED' | 'ON_HOLD' | 'DROPPED';
   score?: number;
   favorite: boolean;
   genres: string[];
   studios: string[];
-  aired?: string;
+  synopsis?: string;
+  notes?: string;
+  tags: string[];
   bilibiliUrl?: string;
   startDate?: string;
   finishDate?: string;
@@ -94,6 +98,10 @@ const AdminAnime: React.FC = () => {
       favorite: false,
       genres: [],
       studios: [],
+      aired: '',
+      synopsis: '',
+      notes: '',
+      tags: [],
       cover: '',
     });
     setCoverPreview('');
@@ -575,6 +583,58 @@ const AdminAnime: React.FC = () => {
                       onChange={(e) => handleInputChange('studios', e.target.value.split(',').map(s => s.trim()))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       placeholder="Studio Ghibli, MAPPA"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      放送信息
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.aired || ''}
+                      onChange={(e) => handleInputChange('aired', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="2026-04 至 2026-06"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      我的标签 (用逗号分隔)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.tags?.join(', ') || ''}
+                      onChange={(e) => handleInputChange('tags', e.target.value.split(',').map((tag) => tag.trim()).filter(Boolean))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="作画惊艳, 适合周末, 待二刷"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      剧情简介
+                    </label>
+                    <textarea
+                      value={formData.synopsis || ''}
+                      onChange={(e) => handleInputChange('synopsis', e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="用自己的话记录这部作品讲了什么…"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      我的点评
+                    </label>
+                    <textarea
+                      value={formData.notes || ''}
+                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="值得记住的镜头、感受或推荐理由…"
                     />
                   </div>
 

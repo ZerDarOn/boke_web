@@ -52,6 +52,29 @@ test('companion chat validates and forwards bounded page context', () => {
   const clientSource = fs.readFileSync(path.join('src', 'services', 'ai.client.ts'), 'utf8');
 
   assert.match(routeSource, /isValidCompanionContext\(context\)/);
+  assert.match(routeSource, /'music', 'divination'/);
   assert.match(routeSource, /aiClient\.chat\(message\.trim\(\), history, context\)/);
   assert.match(clientSource, /\{ message, history, context \}/);
+});
+
+test('companion streaming serializes grounded source dictionaries safely', () => {
+  const source = fs.readFileSync(
+    path.join('..', 'ai-service', 'app', 'api', 'v1', '__init__.py'),
+    'utf8'
+  );
+
+  assert.match(source, /def _serialize_chat_sources/);
+  assert.match(source, /source\["citation"\]/);
+  assert.doesNotMatch(source, /\bs\.citation\b/);
+});
+
+test('companion sends only previous messages as history and falls back from stream failure', () => {
+  const source = fs.readFileSync(
+    path.join('..', 'frontend', 'src', 'components', 'AiCompanion.tsx'),
+    'utf8'
+  );
+
+  assert.match(source, /messages\.slice\(-8\)/);
+  assert.doesNotMatch(source, /next\.slice\(-8\)/);
+  assert.match(source, /aiApi\.chat\(text, history, pageContext\)/);
 });

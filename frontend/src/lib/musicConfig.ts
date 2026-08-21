@@ -28,6 +28,10 @@ export interface MusicSource {
   type: MusicSourceType; // 资源类型
   sourceId: string; // 歌单/单曲/专辑/歌手 ID
   enabled: boolean; // 是否在前台显示
+  category?: string; // 前台筛选分组，如「通勤」「夜晚」
+  description?: string; // 歌单说明
+  pinned?: boolean; // 是否优先展示
+  order?: number; // 同一优先级下的手动排序
 }
 
 /** 后台音源下拉选项 */

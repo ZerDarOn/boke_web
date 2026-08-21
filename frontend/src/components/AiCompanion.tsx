@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { BookOpen, RotateCcw, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { aiApi, type ChatMessage, type CompanionProfile } from '../lib/api';
+import { getAuthToken } from '../lib/api/request';
 import { getCompanionPageContext } from '../lib/companionPageContext';
 
 const FALLBACK_PROFILE: CompanionProfile = {
@@ -81,8 +82,9 @@ const AiCompanion: React.FC = () => {
     ]);
 
     try {
-      const history = next.slice(-8).map(({ role, content }) => ({ role, content }));
-      const token = localStorage.getItem('token');
+      // 当前问题由 message 单独传递，history 只包含此前对话，避免模型重复看到同一句话。
+      const history = messages.slice(-8).map(({ role, content }) => ({ role, content }));
+      const token = getAuthToken();
       const resp = await fetch('/api/ai/chat/stream', {
         method: 'POST',
         headers: {
@@ -103,6 +105,8 @@ const AiCompanion: React.FC = () => {
       const sources: ChatMessage['sources'] = [];
       let grounded: boolean | undefined;
       let confidence: number | undefined;
+      let streamFailed = false;
+      let streamCompleted = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -134,6 +138,7 @@ const AiCompanion: React.FC = () => {
                 return updated;
               });
             } else if (evt.type === 'done') {
+              streamCompleted = true;
               // 最终补全元数据
               setMessages((currentMessages) => {
                 const updated = [...currentMessages];
@@ -149,30 +154,30 @@ const AiCompanion: React.FC = () => {
                 return updated;
               });
             } else if (evt.type === 'error') {
-              setMessages((currentMessages) => {
-                const updated = [...currentMessages];
-                if (updated[assistantIndex]) {
-                  updated[assistantIndex] = {
-                    ...updated[assistantIndex],
-                    content: '出错了，请稍后再试。',
-                  };
-                }
-                return updated;
-              });
+              streamFailed = true;
             }
           } catch {
             // ignore parse errors on partial lines
           }
         }
       }
+      if (streamFailed || !streamCompleted) throw new Error('stream incomplete');
     } catch {
+      const history = messages.slice(-8).map(({ role, content }) => ({ role, content }));
+      const fallback = await aiApi.chat(text, history, pageContext);
       setMessages((currentMessages) => {
         const updated = [...currentMessages];
         if (updated[assistantIndex]) {
-          updated[assistantIndex] = {
-            ...updated[assistantIndex],
-            content: '抱歉，我暂时无法回答（服务未连接）。',
-          };
+          updated[assistantIndex] = fallback.success && fallback.data
+            ? {
+                role: 'assistant',
+                content: fallback.data.reply,
+                sources: fallback.data.sources,
+                grounded: fallback.data.grounded,
+                confidence: fallback.data.confidence,
+                refusalReason: fallback.data.refusal_reason,
+              }
+            : { role: 'assistant', content: '墨璃暂时没有接通推演服务，请稍后再试。' };
         }
         return updated;
       });
@@ -183,6 +188,12 @@ const AiCompanion: React.FC = () => {
 
   const handleSend = () => {
     void sendMessage(input);
+  };
+
+  const handleResetConversation = () => {
+    const greeting = profile.greetings[pageContext.page_type] ?? profile.greetings.default;
+    setMessages([{ role: 'assistant', content: greeting }]);
+    setInput('');
   };
 
   const hasUserMessage = messages.some((message) => message.role === 'user');
@@ -204,14 +215,25 @@ const AiCompanion: React.FC = () => {
                 ARCHIVE MAID
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="关闭 AI 助手"
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleResetConversation}
+                aria-label="重新开始对话"
+                title="重新开始对话"
+                className="rounded p-1.5 text-gray-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neon"
+              >
+                <RotateCcw size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="关闭 AI 助手"
+                className="rounded p-1.5 text-gray-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neon"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* 消息列表 */}
@@ -289,7 +311,9 @@ const AiCompanion: React.FC = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder={`向${profile.name}询问公开档案…`}
+              placeholder={pageContext.page_type === 'divination'
+                ? `向${profile.name}询问占卜或站内内容…`
+                : `向${profile.name}询问公开档案…`}
               className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-neon/50 transition-colors"
             />
             <button

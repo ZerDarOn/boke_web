@@ -297,6 +297,11 @@ class KnowledgeBase:
     CHUNK_OVERLAP = 80           # 相邻 chunk 的重叠字符数
 
     def __init__(self, persist_dir: str = None):
+        from app.core.config import settings
+
+        self.RELEVANCE_THRESHOLD = settings.KB_RELEVANCE_THRESHOLD
+        self.CHUNK_SIZE = settings.KB_CHUNK_SIZE
+        self.CHUNK_OVERLAP = settings.KB_CHUNK_OVERLAP
         if persist_dir is None:
             persist_dir = os.path.join(os.path.dirname(__file__), "..", "..", "kb_data")
 
@@ -314,6 +319,13 @@ class KnowledgeBase:
         self._last_operation: Optional[str] = None
         self._last_mutation_at: Optional[str] = None
         self._last_error: Optional[str] = None
+
+    def reload_settings(self, settings) -> None:
+        """Apply runtime KB settings; callers can rebuild when chunking changes."""
+        self.RELEVANCE_THRESHOLD = settings.KB_RELEVANCE_THRESHOLD
+        self.CHUNK_SIZE = settings.KB_CHUNK_SIZE
+        self.CHUNK_OVERLAP = settings.KB_CHUNK_OVERLAP
+        self._embedding_fn = None
 
     def _persist_active_collection(self) -> None:
         """Write the active collection snapshot to disk."""

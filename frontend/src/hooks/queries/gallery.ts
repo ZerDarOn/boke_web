@@ -12,17 +12,16 @@ const rootKey = queryKeys.gallery.all;
 
 export function useGalleryAlbums() {
   return useQuery({
-    queryKey: [...queryKeys.gallery.all, 'albums-derived'],
-    queryFn: async (): Promise<Album[]> => {
-      const photos = await unwrapApi(galleryApi.getAll());
-      const albumMap = new Map<string, Album>();
-      photos.forEach((photo) => {
-        if (photo.album) {
-          albumMap.set(photo.album.id, photo.album);
-        }
-      });
-      return Array.from(albumMap.values());
-    },
+    queryKey: queryKeys.gallery.albums(),
+    queryFn: () => unwrapApi(galleryApi.getAlbums()),
+  });
+}
+
+export function useGalleryAlbum(id: string | undefined) {
+  return useQuery({
+    queryKey: [...queryKeys.gallery.albums(), id ?? ''],
+    queryFn: () => unwrapApi(galleryApi.getAlbumById(id!)),
+    enabled: Boolean(id),
   });
 }
 
@@ -33,14 +32,14 @@ export function useGalleryImages(params?: { page?: number; limit?: number; album
   });
 }
 
-/** 管理后台：按相册筛选照�?*/
+/** 管理后台：按相册筛选照片*/
 export function useAdminGalleryPhotos(albumId?: string, enabled = true) {
   return useQuery({
-    queryKey: queryKeys.gallery.images({ albumId, limit: 100, admin: true }),
+    queryKey: queryKeys.gallery.images({ albumId, limit: 500, admin: true }),
     queryFn: () =>
       unwrapApi(
         galleryApi.getAll({
-          limit: 100,
+          limit: 500,
           ...(albumId ? { albumId } : {}),
         })
       ),

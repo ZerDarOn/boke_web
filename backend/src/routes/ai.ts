@@ -20,7 +20,7 @@ const MAX_COMPANION_TITLE_LENGTH = 160;
 const COMPANION_PAGE_TYPES = new Set([
   'default', 'home', 'posts', 'post', 'archives', 'announcement',
   'projects', 'project', 'skills', 'timeline', 'gallery', 'diary',
-  'anime', 'games', 'about', 'network', 'dashboard', 'music',
+  'anime', 'games', 'about', 'network', 'dashboard', 'music', 'divination',
 ]);
 
 function isValidCompanionContext(value: unknown): value is CompanionPageContext | undefined {
@@ -363,6 +363,9 @@ const AI_SETTING_KEYS = [
   'EMBEDDING_API_KEY',
   'EMBEDDING_BASE_URL',
   'EMBEDDING_MODEL',
+  'KB_RELEVANCE_THRESHOLD',
+  'KB_CHUNK_SIZE',
+  'KB_CHUNK_OVERLAP',
 ] as const;
 
 const SECRET_SETTING_KEYS = new Set<string>([
@@ -415,13 +418,26 @@ router.get('/settings', authenticate, requireAdmin, (_req, res) => {
 });
 
 // PUT /api/ai/settings - 更新 AI 配置（写入 ai-service/.env，重启 AI 服务后生效）
-router.put('/settings', authenticate, requireAdmin, (req, res) => {
+router.put('/settings', authenticate, requireAdmin, async (req, res) => {
   try {
     const updates = req.body?.settings;
     if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
       return error(res, 'settings must be an object', 400);
     }
     const entries = readAiEnvEntries();
+    const threshold = updates.KB_RELEVANCE_THRESHOLD;
+    if (threshold !== undefined && (typeof threshold !== 'string' || !Number.isFinite(Number(threshold)) || Number(threshold) < 0 || Number(threshold) > 1)) {
+      return error(res, 'KB_RELEVANCE_THRESHOLD must be between 0 and 1', 400);
+    }
+    const chunkSize = updates.KB_CHUNK_SIZE;
+    const overlap = updates.KB_CHUNK_OVERLAP;
+    const effectiveChunkSize = Number(chunkSize ?? entries.get('KB_CHUNK_SIZE') ?? 600);
+    if (chunkSize !== undefined && (typeof chunkSize !== 'string' || !Number.isInteger(Number(chunkSize)) || Number(chunkSize) < 100 || Number(chunkSize) > 4000)) {
+      return error(res, 'KB_CHUNK_SIZE must be an integer between 100 and 4000', 400);
+    }
+    if (overlap !== undefined && (typeof overlap !== 'string' || !Number.isInteger(Number(overlap)) || Number(overlap) < 0 || Number(overlap) >= effectiveChunkSize)) {
+      return error(res, 'KB_CHUNK_OVERLAP must be smaller than KB_CHUNK_SIZE', 400);
+    }
     const pending = new Map<string, string>();
     let changed = false;
 
@@ -473,7 +489,26 @@ router.put('/settings', authenticate, requireAdmin, (req, res) => {
     fs.writeFileSync(AI_SERVICE_ENV_PATH, `${output.join('\n').replace(/\n+$/, '')}\n`, 'utf-8');
 
     apiLog.info('AI settings updated', { changedKeys: Array.from(pending.keys()) });
-    return success(res, { saved: true, message: '已保存，重启 AI 服务后生效' });
+    let reloaded = false;
+    try {
+      await aiClient.reloadConfig();
+      reloaded = true;
+      apiLog.info('AI settings hot reload completed', { changedKeys: Array.from(pending.keys()) });
+    } catch (reloadError) {
+      apiLog.warn('AI settings hot reload failed', {
+        changedKeys: Array.from(pending.keys()),
+        errorType: reloadError instanceof Error ? reloadError.name : 'UnknownError',
+      });
+    }
+    const rebuildRequired = pending.has('KB_CHUNK_SIZE') || pending.has('KB_CHUNK_OVERLAP');
+    return success(res, {
+      saved: true,
+      reloaded,
+      rebuildRequired,
+      message: reloaded
+        ? (rebuildRequired ? '已保存并热加载；分块参数变更后请重建知识库索引' : '已保存并热加载')
+        : '已保存；AI 服务未能热加载，请检查服务状态后重试',
+    });
   } catch (err) {
     apiLog.warn('AI settings update failed', {
       errorType: err instanceof Error ? err.name : 'UnknownError',

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import type { GalleryImage } from '../lib/api';
-import { useGalleryImages } from '../hooks/queries/gallery';
+import { galleryApi, type GalleryImage } from '../lib/api';
+import { useGalleryAlbum, useGalleryImage } from '../hooks/queries/gallery';
+import { unwrapApi } from '../hooks/api/fetcher';
 import {
   Calendar,
   Camera,
@@ -19,14 +20,18 @@ const ITEMS_PER_PAGE = 8;
 
 const GalleryDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { data: allPhotos = [], isLoading: loading, error: queryError } = useGalleryImages({
-    albumId: id,
-  });
-  const album = useMemo(() => allPhotos[0]?.album ?? null, [allPhotos]);
+  const { data: album, isLoading: loading, error: queryError } = useGalleryAlbum(id);
+  const allPhotos = useMemo(() => album?.photos ?? [], [album]);
   const error = queryError?.message ?? null;
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryImage | null>(null);
+  const { data: selectedPhotoDetails, refetch: refetchSelectedPhoto } = useGalleryImage(selectedPhoto?.id);
+  const activePhoto = selectedPhotoDetails ?? selectedPhoto;
   const [currentPage, setCurrentPage] = useState(1);
+  const [commentAuthor, setCommentAuthor] = useState('');
+  const [commentEmail, setCommentEmail] = useState('');
   const [commentInput, setCommentInput] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -74,23 +79,24 @@ const GalleryDetail: React.FC = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handleAddComment = () => {
-    if (!selectedPhoto || !commentInput.trim()) return;
-    const newComment = {
-      id: `c${Date.now()}`,
-      author: 'Visitor',
-      content: commentInput.trim(),
-      email: '',
-      date: new Date().toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    };
-    selectedPhoto.comments = [...(selectedPhoto.comments || []), newComment];
-    setCommentInput('');
+  const handleAddComment = async () => {
+    if (!activePhoto || !commentAuthor.trim() || !commentEmail.trim() || !commentInput.trim()) return;
+
+    setIsSubmittingComment(true);
+    setCommentError(null);
+    try {
+      await unwrapApi(galleryApi.addComment(activePhoto.id, {
+        author: commentAuthor.trim(),
+        email: commentEmail.trim(),
+        content: commentInput.trim(),
+      }));
+      setCommentInput('');
+      await refetchSelectedPhoto();
+    } catch (error) {
+      setCommentError(error instanceof Error ? error.message : '评论提交失败，请稍后重试');
+    } finally {
+      setIsSubmittingComment(false);
+    }
   };
 
   const getAspectRatio = (aspect: GalleryImage['aspect']) => {
@@ -106,7 +112,7 @@ const GalleryDetail: React.FC = () => {
 
   return (
     <div className="animate-in fade-in duration-500 relative">
-      {selectedPhoto && (
+      {activePhoto && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
           <button
             onClick={() => setSelectedPhoto(null)}
@@ -119,10 +125,10 @@ const GalleryDetail: React.FC = () => {
           <div className="w-full max-w-6xl h-full max-h-[90vh] flex gap-6">
             <div className="flex-1 flex flex-col">
               <div className="flex-1 relative bg-[#0a0a0a] rounded-lg overflow-hidden">
-                <div className={`${getAspectRatio(selectedPhoto.aspect)} w-full`}>
+                <div className={`${getAspectRatio(activePhoto.aspect)} w-full`}>
                   <img
-                    src={selectedPhoto.src}
-                    alt={selectedPhoto.title || ''}
+                    src={activePhoto.src}
+                    alt={activePhoto.title || ''}
                     className="w-full h-full object-contain"
                   />
                 </div>
@@ -130,13 +136,13 @@ const GalleryDetail: React.FC = () => {
 
               <div className="mt-3 font-mono text-xs text-gray-400 flex items-center gap-3">
                 <Camera size={12} className="text-neon" />
-                <span>{selectedPhoto.camera || 'SONY A7M4'}</span>
+                <span>{activePhoto.camera || '拍摄设备未记录'}</span>
                 <span className="w-[1px] h-3 bg-gray-600"></span>
-                <span>{selectedPhoto.settings || 'ISO 800, f/2.8'}</span>
+                <span>{activePhoto.settings || '拍摄参数未记录'}</span>
               </div>
 
               <div className="mt-2 flex flex-wrap gap-2">
-                {(selectedPhoto.tags || []).map((tag, idx) => (
+                {(activePhoto.tags || []).map((tag, idx) => (
                   <span key={idx} className="px-2 py-1 bg-neon/10 text-neon rounded font-mono text-[10px] border border-neon/20">
                     #{tag}
                   </span>
@@ -148,17 +154,17 @@ const GalleryDetail: React.FC = () => {
               <div className="p-4 border-b border-gray-200 dark:border-white/10">
                 <h3 className="font-bold text-ink dark:text-white flex items-center gap-2">
                   <MessageSquare size={16} className="text-neon" />
-                  评论留言 ({selectedPhoto.comments?.length || 0})
+                  评论留言 ({activePhoto.comments?.length || 0})
                 </h3>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                {(selectedPhoto.comments || []).length === 0 ? (
+                {(activePhoto.comments || []).length === 0 ? (
                   <div className="text-center text-gray-500 dark:text-gray-400 text-sm py-8">
                     还没有评论，快来发表吧！
                   </div>
                 ) : (
-                  (selectedPhoto.comments || []).map((comment) => (
+                  (activePhoto.comments || []).map((comment) => (
                     <div key={comment.id} className="bg-gray-50 dark:bg-white/5 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-bold text-sm text-ink dark:text-white">
@@ -177,6 +183,19 @@ const GalleryDetail: React.FC = () => {
               </div>
 
               <div className="p-4 border-t border-gray-200 dark:border-white/10">
+                <input
+                  value={commentAuthor}
+                  onChange={(e) => setCommentAuthor(e.target.value)}
+                  placeholder="昵称"
+                  className="mb-2 w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-sm text-ink dark:text-white placeholder-gray-500 focus:outline-none focus:border-neon"
+                />
+                <input
+                  type="email"
+                  value={commentEmail}
+                  onChange={(e) => setCommentEmail(e.target.value)}
+                  placeholder="邮箱（仅用于本次提交校验，不会公开）"
+                  className="mb-2 w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-sm text-ink dark:text-white placeholder-gray-500 focus:outline-none focus:border-neon"
+                />
                 <textarea
                   value={commentInput}
                   onChange={(e) => setCommentInput(e.target.value)}
@@ -184,13 +203,16 @@ const GalleryDetail: React.FC = () => {
                   className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-sm text-ink dark:text-white placeholder-gray-500 focus:outline-none focus:border-neon resize-none"
                   rows={3}
                 />
+                {commentError && (
+                  <p className="mt-2 text-xs text-red-500" role="alert">{commentError}</p>
+                )}
                 <button
-                  onClick={handleAddComment}
-                  disabled={!commentInput.trim()}
+                  onClick={() => void handleAddComment()}
+                  disabled={isSubmittingComment || !commentAuthor.trim() || !commentEmail.trim() || !commentInput.trim()}
                   className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2 bg-neon text-white rounded-lg hover:bg-neon/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-mono text-sm"
                 >
                   <Send size={14} />
-                  发表评论
+                  {isSubmittingComment ? '提交中…' : '发表评论'}
                 </button>
               </div>
             </div>

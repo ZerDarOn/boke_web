@@ -45,6 +45,15 @@ const GROUPS: SettingGroup[] = [
     ],
   },
   {
+    title: '知识库检索策略',
+    description: '修改分块参数后需要重建索引；阈值越高，知识库回答越谨慎。',
+    fields: [
+      { key: 'KB_RELEVANCE_THRESHOLD', label: '相关性阈值', placeholder: '0.45', hint: '0.0 - 1.0' },
+      { key: 'KB_CHUNK_SIZE', label: '分块长度', placeholder: '600', hint: '字符数' },
+      { key: 'KB_CHUNK_OVERLAP', label: '分块重叠', placeholder: '80', hint: '字符数' },
+    ],
+  },
+  {
     title: 'Anthropic (Claude)',
     description: '备用提供商，OpenAI 兼容接口不可用时自动降级。留空则不启用。',
     fields: [
@@ -69,11 +78,45 @@ const AdminAI: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [indexStatus, setIndexStatus] = useState<Awaited<ReturnType<typeof aiApi.getIndexStatus>>['data']>();
+  const [groundingStatus, setGroundingStatus] = useState<Awaited<ReturnType<typeof aiApi.getGroundingStatus>>['data']>();
+  const [indexAction, setIndexAction] = useState<'idle' | 'reconcile' | 'rebuild'>('idle');
 
   useEffect(() => {
     void load();
     void checkHealth();
+    void loadKnowledgeStatus();
   }, []);
+
+  const loadKnowledgeStatus = async () => {
+    const [index, grounding] = await Promise.all([
+      aiApi.getIndexStatus(),
+      aiApi.getGroundingStatus(),
+    ]);
+    if (index.success) setIndexStatus(index.data);
+    if (grounding.success) setGroundingStatus(grounding.data);
+  };
+
+  const runIndexAction = async (action: 'reconcile' | 'rebuild') => {
+    if (indexAction !== 'idle') return;
+    setIndexAction(action);
+    setMessage(null);
+    try {
+      const response = action === 'reconcile'
+        ? await aiApi.reconcileIndex()
+        : await aiApi.rebuildIndex();
+      if (!response.success) {
+        setMessage({ type: 'error', text: response.error || '知识库操作失败' });
+      } else {
+        setMessage({ type: 'success', text: action === 'reconcile' ? '知识库校准完成' : '知识库重建完成' });
+      }
+      await loadKnowledgeStatus();
+    } catch {
+      setMessage({ type: 'error', text: '知识库操作失败，请确认 AI 服务和 Embedding 配置正常' });
+    } finally {
+      setIndexAction('idle');
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -217,14 +260,39 @@ const AdminAI: React.FC = () => {
                           : '密钥仅保存在你的服务器上'}
                       </p>
                     )}
+                    {field.hint && <p className="mt-1 text-xs text-gray-400">{field.hint}</p>}
                   </div>
                 ))}
               </div>
             </div>
           ))}
 
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">知识库管理</h3>
+                <p className="text-xs text-gray-400 mt-1">查看索引状态、校准文章变更，并在调整分块策略后重建向量索引。</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => void runIndexAction('reconcile')} disabled={indexAction !== 'idle'} className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+                  {indexAction === 'reconcile' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} 校准索引
+                </button>
+                <button onClick={() => void runIndexAction('rebuild')} disabled={indexAction !== 'idle'} className="flex items-center gap-1.5 px-3 py-2 bg-violet-500 text-white rounded-lg text-xs hover:bg-violet-600 disabled:opacity-50">
+                  {indexAction === 'rebuild' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} 重建索引
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+              <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">文章数</p><p className="text-lg font-semibold text-gray-900">{indexStatus?.posts ?? '—'}</p></div>
+              <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">向量分块</p><p className="text-lg font-semibold text-gray-900">{indexStatus?.chunks ?? '—'}</p></div>
+              <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">有依据回答率</p><p className="text-lg font-semibold text-gray-900">{groundingStatus ? `${Math.round(groundingStatus.grounded_rate * 100)}%` : '—'}</p></div>
+              <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">最近操作</p><p className="text-sm font-medium text-gray-900 truncate">{indexStatus?.last_operation ?? '—'}</p></div>
+            </div>
+            {indexStatus?.last_error_type && <p className="mt-3 text-xs text-red-600">最近索引错误：{indexStatus.last_error_type}</p>}
+          </div>
+
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-            保存后写入 <code className="bg-amber-100 px-1 rounded">ai-service/.env</code>，需重启 AI 服务才能生效（当前服务需手动重启）。
+            保存后写入 <code className="bg-amber-100 px-1 rounded">ai-service/.env</code>，配置会尝试热加载；如果调整了分块长度或重叠，请再点击“重建索引”。
             密钥类字段显示为 {SECRET_PLACEHOLDER} 时表示已保存，留空提交即为保持不变；如需更换请直接填入新值。
           </div>
         </div>

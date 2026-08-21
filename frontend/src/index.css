@@ -52,6 +52,42 @@ body {
   -moz-user-select: none;
   user-select: none;
 }
+
+/* 后台可管理的桌面端鼠标皮肤；每个声明都保留系统光标作为加载失败兜底。 */
+@media (hover: hover) and (pointer: fine) {
+  .custom-cursor-skin,
+  .custom-cursor-skin body {
+    cursor: var(--cursor-default, auto) !important;
+  }
+
+  .custom-cursor-skin :is(a, button, label, select, summary, input[type="button"], input[type="submit"], input[type="reset"], input[type="range"], input[type="checkbox"], input[type="radio"], [role="button"], [role="link"], .cursor-pointer) {
+    cursor: var(--cursor-pointer, pointer) !important;
+  }
+
+  .custom-cursor-skin :is(input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]), textarea, [contenteditable="true"], .cursor-text) {
+    cursor: var(--cursor-text, text) !important;
+  }
+
+  .custom-cursor-skin :is([draggable="true"], .cursor-move) {
+    cursor: var(--cursor-move, move) !important;
+  }
+
+  .custom-cursor-skin :is(.cursor-ew-resize, .cursor-col-resize) {
+    cursor: var(--cursor-resize-horizontal, ew-resize) !important;
+  }
+
+  .custom-cursor-skin :is(.cursor-ns-resize, .cursor-row-resize) {
+    cursor: var(--cursor-resize-vertical, ns-resize) !important;
+  }
+
+  .custom-cursor-skin .cursor-nwse-resize {
+    cursor: var(--cursor-resize-diagonal-1, nwse-resize) !important;
+  }
+
+  .custom-cursor-skin .cursor-nesw-resize {
+    cursor: var(--cursor-resize-diagonal-2, nesw-resize) !important;
+  }
+}
 .prose,
 input,
 textarea,

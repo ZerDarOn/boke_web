@@ -5,6 +5,8 @@ import test from 'node:test';
 import { StoragePathError, resolveStoragePath } from '../src/lib/storage-path-security';
 import { createPostAccessToken, verifyPostAccessToken } from '../src/lib/post-access-token';
 import { requireAdmin } from '../src/middleware/auth.middleware';
+import os from 'node:os';
+import { hasValidCursorSignature } from '../src/lib/cursor-file';
 
 const storageRoot = path.resolve('content-files');
 
@@ -70,4 +72,32 @@ test('sensitive routes require the administrator guard', () => {
     assert.match(source, /requireAdmin/);
     assert.match(source, /authenticate,\s*requireAdmin/);
   }
+});
+
+test('cursor assets require a real CUR or PNG signature', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ink-cursor-test-'));
+  const curPath = path.join(tempDir, 'valid.cur');
+  const pngPath = path.join(tempDir, 'valid.png');
+  const fakePath = path.join(tempDir, 'fake.cur');
+
+  try {
+    fs.writeFileSync(curPath, Buffer.from([0, 0, 2, 0, 1, 0, 32, 32]));
+    fs.writeFileSync(pngPath, Buffer.from('89504e470d0a1a0a', 'hex'));
+    fs.writeFileSync(fakePath, Buffer.from('not a cursor'));
+
+    assert.equal(hasValidCursorSignature(curPath), true);
+    assert.equal(hasValidCursorSignature(pngPath), true);
+    assert.equal(hasValidCursorSignature(fakePath), false);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('cursor upload route is admin-only and rejects ANI files', () => {
+  const routeSource = fs.readFileSync(path.join('src', 'routes', 'upload.ts'), 'utf8');
+  const middlewareSource = fs.readFileSync(path.join('src', 'middleware', 'upload.middleware.ts'), 'utf8');
+
+  assert.match(routeSource, /'\/cursor',[\s\S]*authenticate,[\s\S]*requireAdmin,[\s\S]*uploadSingleCursor/);
+  assert.match(middlewareSource, /ALLOWED_CURSOR_EXTENSIONS = \['\.cur', '\.png'\]/);
+  assert.doesNotMatch(middlewareSource, /ALLOWED_CURSOR_EXTENSIONS[^\n]*\.ani/);
 });

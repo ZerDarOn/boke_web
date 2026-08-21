@@ -5,6 +5,7 @@ import { parseMarkdown, buildPrismaData, generateId, generateSlug, ParsedContent
 import * as response from '../utils/response';
 import prisma from '../lib/prisma';
 import { PostService } from '../services/post.service';
+import { log, logError } from '../lib/logger';
 import extractZip from 'extract-zip';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -315,7 +316,7 @@ function detectContentType(file: any): string {
  * 查找已存在的内容
  */
 async function findExistingContent(parsed: any): Promise<any> {
-  const { type, slug } = parsed;
+  const { type, id, slug } = parsed;
 
   try {
     switch (type) {
@@ -324,17 +325,17 @@ async function findExistingContent(parsed: any): Promise<any> {
       case 'project':
         return await prisma.project.findUnique({ where: { slug } });
       case 'anime':
-        return await prisma.anime.findUnique({ where: { id: slug } });
+        return await prisma.anime.findUnique({ where: { id } });
       case 'diary':
-        return await prisma.diary.findUnique({ where: { id: slug } });
+        return await prisma.diary.findUnique({ where: { id } });
       case 'timeline':
-        return await prisma.timelineEvent.findUnique({ where: { id: slug } });
+        return await prisma.timelineEvent.findUnique({ where: { id } });
       case 'skill':
-        return await prisma.skill.findUnique({ where: { id: slug } });
+        return await prisma.skill.findUnique({ where: { id } });
       case 'gallery':
-        return await prisma.galleryImage.findUnique({ where: { id: slug } });
+        return await prisma.galleryImage.findUnique({ where: { id } });
       case 'announcement':
-        return await prisma.announcement.findUnique({ where: { id: slug } });
+        return await prisma.announcement.findUnique({ where: { id } });
       default:
         return null;
     }
@@ -388,6 +389,10 @@ async function saveContent(parsed: ParsedContent): Promise<any> {
   const prismaData = buildPrismaData(parsed);
 
   try {
+    log('debug', 'ContentImport', 'Saving parsed Markdown content', {
+      contentId: parsed.id,
+      contentType: parsed.type,
+    });
     switch (parsed.type) {
       case 'post':
         return await PostService.create(prismaData);
@@ -417,7 +422,10 @@ async function saveContent(parsed: ParsedContent): Promise<any> {
         throw new Error(`不支持的内容类型: ${parsed.type}`);
     }
   } catch (err) {
-    console.error('保存内容失败:', err);
+    logError('ContentImport', err instanceof Error ? err : 'Failed to save Markdown content', {
+      contentId: parsed.id,
+      contentType: parsed.type,
+    });
     throw err;
   }
 }

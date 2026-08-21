@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Music4, Disc3, Headphones, Loader2, ListMusic } from 'lucide-react';
+import { Music4, Disc3, Headphones, Loader2, ListMusic, Pin, Search } from 'lucide-react';
 import { useLang } from '../contexts/LangContext';
 import MusicPlayer from '../components/MusicPlayer';
 import { useMusicSources } from '../hooks/queries/settings';
@@ -8,7 +8,15 @@ import { useMusicSources } from '../hooks/queries/settings';
 const Music: React.FC = () => {
   const { lang } = useLang();
   const { data: sources = [], isLoading } = useMusicSources();
-  const enabledSources = sources.filter((s) => s.enabled);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [category, setCategory] = useState('全部');
+  const categories = useMemo(() => ['全部', ...Array.from(new Set(sources.map((source) => source.category).filter(Boolean) as string[]))], [sources]);
+  const enabledSources = useMemo(() => sources
+    .filter((source) => source.enabled)
+    .filter((source) => category === '全部' || source.category === category)
+    .filter((source) => `${source.name} ${source.category ?? ''} ${source.description ?? ''}`.toLowerCase().includes(searchTerm.trim().toLowerCase()))
+    .sort((left, right) => Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) || (left.order ?? 0) - (right.order ?? 0) || left.name.localeCompare(right.name, 'zh-CN')),
+  [category, searchTerm, sources]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = enabledSources.find((s) => s.id === selectedId) ?? enabledSources[0];
 
@@ -41,7 +49,23 @@ const Music: React.FC = () => {
           : '这里流淌着我收藏的歌单。点击播放，让墨色随音律晕开。'}
       </p>
 
-      {/* 歌单切换标签（多于一个时才显示） */}
+      {sources.length > 1 && (
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {categories.map((item) => (
+              <button key={item} onClick={() => setCategory(item)} className={`rounded-full border px-3 py-1 text-xs ${category === item ? 'border-neon bg-neon text-white' : 'border-gray-200 bg-white/60 text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400'}`}>
+                {item}
+              </button>
+            ))}
+          </div>
+          <label className="relative block w-full sm:w-52">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="搜索歌单" className="w-full rounded-full border border-gray-200 bg-white/60 py-1.5 pl-8 pr-3 text-xs dark:border-white/10 dark:bg-white/5" />
+          </label>
+        </div>
+      )}
+
+      {/* 歌单切换标签 */}
       {enabledSources.length > 1 && (
         <div className="flex flex-wrap gap-2 mb-5">
           {enabledSources.map((s) => {
@@ -58,6 +82,7 @@ const Music: React.FC = () => {
               >
                 <ListMusic size={12} />
                 {s.name}
+                {s.pinned && <Pin size={11} aria-label="已置顶" />}
               </button>
             );
           })}

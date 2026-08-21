@@ -1,3 +1,5 @@
+import { defaultCursorConfig, type CursorConfig } from '../../../config/cursor-config';
+
 export interface SiteConfig {
   // 博客基本信息
   blogName: string;
@@ -49,6 +51,7 @@ export interface SiteConfig {
   defaultTheme: 'light' | 'dark';
   primaryColor: string;
   secondaryColor: string;
+  cursorConfig: CursorConfig;
   
   // SEO 配置
   siteDescription: string;
@@ -180,6 +183,7 @@ export const defaultSiteConfig: SiteConfig = {
   defaultTheme: 'dark',
   primaryColor: '#10b981',
   secondaryColor: '#8b5cf6',
+  cursorConfig: defaultCursorConfig,
   
   siteDescription: 'INK.SPIRIT - 一个赛博风格的个人博客',
   siteKeywords: '博客,技术,编程,生活,动漫',

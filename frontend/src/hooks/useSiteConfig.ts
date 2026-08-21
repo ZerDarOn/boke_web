@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSiteSettings } from './queries/settings';
 import { queryKeys } from './api/query-keys';
 import type { SiteConfig as ApiSiteConfig } from '../lib/api';
+import { defaultCursorConfig } from '../config/cursor-config';
 
 export type SiteConfig = ApiSiteConfig;
 
@@ -21,6 +22,7 @@ const defaultConfig: SiteConfig = {
   primaryColor: '#10b981',
   secondaryColor: '#8b5cf6',
   defaultTheme: 'dark',
+  cursorConfig: defaultCursorConfig,
   siteDescription: '个人博客 — 记录、创作、分享。',
   siteKeywords: '博客,技术,编程,生活',
   fontSettings: {
@@ -82,12 +84,12 @@ function mergeConfigs(
 ): SiteConfig {
   return {
     ...defaultConfig,
-    ...apiConfig,
     ...localConfig,
+    ...apiConfig,
     pageCopy: {
       ...defaultConfig.pageCopy,
-      ...apiConfig?.pageCopy,
       ...localConfig?.pageCopy,
+      ...apiConfig?.pageCopy,
     },
     heroBackgrounds:
       apiConfig?.heroBackgrounds ??
@@ -101,6 +103,11 @@ function mergeConfigs(
       apiConfig?.aiConfig ??
       localConfig?.aiConfig ??
       defaultConfig.aiConfig,
+    cursorConfig: {
+      ...defaultCursorConfig,
+      ...localConfig?.cursorConfig,
+      ...apiConfig?.cursorConfig,
+    },
   };
 }
 

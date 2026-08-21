@@ -27,12 +27,16 @@ export interface Anime {
 export const animeApi = {
   // GET /api/anime - 获取动漫列表
   getAll: async (params?: {
+    page?: number;
+    limit?: number;
     status?: string;
     favorite?: boolean;
   }) => {
     const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', String(params.page));
+    if (params?.limit) queryParams.append('limit', String(params.limit));
     if (params?.status) queryParams.append('status', params.status);
-    if (params?.favorite) queryParams.append('favorite', params.favorite.toString());
+    if (params?.favorite !== undefined) queryParams.append('favorite', params.favorite.toString());
 
     return apiRequest<Anime[]>(`/api/anime?${queryParams}`);
   },

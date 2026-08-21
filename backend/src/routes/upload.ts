@@ -2,15 +2,51 @@ import { Router, Request, Response } from 'express';
 import {
   uploadSingleImage,
   uploadMultipleImages,
+  uploadSingleCursor,
   handleUploadError,
+  deleteUploadedFile,
 } from '../middleware/upload.middleware';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { success, error } from '../utils/response';
 import * as uploadService from '../services/upload.service';
 import fs from 'fs';
 import path from 'path';
+import { apiLog } from '../lib/logger';
+import { hasValidCursorSignature } from '../lib/cursor-file';
 
 const router = Router();
+
+// 网站鼠标皮肤上传：只接受浏览器可用的 CUR/PNG，并在落盘后校验文件头。
+router.post(
+  '/cursor',
+  authenticate,
+  requireAdmin,
+  uploadSingleCursor,
+  handleUploadError,
+  async (req, res) => {
+    if (!req.file) return error(res, '请选择要上传的光标文件', 400);
+
+    if (!hasValidCursorSignature(req.file.path)) {
+      deleteUploadedFile(req.file.path);
+      apiLog.warn('Rejected cursor upload with invalid signature', {
+        filename: req.file.originalname,
+        mimetype: req.file.mimetype,
+      });
+      return error(res, '文件内容与扩展名不匹配', 400);
+    }
+
+    apiLog.info('Cursor asset uploaded', {
+      filename: req.file.filename,
+      size: req.file.size,
+      userId: req.user?.userId,
+    });
+    return success(res, {
+      originalUrl: `/uploads/cursors/${req.file.filename}`,
+      filename: req.file.filename,
+      size: req.file.size,
+    }, '光标上传成功');
+  }
+);
 
 // 单图片上传（相册、项目封面等）
 router.post(

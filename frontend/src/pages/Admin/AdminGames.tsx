@@ -14,24 +14,22 @@ import { useToastActions } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
 const PLATFORM_OPTIONS = [
-  'Steam',
-  'Epic Games',
-  'PlayStation',
-  'Xbox',
-  'Nintendo Switch',
-  'GOG',
-  'Mobile',
-  'PC',
-  'Other',
+  { value: 'STEAM', label: 'Steam' },
+  { value: 'EPIC', label: 'Epic Games' },
+  { value: 'GOG', label: 'GOG' },
+  { value: 'ITCH', label: 'itch.io' },
+  { value: 'NINTENDO_SWITCH', label: 'Nintendo Switch' },
+  { value: 'PLAYSTATION', label: 'PlayStation' },
+  { value: 'XBOX', label: 'Xbox' },
+  { value: 'OTHER', label: '其他' },
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'WISHLIST', label: '愿望单' },
-  { value: 'BACKLOG', label: '积压' },
+  { value: 'WANT_TO_PLAY', label: '想玩' },
   { value: 'PLAYING', label: '游玩中' },
   { value: 'COMPLETED', label: '已完成' },
-  { value: 'RETIRED', label: '搁置' },
   { value: 'DROPPED', label: '放弃' },
+  { value: 'REPLAYING', label: '重玩中' },
 ];
 
 const AdminGames: React.FC = () => {
@@ -44,7 +42,7 @@ const AdminGames: React.FC = () => {
   const [favoriteFilter, setFavoriteFilter] = useState<'all' | 'favorite' | 'not-favorite'>('all');
 
   const listParams = useMemo(() => {
-    const params: Record<string, unknown> = { includeHidden: true, limit: 100 };
+    const params: Record<string, unknown> = { includeHidden: true, limit: 500 };
     if (statusFilter !== 'all') params.status = statusFilter;
     if (platformFilter !== 'all') params.platform = platformFilter;
     if (favoriteFilter === 'favorite') params.favorite = true;
@@ -119,7 +117,8 @@ const AdminGames: React.FC = () => {
       title: '',
       cover: '',
       bannerImage: '',
-      platform: 'Steam',
+      screenshots: [],
+      platform: 'STEAM',
       platformId: '',
       storeUrl: '',
       genres: [],
@@ -127,7 +126,7 @@ const AdminGames: React.FC = () => {
       publisher: '',
       releaseDate: '',
       description: '',
-      status: 'WISHLIST',
+      status: 'WANT_TO_PLAY',
       playtime: 0,
       score: undefined,
       favorite: false,
@@ -241,24 +240,22 @@ const AdminGames: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      'WISHLIST': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
-      'BACKLOG': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100',
+      'WANT_TO_PLAY': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
       'PLAYING': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
       'COMPLETED': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
-      'RETIRED': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
       'DROPPED': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100',
+      'REPLAYING': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-100',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   const getStatusText = (status: string) => {
     const texts: Record<string, string> = {
-      'WISHLIST': '愿望单',
-      'BACKLOG': '积压',
+      'WANT_TO_PLAY': '想玩',
       'PLAYING': '游玩中',
       'COMPLETED': '已完成',
-      'RETIRED': '搁置',
       'DROPPED': '放弃',
+      'REPLAYING': '重玩中',
     };
     return texts[status] || status;
   };
@@ -436,8 +433,8 @@ const AdminGames: React.FC = () => {
             className="px-4 py-3 bg-ink/5 dark:bg-black/20 border border-ink/10 dark:border-gray-700 rounded-xl text-ink dark:text-paper focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all cursor-pointer"
           >
             <option value="all">全部平台</option>
-            {PLATFORM_OPTIONS.map(p => (
-              <option key={p} value={p}>{p}</option>
+            {PLATFORM_OPTIONS.map(platform => (
+              <option key={platform.value} value={platform.value}>{platform.label}</option>
             ))}
           </select>
 
@@ -496,12 +493,12 @@ const AdminGames: React.FC = () => {
                       平台
                     </label>
                     <select
-                      value={formData.platform || 'Steam'}
+                      value={formData.platform || 'STEAM'}
                       onChange={(e) => handleInputChange('platform', e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                     >
-                      {PLATFORM_OPTIONS.map(p => (
-                        <option key={p} value={p}>{p}</option>
+                      {PLATFORM_OPTIONS.map(platform => (
+                        <option key={platform.value} value={platform.value}>{platform.label}</option>
                       ))}
                     </select>
                   </div>
@@ -510,7 +507,7 @@ const AdminGames: React.FC = () => {
                       状态
                     </label>
                     <select
-                      value={formData.status || 'WISHLIST'}
+                      value={formData.status || 'WANT_TO_PLAY'}
                       onChange={(e) => handleInputChange('status', e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                     >
@@ -741,6 +738,20 @@ const AdminGames: React.FC = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                     placeholder="横幅图片链接"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    精彩截图（每行一张图片链接）
+                  </label>
+                  <textarea
+                    value={formData.screenshots?.join('\n') || ''}
+                    onChange={(e) => handleInputChange('screenshots', e.target.value.split('\n').map((url) => url.trim()).filter(Boolean))}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    placeholder={'https://example.com/highlight-1.jpg\nhttps://example.com/highlight-2.jpg'}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">前台详情会以可点击的画廊展示这些截图。</p>
                 </div>
 
                 {/* Genres */}

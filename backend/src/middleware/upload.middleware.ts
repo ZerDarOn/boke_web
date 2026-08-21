@@ -20,6 +20,8 @@ const ALLOWED_IMAGE_EXTENSIONS = [
   '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg',
 ];
 
+const ALLOWED_CURSOR_EXTENSIONS = ['.cur', '.png'];
+
 /**
  * 允许的文档扩展名
  */
@@ -122,6 +124,18 @@ const storage = multer.diskStorage({
   },
 });
 
+const cursorStorage = multer.diskStorage({
+  destination: (_req: Request, _file: Express.Multer.File, cb) => {
+    const uploadPath = path.join(process.cwd(), 'uploads', 'cursors');
+    ensureDir(uploadPath);
+    cb(null, uploadPath);
+  },
+  filename: (_req: Request, file: Express.Multer.File, cb) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    cb(null, `${uuidv4()}${extension}`);
+  },
+});
+
 /**
  * 文件过滤器 - 图片
  */
@@ -149,6 +163,25 @@ const imageFileFilter = (
 
   if (!validateMimeType(file.mimetype, allowedMimes)) {
     cb(new Error(`不支持的图片类型：${file.mimetype}`));
+    return;
+  }
+
+  cb(null, true);
+};
+
+const cursorFileFilter = (
+  _req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  if (!validateExtension(file.originalname, ALLOWED_CURSOR_EXTENSIONS)) {
+    cb(new Error('不支持的光标格式。请上传 .cur 或透明 .png 文件'));
+    return;
+  }
+
+  const allowedMimes = ['application/octet-stream', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/png'];
+  if (!validateMimeType(file.mimetype, allowedMimes)) {
+    cb(new Error(`不支持的光标文件类型：${file.mimetype}`));
     return;
   }
 
@@ -259,6 +292,12 @@ export const uploadGeneral = multer({
   limits,
 });
 
+export const uploadCursor = multer({
+  storage: cursorStorage,
+  fileFilter: cursorFileFilter,
+  limits: { ...limits, fileSize: 1024 * 1024, files: 1 },
+});
+
 /**
  * 向后兼容的导出（使用通用上传）
  */
@@ -273,6 +312,8 @@ export const uploadSingleImage = uploadImage.single('image');
  * 多文件上传（相册）
  */
 export const uploadMultipleImages = uploadImage.array('images', 20);
+
+export const uploadSingleCursor = uploadCursor.single('cursor');
 
 /**
  * 混合上传（项目和文件）
@@ -400,6 +441,8 @@ export function cleanupTempFiles(maxAge: number = 24 * 60 * 60 * 1000): void {
 
   const cleanDirectory = (dir: string) => {
     if (!fs.existsSync(dir)) return;
+    // 后台光标属于持久化站点资源，不应被临时文件任务回收。
+    if (path.resolve(dir) === path.resolve(uploadsDir, 'cursors')) return;
 
     const files = fs.readdirSync(dir);
     for (const file of files) {

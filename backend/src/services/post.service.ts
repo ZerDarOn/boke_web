@@ -6,7 +6,9 @@ import { aiClient } from './ai.client';
 import { apiLog } from '../lib/logger';
 import { publicPostWhere } from '../lib/post-access-policy';
 
-function notifyPostIndex(postId: string): void {
+const INDEX_RETRY_DELAYS_MS = [5_000, 30_000];
+
+function notifyPostIndex(postId: string, attempt = 0): void {
   void aiClient.syncPostIndex(postId)
     .then((result) => {
       apiLog.info('AI post index notification completed', {
@@ -17,12 +19,17 @@ function notifyPostIndex(postId: string): void {
     .catch((error) => {
       apiLog.warn('AI post index notification failed', {
         postId,
+        attempt,
         errorType: error instanceof Error ? error.name : 'UnknownError',
       });
+      const delay = INDEX_RETRY_DELAYS_MS[attempt];
+      if (delay !== undefined) {
+        setTimeout(() => notifyPostIndex(postId, attempt + 1), delay).unref();
+      }
     });
 }
 
-function notifyPostIndexRemoval(postId: string): void {
+function notifyPostIndexRemoval(postId: string, attempt = 0): void {
   void aiClient.removePostIndex(postId)
     .then((result) => {
       apiLog.info('AI post index removal completed', {
@@ -33,8 +40,13 @@ function notifyPostIndexRemoval(postId: string): void {
     .catch((error) => {
       apiLog.warn('AI post index removal failed', {
         postId,
+        attempt,
         errorType: error instanceof Error ? error.name : 'UnknownError',
       });
+      const delay = INDEX_RETRY_DELAYS_MS[attempt];
+      if (delay !== undefined) {
+        setTimeout(() => notifyPostIndexRemoval(postId, attempt + 1), delay).unref();
+      }
     });
 }
 

@@ -126,6 +126,7 @@ async def reload_config():
         # 重建 AI 客户端（带上新的 API Key / Base URL）
         global ai_client
         ai_client = AIService()
+        get_kb().reload_settings(new_settings)
 
         logger.info(
             "Config reloaded: openai=%s model=%s base_url=%s",
@@ -267,6 +268,7 @@ class CompanionPageContext(BaseModel):
         "network",
         "dashboard",
         "music",
+        "divination",
     ] = "default"
     pathname: str = Field(default="/", max_length=240)
     title: str = Field(default="", max_length=160)
@@ -298,6 +300,34 @@ class ChatResponse(BaseModel):
     ]] = None
 
 
+async def _build_plain_chat_prompt(req: ChatRequest, page_context: Optional[dict]) -> str:
+    """Build the non-RAG prompt while preserving bounded conversation continuity."""
+    persona_context = companion_persona.prompt_context(page_context or {})
+    blog_summary = await _fetch_blog_summary()
+    blog_block = (
+        "\n以下是本站的真实内容索引，回答时请基于此，不要编造不存在的文章或项目：\n"
+        f"{blog_summary}\n"
+        if blog_summary else ""
+    )
+    history_text = GroundedAnswerService._format_history(req.history)
+    history_block = f"\n对话历史：\n{history_text}\n" if history_text else ""
+    return f"{persona_context}{blog_block}{history_block}\n用户: {req.message}\n助手:"
+
+
+def _serialize_chat_sources(sources: List[dict]) -> List[dict]:
+    """Convert validated grounded-answer source dictionaries into SSE-safe metadata."""
+    return [
+        {
+            "citation": source["citation"],
+            "title": source["title"],
+            "url": source["url"],
+            "score": source["score"],
+            "excerpt": source["excerpt"],
+        }
+        for source in sources
+    ]
+
+
 class DivinationRequest(BaseModel):
     kind: Literal["tarot", "iching", "astrology"]
     spread: str = Field(..., min_length=1, max_length=6000, description="占卜结果（牌面/卦象/星盘）")
@@ -323,12 +353,7 @@ async def chat(req: ChatRequest):
 
         # 纯闲聊（问候/寒暄/自我介绍）直接按人设聊天，不触发 RAG
         if _is_smalltalk(req.message):
-            persona_context = companion_persona.prompt_context(page_context or {})
-            blog_summary = await _fetch_blog_summary()
-            blog_block = f"\n以下是本站的真实内容索引，回答时请基于此，不要编造不存在的文章或项目：\n{blog_summary}\n" if blog_summary else ""
-            reply = await ai_client.generate(
-                f"{persona_context}{blog_block}\n\n用户: {req.message}\n助手:"
-            )
+            reply = await ai_client.generate(await _build_plain_chat_prompt(req, page_context))
             return ChatResponse(
                 reply=reply.strip(),
                 sources=[],
@@ -346,12 +371,7 @@ async def chat(req: ChatRequest):
 
         # 无知识库片段时走纯聊天模式，不用 grounded answer（否则会返回"依据不足"）
         if not needs_kb or not chunks:
-            persona_context = companion_persona.prompt_context(page_context or {})
-            blog_summary = await _fetch_blog_summary()
-            blog_block = f"\n以下是本站的真实内容索引，回答时请基于此，不要编造不存在的文章或项目：\n{blog_summary}\n" if blog_summary else ""
-            reply = await ai_client.generate(
-                f"{persona_context}{blog_block}\n\n用户: {req.message}\n助手:"
-            )
+            reply = await ai_client.generate(await _build_plain_chat_prompt(req, page_context))
             result = {
                 "reply": reply.strip(),
                 "sources": [],
@@ -373,12 +393,7 @@ async def chat(req: ChatRequest):
                     "Grounded answer refused reason=%s → fallback to plain chat",
                     result.get("refusal_reason"),
                 )
-                persona_context = companion_persona.prompt_context(page_context or {})
-                blog_summary = await _fetch_blog_summary()
-                blog_block = f"\n以下是本站的真实内容索引，回答时请基于此，不要编造不存在的文章或项目：\n{blog_summary}\n" if blog_summary else ""
-                fallback = await ai_client.generate(
-                    f"{persona_context}{blog_block}\n\n用户: {req.message}\n助手:"
-                )
+                fallback = await ai_client.generate(await _build_plain_chat_prompt(req, page_context))
                 result = {
                     "reply": fallback.strip(),
                     "sources": [],
@@ -403,13 +418,10 @@ async def chat_stream(req: ChatRequest):
 
             # 闲聊 → 纯流式聊天
             if _is_smalltalk(req.message):
-                persona_context = companion_persona.prompt_context(page_context or {})
-                blog_summary = await _fetch_blog_summary()
-                blog_block = f"\n以下是本站的真实内容索引，回答时请基于此：\n{blog_summary}\n" if blog_summary else ""
                 # 先发一个 meta 事件，让前端知道这是普通聊天
                 yield f"data: {_json.dumps({'type': 'meta', 'grounded': False, 'sources': []}, ensure_ascii=False)}\n\n"
                 async for chunk in ai_client.generate_stream(
-                    f"{persona_context}{blog_block}\n\n用户: {req.message}\n助手:",
+                    await _build_plain_chat_prompt(req, page_context),
                     AITask.CHAT,
                 ):
                     yield f"data: {_json.dumps({'type': 'delta', 'content': chunk}, ensure_ascii=False)}\n\n"
@@ -424,12 +436,9 @@ async def chat_stream(req: ChatRequest):
 
             if not needs_kb or not chunks:
                 # 纯聊天模式（无 RAG）
-                persona_context = companion_persona.prompt_context(page_context or {})
-                blog_summary = await _fetch_blog_summary()
-                blog_block = f"\n以下是本站的真实内容索引，回答时请基于此：\n{blog_summary}\n" if blog_summary else ""
                 yield f"data: {_json.dumps({'type': 'meta', 'grounded': False, 'sources': []}, ensure_ascii=False)}\n\n"
                 async for chunk in ai_client.generate_stream(
-                    f"{persona_context}{blog_block}\n\n用户: {req.message}\n助手:",
+                    await _build_plain_chat_prompt(req, page_context),
                     AITask.CHAT,
                 ):
                     yield f"data: {_json.dumps({'type': 'delta', 'content': chunk}, ensure_ascii=False)}\n\n"
@@ -441,21 +450,15 @@ async def chat_stream(req: ChatRequest):
                 )
                 if result.get("grounded") is False and result.get("refusal_reason"):
                     # 降级纯聊天（流式）
-                    persona_context = companion_persona.prompt_context(page_context or {})
-                    blog_summary = await _fetch_blog_summary()
-                    blog_block = f"\n以下是本站的真实内容索引，回答时请基于此：\n{blog_summary}\n" if blog_summary else ""
                     yield f"data: {_json.dumps({'type': 'meta', 'grounded': False, 'sources': []}, ensure_ascii=False)}\n\n"
                     async for chunk in ai_client.generate_stream(
-                        f"{persona_context}{blog_block}\n\n用户: {req.message}\n助手:",
+                        await _build_plain_chat_prompt(req, page_context),
                         AITask.CHAT,
                     ):
                         yield f"data: {_json.dumps({'type': 'delta', 'content': chunk}, ensure_ascii=False)}\n\n"
                 else:
                     # grounded answer 成功，带 sources 元数据
-                    sources_meta = [
-                        {"citation": s.citation, "title": s.title, "url": s.url, "score": s.score, "excerpt": s.excerpt}
-                        for s in result.get("sources", [])
-                    ]
+                    sources_meta = _serialize_chat_sources(result.get("sources", []))
                     yield f"data: {_json.dumps({'type': 'meta', 'grounded': True, 'sources': sources_meta, 'confidence': result.get('confidence', 0)}, ensure_ascii=False)}\n\n"
                     reply = result.get("reply", "")
                     # 把完整回复按词/标点切分模拟流式
@@ -463,7 +466,11 @@ async def chat_stream(req: ChatRequest):
                         yield f"data: {_json.dumps({'type': 'delta', 'content': reply[i:i+6]}, ensure_ascii=False)}\n\n"
                 yield f"data: {_json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
         except Exception as e:
-            yield f"data: {_json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+            logger.exception(
+                "Companion chat stream failed error_type=%s",
+                type(e).__name__,
+            )
+            yield f"data: {_json.dumps({'type': 'error', 'message': 'AI stream unavailable'}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
         event_stream(),
@@ -504,6 +511,7 @@ async def divination(req: DivinationRequest):
                 f"【你之前的解读】\n{req.previous_reading}\n\n"
                 f"求问者针对解读继续追问：\n{req.followup}\n\n"
                 "请直接回答追问，可引用前面的解读，保持同一风格，控制在 400 字以内。"
+                "不要把占卜当作确定预言；涉及医疗、法律、财务或人身安全时，明确建议求助专业人士。"
             )
         else:
             question_line = f"\n求问者所问之事：{req.question}" if req.question else ""
@@ -513,7 +521,8 @@ async def divination(req: DivinationRequest):
                 "1. 结构清晰（可用小标题或分点）；\n"
                 "2. 结合具体牌面/卦象/星象元素，不要泛泛而谈；\n"
                 "3. 给出对当下的启示、可能的发展趋势与具体行动建议；\n"
-                f"4. 语言风格：赛博武侠感的中文，凝练而有温度。{question_line}\n\n"
+                "4. 不要把占卜当作确定预言；涉及医疗、法律、财务或人身安全时，明确建议求助专业人士；\n"
+                f"5. 语言风格：赛博武侠感的中文，凝练而有温度。{question_line}\n\n"
                 f"【占卜结果】\n{req.spread}\n\n"
                 "【深度解读】"
             )

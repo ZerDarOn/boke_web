@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { RefreshCw, Eye, EyeOff, Zap, Loader2, Check, AlertCircle } from 'lucide-react';
 
 import type { SettingsTabProps } from './types';
+import { aiApi } from '../../../lib/api';
 
 type Provider = 'openai' | 'anthropic' | 'local';
 
@@ -210,18 +211,14 @@ const AIModelSettingsTab: React.FC<SettingsTabProps> = ({ config, updateConfig }
       <div className="pt-4 border-t border-gray-200">
         <h4 className="text-sm font-medium text-gray-700 mb-2">文章知识库索引</h4>
         <p className="text-xs text-gray-400 mb-3">
-          将已发布文章的内容索引到 ChromaDB。索引后 AI 回答会引用原文证据（Smart RAG）。
+          将已发布文章的内容建立向量索引。索引后 AI 回答会引用原文证据（Smart RAG）。
         </p>
         <button
           onClick={async () => {
             setTestStatus('testing');
             try {
-              const res = await fetch('/api/ai/index/rebuild', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-              });
-              if (res.ok) {
-                const data = await res.json();
+              const res = await aiApi.rebuildIndex();
+              if (res.success) {
                 setTestStatus('ok');
                 setTimeout(() => setTestStatus('idle'), 3000);
               } else {

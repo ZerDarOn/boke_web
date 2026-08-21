@@ -9,7 +9,7 @@ import { ConfirmProvider } from './contexts/ConfirmContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
 import { LoadingProgress } from './components/LoadingProgress';
-import CyberCursor from './components/CyberCursor';
+import SiteCursor from './components/SiteCursor';
 import InteractionGuard from './components/InteractionGuard';
 
 // Lazy load pages
@@ -78,8 +78,14 @@ const ScrollToTop: React.FC = () => {
   // 详情页面路径（包含 :id 的路由）
   const isDetailPage = /\/(posts|announcement|anime|diary|gallery|projects)\/.+$/.test(location.pathname);
   const isHomePage = location.pathname === '/';
+  const isDivinationPage = location.pathname === '/divination' || location.pathname.startsWith('/divination/');
   
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
+    // 占卜馆页面较长，路由切换必须立即落在内容区，避免结果页滚动位置造成“返回无反应”的错觉。
+    if (isDivinationPage) {
+      window.scrollTo({ top: window.innerHeight, left: 0, behavior: 'auto' });
+      return;
+    }
     // 详情页：平滑滚动到100%位置
     if (isDetailPage) {
       window.scrollTo({ top: window.innerHeight, left: 0, behavior: 'smooth' });
@@ -92,7 +98,7 @@ const ScrollToTop: React.FC = () => {
     else {
       window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
     }
-  }, [location.pathname, isHomePage, isDetailPage]);
+  }, [location.pathname, isHomePage, isDetailPage, isDivinationPage]);
   
   return null;
 };
@@ -153,9 +159,9 @@ const NotFound: React.FC = () => (
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <CyberCursor />
       <InteractionGuard />
       <QueryClientProvider>
+        <SiteCursor />
         <LangProvider>
           <AuthProvider>
             <ToastProvider>

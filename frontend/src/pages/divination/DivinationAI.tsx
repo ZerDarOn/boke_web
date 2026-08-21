@@ -1,10 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { Components } from 'react-markdown';
 import { aiApi } from '../../lib/api';
+import { useUpdateDivinationReading } from '@/hooks/queries/divination';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 interface DivinationAIProps {
   kind: 'tarot' | 'iching' | 'astrology';
   spread: string;
   question?: string;
+  recordId?: string;
 }
 
 interface Followup {
@@ -12,89 +16,49 @@ interface Followup {
   a: string;
 }
 
-/** 渲染 AI 返回的轻量 Markdown（### 标题 / 加粗 / 列表 / 分隔线 / 换行）。 */
-function renderMarkdown(text: string): ReactNode[] {
-  const lines = text.split('\n');
-  const nodes: ReactNode[] = [];
-  let list: ReactNode[] = [];
+const DIVINATION_MARKDOWN_COMPONENTS: Components = {
+  h1: ({ children }) => <h2 className="mb-3 mt-6 font-serif text-xl font-bold text-[hsl(var(--div-text-hsl))]">{children}</h2>,
+  h2: ({ children }) => <h3 className="mb-3 mt-6 font-serif text-lg font-bold text-[hsl(var(--div-text-hsl))]">{children}</h3>,
+  h3: ({ children }) => <h4 className="mb-2 mt-5 font-serif text-base font-bold text-[hsl(var(--div-text-hsl))]">{children}</h4>,
+  h4: ({ children }) => <h5 className="mb-2 mt-4 font-mono text-sm font-semibold tracking-wide text-neon">{children}</h5>,
+  h5: ({ children }) => <h6 className="mb-2 mt-4 font-serif text-sm font-semibold text-[hsl(var(--div-text-hsl))]">{children}</h6>,
+  h6: ({ children }) => <p className="mb-2 mt-4 font-serif text-sm font-semibold text-[hsl(var(--div-text-hsl))]">{children}</p>,
+  p: ({ children }) => <p className="mb-3 font-serif text-sm leading-7 text-[hsla(var(--div-text-hsl)/0.78)] md:text-[15px]">{children}</p>,
+  ul: ({ children }) => <ul className="mb-4 list-disc space-y-2 pl-6 font-serif text-sm leading-7 text-[hsla(var(--div-text-hsl)/0.76)] md:text-[15px]">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-4 list-decimal space-y-2 pl-6 font-serif text-sm leading-7 text-[hsla(var(--div-text-hsl)/0.76)] md:text-[15px]">{children}</ol>,
+  li: ({ children }) => <li className="pl-1">{children}</li>,
+  strong: ({ children }) => <strong className="font-bold text-[hsl(var(--div-text-hsl))]">{children}</strong>,
+  blockquote: ({ children }) => <blockquote className="my-4 border-l-2 border-neon/50 pl-4 text-[hsla(var(--div-text-hsl)/0.7)]">{children}</blockquote>,
+  hr: () => <hr className="my-5 border-0 border-t border-[hsla(var(--div-line-hsl)/0.15)]" />,
+};
 
-  const flushList = (key: number) => {
-    if (list.length > 0) {
-      nodes.push(
-        <ul key={key} className="list-disc pl-5 space-y-1.5 my-2">
-          {list}
-        </ul>
-      );
-      list = [];
-    }
-  };
-
-  const inline = (raw: string, key: number): ReactNode => {
-    const parts = raw.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((p, i) =>
-      p.startsWith('**') && p.endsWith('**') ? (
-        <strong key={`${key}-${i}`} className="font-bold text-[hsl(var(--div-text-hsl))]">
-          {p.slice(2, -2)}
-        </strong>
-      ) : (
-        p
-      )
-    );
-  };
-
-  lines.forEach((raw, idx) => {
-    const line = raw.trimEnd();
-    if (!line.trim()) {
-      flushList(idx);
-      return;
-    }
-    if (/^---+\s*$/.test(line.trim())) {
-      flushList(idx);
-      nodes.push(
-        <div key={idx} className="my-3 h-px bg-[hsla(var(--div-line-hsl)/0.15)]" />
-      );
-      return;
-    }
-    if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-      list.push(
-        <li key={idx} className="text-xs leading-relaxed">
-          {inline(line.trim().slice(2), idx)}
-        </li>
-      );
-      return;
-    }
-    flushList(idx);
-    if (line.trim().startsWith('### ')) {
-      nodes.push(
-        <div key={idx} className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon mt-4 mb-2">
-          {line.trim().slice(4)}
-        </div>
-      );
-    } else if (line.trim().startsWith('## ')) {
-      nodes.push(
-        <div key={idx} className="font-serif text-sm font-bold text-[hsl(var(--div-text-hsl))] mt-4 mb-2">
-          {inline(line.trim().slice(3), idx)}
-        </div>
-      );
-    } else {
-      nodes.push(
-        <p key={idx} className="text-xs leading-relaxed text-[hsla(var(--div-text-hsl)/0.7)] mb-2">
-          {inline(line, idx)}
-        </p>
-      );
-    }
-  });
-  flushList(lines.length + 1);
-  return nodes;
+function DivinationMarkdown({ content }: { content: string }) {
+  return <MarkdownRenderer content={content} components={DIVINATION_MARKDOWN_COMPONENTS} />;
 }
 
-export default function DivinationAI({ kind, spread, question }: DivinationAIProps) {
+const FOLLOWUP_SUGGESTIONS = [
+  '这份解读里最值得我先行动的是什么？',
+  '如果我选择另一条路，局面会怎样变化？',
+  '这份结果提醒我需要避开什么？',
+];
+
+export default function DivinationAI({ kind, spread, question, recordId }: DivinationAIProps) {
   const [reading, setReading] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [followups, setFollowups] = useState<Followup[]>([]);
   const [input, setInput] = useState('');
   const [asking, setAsking] = useState(false);
+  const updateReading = useUpdateDivinationReading();
+  const savedReadingKey = useRef('');
+
+  useEffect(() => {
+    if (!recordId || !reading) return;
+    const readingKey = `${recordId}:${reading}`;
+    if (savedReadingKey.current === readingKey) return;
+    savedReadingKey.current = readingKey;
+    updateReading.mutate({ id: recordId, aiReading: reading });
+  }, [recordId, reading, updateReading]);
 
   const generate = async () => {
     if (loading) return;
@@ -119,7 +83,10 @@ export default function DivinationAI({ kind, spread, question }: DivinationAIPro
     if (!q || asking) return;
     setAsking(true);
     setError('');
-    const latest = reading || followups[followups.length - 1]?.a || '';
+    const latest = [
+      reading,
+      ...followups.map(f => `追问：${f.q}\n回答：${f.a}`),
+    ].filter(Boolean).join('\n\n').slice(-5800);
     try {
       const res = await aiApi.divination({
         kind,
@@ -147,11 +114,11 @@ export default function DivinationAI({ kind, spread, question }: DivinationAIPro
   return (
     <div className="mt-10">
       {/* AI 深度解读入口 */}
-      <div className="border border-neon/20 rounded-2xl p-6 bg-neon/[0.03]">
+      <div className="border border-neon/20 rounded-2xl p-6 md:p-8 bg-neon/[0.03] shadow-[0_18px_60px_hsl(var(--color-neon-hsl)/0.05)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-neon mb-2">
-              ✦ AI 深度解读
+              / AI ORACLE
             </div>
             <p className="font-serif text-[hsla(var(--div-text-hsl)/0.5)] text-xs leading-relaxed max-w-md">
               {hasReading
@@ -163,7 +130,8 @@ export default function DivinationAI({ kind, spread, question }: DivinationAIPro
             <button
               onClick={generate}
               disabled={loading}
-              className="shrink-0 font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--div-text-hsl))] border border-neon/40 hover:border-neon bg-neon/10 hover:bg-neon/20 rounded-lg px-5 py-2.5 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="开始 AI 深度解读"
+              className="shrink-0 cursor-pointer font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--div-text-hsl))] border border-neon/40 hover:border-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon/60 bg-neon/10 hover:bg-neon/20 rounded-lg px-5 py-2.5 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-px disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? '⋯ 推演中' : '✦ 开始深度解读'}
             </button>
@@ -183,12 +151,12 @@ export default function DivinationAI({ kind, spread, question }: DivinationAIPro
         )}
 
         {hasReading && (
-          <div className="mt-5 pt-5 border-t border-[hsla(var(--div-line-hsl)/0.1)]">
+            <div className="mt-5 pt-5 border-t border-[hsla(var(--div-line-hsl)/0.1)]">
             <div className="font-mono text-[9px] uppercase tracking-widest text-neon/60 mb-3">
               ⟡ 深度解读
             </div>
-            <div className="space-y-1 font-serif whitespace-pre-wrap">
-              {renderMarkdown(reading)}
+            <div className="font-serif">
+              <DivinationMarkdown content={reading} />
             </div>
 
             {/* 追问区 */}
@@ -200,16 +168,30 @@ export default function DivinationAI({ kind, spread, question }: DivinationAIPro
                       <div className="font-serif text-xs text-[hsla(var(--div-text-hsl)/0.85)] border-l-2 border-neon/50 pl-3">
                         {f.q}
                       </div>
-                      <div className="font-serif text-xs leading-relaxed text-[hsla(var(--div-text-hsl)/0.65)] whitespace-pre-wrap pl-3">
-                        {renderMarkdown(f.a)}
+                      <div className="pl-3">
+                        <DivinationMarkdown content={f.a} />
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
+              <div className="mb-4 flex flex-wrap gap-2" aria-label="推荐追问">
+                {FOLLOWUP_SUGGESTIONS.map(suggestion => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setInput(suggestion)}
+                    className="cursor-pointer rounded-md border border-[hsla(var(--div-line-hsl)/0.14)] px-3 py-1.5 text-left font-serif text-[11px] text-[hsla(var(--div-text-hsl)/0.58)] transition-colors hover:border-neon/50 hover:text-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon/50"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex gap-3">
                 <input
+                  aria-label="输入占卜追问"
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => {
@@ -217,12 +199,12 @@ export default function DivinationAI({ kind, spread, question }: DivinationAIPro
                   }}
                   placeholder="还想了解什么？继续追问…"
                   maxLength={1000}
-                  className="flex-1 bg-transparent border border-[hsla(var(--div-line-hsl)/0.2)] focus:border-neon/60 rounded-lg px-4 py-2.5 font-serif text-sm text-[hsl(var(--div-text-hsl))] placeholder:text-[hsla(var(--div-text-hsl)/0.25)] outline-none transition-colors"
+                  className="flex-1 bg-transparent border border-[hsla(var(--div-line-hsl)/0.2)] focus:border-neon/60 rounded-lg px-4 py-2.5 font-serif text-sm text-[hsl(var(--div-text-hsl))] placeholder:text-[hsla(var(--div-text-hsl)/0.25)] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-neon/30"
                 />
                 <button
                   onClick={ask}
                   disabled={asking || !input.trim()}
-                  className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-neon border border-neon/40 hover:bg-neon/10 rounded-lg px-4 py-2.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="shrink-0 cursor-pointer font-mono text-[10px] uppercase tracking-widest text-neon border border-neon/40 hover:bg-neon/10 rounded-lg px-4 py-2.5 transition-all active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon/50 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {asking ? '⋯' : '追问'}
                 </button>

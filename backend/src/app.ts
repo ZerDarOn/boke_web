@@ -179,7 +179,13 @@ app.get('/api/health', (req, res) => {
 });
 
 // Static files (uploads)
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+  setHeaders: (res, filePath) => {
+    if (path.extname(filePath).toLowerCase() === '.cur') {
+      res.setHeader('Content-Type', 'image/x-icon');
+    }
+  },
+}));
 
 // API Routes
 app.use('/api/posts', postRoutes);

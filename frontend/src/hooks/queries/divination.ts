@@ -3,10 +3,14 @@ import { queryKeys } from '../api/query-keys';
 import { divinationApi, type DivinationType } from '@/lib/api';
 
 // 获取占卜历史
-export function useDivinationRecords(params?: { type?: DivinationType; page?: number }) {
+export function useDivinationRecords(
+  params?: { type?: DivinationType; page?: number },
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: queryKeys.divination.list(params),
     queryFn: () => divinationApi.getAll(params),
+    enabled: options?.enabled ?? true,
   });
 }
 

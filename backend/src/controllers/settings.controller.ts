@@ -4,6 +4,7 @@ import * as response from '../utils/response';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
+import { apiLog } from '../lib/logger';
 
 /**
  * 通知 ai-service Python 进程重新加载 .env 配置。
@@ -122,16 +123,14 @@ export class SettingsController {
   // PUT /api/settings/bulk - 批量更新配置
   static async bulkUpdate(req: Request, res: Response) {
     try {
-      console.log('Bulk update request body:', req.body);
-      
       const { settings } = req.body;
       
       if (!settings || typeof settings !== 'object') {
-        console.log('Validation failed: settings =', settings, 'type =', typeof settings);
         return response.error(res, 'Settings object is required', 400);
       }
 
       const updated = await SettingsService.bulkSet(settings);
+      apiLog.info('Bulk settings updated', { keys: Object.keys(settings), userId: req.user?.userId });
 
       // 如果提交了 AI 模型配置，同步写入 ai-service/.env
       if (settings.aiConfig && typeof settings.aiConfig === 'object') {

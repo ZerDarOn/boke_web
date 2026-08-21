@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { api, GalleryImage, Album } from '../../lib/api';
+import { galleryApi, GalleryImage, Album } from '../../lib/api';
 import { useGalleryAlbums, useAdminGalleryPhotos } from '../../hooks/queries/gallery';
+import { unwrapApi } from '../../hooks/api/fetcher';
 import { uploadImage } from '../../lib/upload';
 import {
   Search, Plus, Edit, Trash2, Loader2, X, Save,
@@ -97,31 +98,9 @@ const AdminGallery: React.FC = () => {
     e.preventDefault();
     try {
       if (editingAlbum) {
-        // 更新相册 - 通过更新该相册的所有照片
-        const albumPhotos = photos.filter(p => p.albumId === editingAlbum.id);
-        for (const photo of albumPhotos) {
-          await api.gallery.update(photo.id, {
-            album: { ...albumForm, id: editingAlbum.id } as Album
-          });
-        }
+        await unwrapApi(galleryApi.updateAlbum(editingAlbum.id, albumForm));
       } else {
-        // 创建新相册 - 创建一张封面照片
-        if (albumForm.cover) {
-          await api.gallery.create({
-            title: albumForm.title || '未命名相册',
-            src: albumForm.cover,
-            album: {
-              ...albumForm,
-              id: Date.now().toString(),
-              createdAt: new Date().toISOString(),
-              lastUpdated: new Date().toISOString(),
-              photoCount: 0
-            } as Album,
-            date: new Date().toISOString().split('T')[0],
-            aspect: 'landscape',
-            tags: []
-          });
-        }
+        await unwrapApi(galleryApi.createAlbum(albumForm));
       }
       setIsModalOpen(false);
       refreshAlbums();
@@ -137,11 +116,7 @@ const AdminGallery: React.FC = () => {
     if (!(await confirm({ message: '确定要删除这个相册吗？相册内的照片将被移出相册。' }))) return;
 
     try {
-      // 将该相册的所有照片移出相册
-      const albumPhotos = photos.filter(p => p.albumId === albumId);
-      for (const photo of albumPhotos) {
-        await api.gallery.update(photo.id, { albumId: undefined, album: undefined });
-      }
+      await unwrapApi(galleryApi.deleteAlbum(albumId));
       refreshAlbums();
       toast.success('删除成功');
     } catch (err) {
@@ -179,14 +154,13 @@ const AdminGallery: React.FC = () => {
     e.preventDefault();
     try {
       if (editingPhoto) {
-        await api.gallery.update(editingPhoto.id, photoForm);
+        await unwrapApi(galleryApi.update(editingPhoto.id, photoForm));
       } else {
-        await api.gallery.create({
+        await unwrapApi(galleryApi.create({
           ...photoForm,
           date: new Date().toISOString().split('T')[0],
           albumId: selectedAlbum?.id,
-          album: selectedAlbum || undefined
-        } as GalleryImage);
+        } as GalleryImage));
       }
       setIsPhotoModalOpen(false);
       refreshPhotos();
@@ -203,7 +177,7 @@ const AdminGallery: React.FC = () => {
     if (!(await confirm({ message: '确定要删除这张照片吗？' }))) return;
 
     try {
-      await api.gallery.delete(photoId);
+      await unwrapApi(galleryApi.delete(photoId));
       refreshPhotos();
       refreshAlbums();
       toast.success('删除成功');

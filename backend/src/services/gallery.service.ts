@@ -54,25 +54,43 @@ export class GalleryService {
 
   // Album methods
   static async findAlbums() {
-    return prisma.album.findMany({
+    const albums = await prisma.album.findMany({
       orderBy: { lastUpdated: 'desc' },
       include: {
         _count: { select: { photos: true } },
       },
     });
+
+    return albums.map(({ _count, ...album }) => ({
+      ...album,
+      photoCount: _count.photos,
+    }));
   }
 
   static async findAlbumById(id: string) {
-    return prisma.album.findUnique({
+    const album = await prisma.album.findUnique({
       where: { id },
       include: {
         photos: { orderBy: { date: 'desc' } },
       },
     });
+
+    return album ? { ...album, photoCount: album.photos.length } : null;
   }
 
   static async createAlbum(data: Prisma.AlbumCreateInput) {
     return prisma.album.create({ data });
+  }
+
+  static async updateAlbum(id: string, data: Prisma.AlbumUpdateInput) {
+    return prisma.album.update({ where: { id }, data });
+  }
+
+  static async deleteAlbum(id: string) {
+    return prisma.$transaction([
+      prisma.galleryImage.updateMany({ where: { albumId: id }, data: { albumId: null } }),
+      prisma.album.delete({ where: { id } }),
+    ]);
   }
 
   static async addComment(photoId: string, data: { author: string; content: string }) {
