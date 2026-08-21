@@ -1,4 +1,5 @@
 import { apiRequest } from './request';
+import type { MediaHighlight } from '../mediaHighlights';
 
 export interface Game {
   id: string;
@@ -6,6 +7,7 @@ export interface Game {
   cover: string;
   bannerImage?: string;
   screenshots: string[];
+  highlights?: MediaHighlight[];
   platform: string;
   platformId?: string;
   storeUrl?: string;

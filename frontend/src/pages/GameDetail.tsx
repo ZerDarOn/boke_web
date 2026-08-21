@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
+import MediaHighlights from '../components/MediaHighlights';
 import PrevNextNavigation from '../components/PrevNextNavigation';
 import { useGameItem, useGameList } from '../hooks/queries/games';
 import { useScrollProgress } from '../hooks/useScrollProgress';
@@ -423,6 +424,8 @@ const GameDetail: React.FC = () => {
                 </div>
               </div>
             )}
+
+            <MediaHighlights highlights={game.highlights || []} title={game.title} />
           </div>
         </div>
       </div>

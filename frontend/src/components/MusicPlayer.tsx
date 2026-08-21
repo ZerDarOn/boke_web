@@ -4,8 +4,10 @@ import 'aplayer/dist/APlayer.min.css';
 import './MusicPlayer.css';
 import { Loader2, AlertCircle, Music2 } from 'lucide-react';
 import { fetchSourceTracks } from '../lib/meting';
+import { applyTrackCurations } from '../lib/musicCuration';
 import { MUSIC_CACHE_VERSION, DEFAULT_MUSIC_SOURCES, type MusicSource } from '../lib/musicConfig';
 import { useMusicSources } from '../hooks/queries/settings';
+import { useMusicTrackCurations } from '../hooks/queries/settings';
 
 interface MusicPlayerProps {
   /** 紧凑模式：折叠歌单、降低列表高度，适合右侧栏小窗口 */
@@ -13,6 +15,7 @@ interface MusicPlayerProps {
   /** 指定要播放的歌单源；不传则用后台第一个启用的歌单 */
   source?: MusicSource;
   className?: string;
+  trackCategory?: string;
 }
 
 // 检查并清除旧版本的 APlayer 进度缓存
@@ -25,7 +28,7 @@ const checkAndClearCache = () => {
   }
 };
 
-const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, source, className }) => {
+const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, source, className, trackCategory }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<APlayer | null>(null);
   const [audios, setAudios] = useState<APlayerAudio[] | null>(null);
@@ -34,6 +37,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, source, clas
 
   // 没有显式传入 source 时（如右侧栏迷你播放器），回退到后台第一个启用的歌单
   const sourcesQuery = useMusicSources();
+  const { data: trackCurations = [] } = useMusicTrackCurations();
   const effectiveSource = useMemo<MusicSource | undefined>(() => {
     if (source) return source;
     if (sourcesQuery.data) {
@@ -55,14 +59,14 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, source, clas
     setError(null);
     setAudios(null);
     fetchSourceTracks(effectiveSource, controller.signal)
-      .then((list) => setAudios(list))
+      .then((list) => setAudios(applyTrackCurations(list, trackCurations, trackCategory)))
       .catch((err: Error) => {
         if (err.name !== 'AbortError') setError(err.message || '音乐加载失败');
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveSource?.server, effectiveSource?.type, effectiveSource?.sourceId]);
+  }, [effectiveSource?.server, effectiveSource?.type, effectiveSource?.sourceId, trackCategory, trackCurations]);
 
   // 实例化 APlayer（歌单就绪后）
   useEffect(() => {

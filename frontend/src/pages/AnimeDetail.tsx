@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import SimpleComments from '../components/GiscusComments';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
+import MediaHighlights from '../components/MediaHighlights';
 import PrevNextNavigation from '../components/PrevNextNavigation';
 import { useAnimeItem, useAnimeList } from '../hooks/queries/anime';
 import { useScrollProgress } from '../hooks/useScrollProgress';
@@ -317,6 +318,8 @@ const AnimeDetail: React.FC = () => {
                 </p>
               </div>
             )}
+
+            <MediaHighlights highlights={anime.highlights || []} title={anime.title} />
           </div>
         </div>
       </div>

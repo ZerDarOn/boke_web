@@ -56,7 +56,7 @@ export const MUSIC_SOURCE_TYPES: { value: MusicSourceType; label: string }[] = [
 export const METING_API_BASE = 'https://api.qijieya.cn/meting/';
 
 // 缓存版本号，修改后递增以强制刷新 APlayer 的 localStorage 进度缓存
-export const MUSIC_CACHE_VERSION = '2';
+export const MUSIC_CACHE_VERSION = '3';
 
 // 默认网易云歌单 ID（后台一条都没配置时的回退）
 const DEFAULT_PLAYLIST_ID = '2619366284';

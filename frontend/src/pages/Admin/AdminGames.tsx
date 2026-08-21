@@ -12,6 +12,7 @@ import { getAuthHeaders } from '../../lib/api/request';
 import { gamesApi } from '../../lib/api/games';
 import { useToastActions } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import HighlightEditor from '../../components/HighlightEditor';
 
 const PLATFORM_OPTIONS = [
   { value: 'STEAM', label: 'Steam' },
@@ -118,6 +119,7 @@ const AdminGames: React.FC = () => {
       cover: '',
       bannerImage: '',
       screenshots: [],
+      highlights: [],
       platform: 'STEAM',
       platformId: '',
       storeUrl: '',
@@ -753,6 +755,12 @@ const AdminGames: React.FC = () => {
                   />
                   <p className="mt-1 text-xs text-gray-500">前台详情会以可点击的画廊展示这些截图。</p>
                 </div>
+
+                <HighlightEditor
+                  accent="cyan"
+                  highlights={formData.highlights || []}
+                  onChange={(highlights) => handleInputChange('highlights', highlights)}
+                />
 
                 {/* Genres */}
                 <div>

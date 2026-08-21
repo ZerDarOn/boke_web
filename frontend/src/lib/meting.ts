@@ -1,8 +1,8 @@
 /**
  * Meting API 封装：把一个歌单源转成 APlayer 可用的歌曲列表。
  */
-import type { APlayerAudio } from 'aplayer';
 import { METING_API_BASE, type MusicSource } from './musicConfig';
+import { getMusicTrackKey, type CuratedAudio } from './musicCuration';
 
 /** Meting API 返回的单曲结构 */
 interface MetingTrack {
@@ -19,7 +19,7 @@ interface MetingTrack {
 export async function fetchSourceTracks(
   source: Pick<MusicSource, 'server' | 'type' | 'sourceId'>,
   signal?: AbortSignal,
-): Promise<APlayerAudio[]> {
+): Promise<CuratedAudio[]> {
   const params = new URLSearchParams({
     server: source.server,
     type: source.type,
@@ -45,5 +45,6 @@ export async function fetchSourceTracks(
       cover: t.pic,
       lrc: t.lrc,
       type: 'auto',
+      trackKey: getMusicTrackKey(source, t),
     }));
 }

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { GameService } from '../services/game.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
-import { logError } from '../lib/logger';
+import { log, logError } from '../lib/logger';
 
 export class GameController {
   // GET /api/games
@@ -45,8 +45,13 @@ export class GameController {
   static async create(req: Request, res: Response) {
     try {
       const game = await GameService.create(req.body);
+      log('info', 'GameHighlights', 'Game created', {
+        gameId: game.id,
+        highlightsCount: Array.isArray(req.body.highlights) ? req.body.highlights.length : 0,
+      });
       response.created(res, game);
     } catch (error: any) {
+      logError('GameHighlights', error.message || 'Failed to create game');
       response.badRequest(res, error.message);
     }
   }
@@ -55,8 +60,13 @@ export class GameController {
   static async update(req: Request, res: Response) {
     try {
       const game = await GameService.update(req.params.id, req.body);
+      log('info', 'GameHighlights', 'Game updated', {
+        gameId: game.id,
+        highlightsCount: Array.isArray(req.body.highlights) ? req.body.highlights.length : undefined,
+      });
       response.success(res, game, 'Game updated successfully');
     } catch (error: any) {
+      logError('GameHighlights', error.message || 'Failed to update game', { gameId: req.params.id });
       response.badRequest(res, error.message);
     }
   }

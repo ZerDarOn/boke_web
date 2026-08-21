@@ -1,4 +1,5 @@
 import { apiRequest } from './request';
+import type { MediaHighlight } from '../mediaHighlights';
 
 export interface Anime {
   id: string;
@@ -20,6 +21,7 @@ export interface Anime {
   startDate?: string;
   finishDate?: string;
   bilibiliUrl?: string;
+  highlights?: MediaHighlight[];
   createdAt: string;
   updatedAt: string;
 }

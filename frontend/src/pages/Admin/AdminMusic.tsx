@@ -13,6 +13,7 @@ import {
 } from '../../lib/musicConfig';
 import { useToastActions } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import TrackCurationPanel from '../../components/TrackCurationPanel';
 
 const emptyForm: Partial<MusicSource> = {
   name: '',
@@ -205,6 +206,8 @@ const AdminMusic: React.FC = () => {
           )}
         </div>
       )}
+
+      <TrackCurationPanel sources={sources.filter((source) => source.enabled)} />
 
       {/* Modal */}
       {isModalOpen && (

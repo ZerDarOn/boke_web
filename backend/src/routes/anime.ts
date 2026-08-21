@@ -4,6 +4,7 @@ import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { log, logError } from '../lib/logger';
 import {
   animeSchema,
   animeProgressSchema,
@@ -50,8 +51,13 @@ router.get('/:id', async (req, res) => {
 router.post('/', authenticate, requireAdmin, validateBody(animeSchema), async (req, res) => {
   try {
     const anime = await AnimeService.create(req.body);
+    log('info', 'AnimeHighlights', 'Anime created', {
+      animeId: anime.id,
+      highlightsCount: Array.isArray(req.body.highlights) ? req.body.highlights.length : 0,
+    });
     response.created(res, anime);
   } catch (error: any) {
+    logError('AnimeHighlights', error.message || 'Failed to create anime');
     response.badRequest(res, error.message);
   }
 });
@@ -60,8 +66,13 @@ router.post('/', authenticate, requireAdmin, validateBody(animeSchema), async (r
 router.put('/:id', authenticate, requireAdmin, validateBody(animeSchema.partial()), async (req, res) => {
   try {
     const anime = await AnimeService.update(req.params.id, req.body);
+    log('info', 'AnimeHighlights', 'Anime updated', {
+      animeId: anime.id,
+      highlightsCount: Array.isArray(req.body.highlights) ? req.body.highlights.length : undefined,
+    });
     response.success(res, anime);
   } catch (error: any) {
+    logError('AnimeHighlights', error.message || 'Failed to update anime', { animeId: req.params.id });
     response.badRequest(res, error.message);
   }
 });

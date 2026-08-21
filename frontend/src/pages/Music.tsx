@@ -1,13 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Music4, Disc3, Headphones, Loader2, ListMusic, Pin, Search } from 'lucide-react';
 import { useLang } from '../contexts/LangContext';
 import MusicPlayer from '../components/MusicPlayer';
 import { useMusicSources } from '../hooks/queries/settings';
+import { useMusicTrackCurations } from '../hooks/queries/settings';
+import { getMusicSourceKey } from '../lib/musicCuration';
 
 const Music: React.FC = () => {
   const { lang } = useLang();
   const { data: sources = [], isLoading } = useMusicSources();
+  const { data: trackCurations = [] } = useMusicTrackCurations();
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('全部');
   const categories = useMemo(() => ['全部', ...Array.from(new Set(sources.map((source) => source.category).filter(Boolean) as string[]))], [sources]);
@@ -18,7 +21,13 @@ const Music: React.FC = () => {
     .sort((left, right) => Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) || (left.order ?? 0) - (right.order ?? 0) || left.name.localeCompare(right.name, 'zh-CN')),
   [category, searchTerm, sources]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [trackCategory, setTrackCategory] = useState('全部');
   const selected = enabledSources.find((s) => s.id === selectedId) ?? enabledSources[0];
+  const trackCategories = useMemo(() => selected
+    ? Array.from(new Set(trackCurations.filter((curation) => curation.sourceKey === getMusicSourceKey(selected)).map((curation) => curation.category?.trim()).filter(Boolean) as string[]))
+    : [], [selected, trackCurations]);
+
+  useEffect(() => setTrackCategory('全部'), [selected?.id]);
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -89,6 +98,13 @@ const Music: React.FC = () => {
         </div>
       )}
 
+      {trackCategories.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-400">歌曲分组</span>
+          {['全部', ...trackCategories].map((item) => <button key={item} onClick={() => setTrackCategory(item)} className={`rounded-full border px-3 py-1 text-xs ${trackCategory === item ? 'border-secondary bg-secondary text-white' : 'border-gray-200 bg-white/60 text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400'}`}>{item}</button>)}
+        </div>
+      )}
+
       {/* 主播放器（展开歌单） */}
       <div className="relative overflow-hidden bg-white/60 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-xl p-4 md:p-6 shadow-sm">
         <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-neon via-secondary to-transparent"></div>
@@ -98,7 +114,7 @@ const Music: React.FC = () => {
             <span className="text-xs font-mono tracking-wider">LOADING.PLAYLISTS...</span>
           </div>
         ) : selected ? (
-          <MusicPlayer source={selected} key={selected.id} />
+          <MusicPlayer source={selected} trackCategory={trackCategory === '全部' ? undefined : trackCategory} key={`${selected.id}-${trackCategory}`} />
         ) : (
           <div className="text-center py-10 space-y-3">
             <Music4 size={28} className="text-gray-300 dark:text-gray-600 mx-auto" />

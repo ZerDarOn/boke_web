@@ -243,6 +243,7 @@ model Anime {
   finishDate   DateTime?
 
   bilibiliUrl  String?
+  highlights   Json?
 
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -542,6 +543,7 @@ model Game {
   cover       String
   bannerImage String?
   screenshots String[]
+  highlights  Json?
 
   platform    GamePlatform  @default(STEAM)
   platformId  String?

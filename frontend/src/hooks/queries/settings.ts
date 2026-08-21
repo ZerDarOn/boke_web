@@ -4,6 +4,7 @@ import { timelineApi } from '../../lib/api/timeline';
 import { queryKeys } from '../api/query-keys';
 import { unwrapApi } from '../api/fetcher';
 import { DEFAULT_MUSIC_SOURCES, type MusicSource } from '../../lib/musicConfig';
+import type { MusicTrackCuration } from '../../lib/musicCuration';
 
 export function useSiteSettings() {
   return useQuery({
@@ -142,5 +143,32 @@ export function useSaveMusicSources() {
       qc.invalidateQueries({ queryKey: queryKeys.settings.key('music_sources') });
       qc.invalidateQueries({ queryKey: queryKeys.settings.all });
     },
+  });
+}
+
+export function useMusicTrackCurations() {
+  return useQuery({
+    queryKey: queryKeys.settings.key('music_track_curations'),
+    queryFn: async (): Promise<MusicTrackCuration[]> => {
+      try {
+        const result = await settingsApi.getByKey('music_track_curations');
+        const raw = result.data?.value;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return Array.isArray(parsed) ? parsed as MusicTrackCuration[] : [];
+      } catch {
+        return [];
+      }
+    },
+    retry: 0,
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function useSaveMusicTrackCurations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (curations: MusicTrackCuration[]) =>
+      unwrapApi(settingsApi.update('music_track_curations', curations)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.settings.key('music_track_curations') }),
   });
 }

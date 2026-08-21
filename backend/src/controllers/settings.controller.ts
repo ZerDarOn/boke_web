@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
 import { apiLog } from '../lib/logger';
+import { isMusicTrackCurations } from '../lib/music-track-curations';
 
 /**
  * 通知 ai-service Python 进程重新加载 .env 配置。
@@ -112,7 +113,14 @@ export class SettingsController {
         return response.error(res, 'Key and value are required', 400);
       }
 
+      if (key === 'music_track_curations' && !isMusicTrackCurations(value)) {
+        return response.error(res, 'Invalid music track curation payload', 400);
+      }
+
       const updated = await SettingsService.set(key, value);
+      if (key === 'music_track_curations') {
+        apiLog.info('Music track curations updated', { count: value.length, userId: req.user?.userId });
+      }
       response.success(res, updated);
     } catch (error: any) {
       console.error('Update setting error:', error);
@@ -127,6 +135,10 @@ export class SettingsController {
       
       if (!settings || typeof settings !== 'object') {
         return response.error(res, 'Settings object is required', 400);
+      }
+
+      if (settings.music_track_curations !== undefined && !isMusicTrackCurations(settings.music_track_curations)) {
+        return response.error(res, 'Invalid music track curation payload', 400);
       }
 
       const updated = await SettingsService.bulkSet(settings);

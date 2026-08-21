@@ -11,6 +11,8 @@ import {
 import { Search, Plus, Edit, Trash2, Heart, Star, Filter, Loader2, X, Save, Upload, Image as ImageIcon, XCircle } from 'lucide-react';
 import { useToastActions } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import HighlightEditor from '../../components/HighlightEditor';
+import type { MediaHighlight } from '../../lib/mediaHighlights';
 
 interface Anime {
   id: string;
@@ -29,6 +31,7 @@ interface Anime {
   synopsis?: string;
   notes?: string;
   tags: string[];
+  highlights?: MediaHighlight[];
   bilibiliUrl?: string;
   startDate?: string;
   finishDate?: string;
@@ -102,6 +105,7 @@ const AdminAnime: React.FC = () => {
       synopsis: '',
       notes: '',
       tags: [],
+      highlights: [],
       cover: '',
     });
     setCoverPreview('');
@@ -637,6 +641,12 @@ const AdminAnime: React.FC = () => {
                       placeholder="值得记住的镜头、感受或推荐理由…"
                     />
                   </div>
+
+                  <HighlightEditor
+                    accent="purple"
+                    highlights={formData.highlights || []}
+                    onChange={(highlights) => handleInputChange('highlights', highlights)}
+                  />
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -20,6 +20,20 @@ export type {
  * null 由 validateBody 的 stripNulls 处理，这里无需考虑。
  */
 const optionalUrl = z.union([z.string().url(), z.literal('')]).optional();
+const externalHttpUrl = z.string().url().refine(
+  (value) => {
+    const protocol = new URL(value).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  },
+  '仅支持 http 或 https 链接',
+);
+
+export const mediaHighlightSchema = z.object({
+  title: z.string().min(1).max(120),
+  url: externalHttpUrl,
+  thumbnail: optionalUrl,
+  description: z.string().max(500).optional(),
+});
 
 export const registerSchema = z.object({
   username: z.string().min(3).max(50),
@@ -98,6 +112,7 @@ export const animeSchema = z.object({
   startDate: z.coerce.date().nullish(),
   finishDate: z.coerce.date().nullish(),
   bilibiliUrl: optionalUrl,
+  highlights: z.array(mediaHighlightSchema).max(8).optional(),
 });
 
 export const animeProgressSchema = z.object({
@@ -264,6 +279,7 @@ export const gameSchema = z.object({
   startDate: z.coerce.date().optional(),
   finishDate: z.coerce.date().optional(),
   lastPlayed: z.coerce.date().optional(),
+  highlights: z.array(mediaHighlightSchema).max(8).optional(),
 });
 
 export const gameScoreSchema = z.object({
