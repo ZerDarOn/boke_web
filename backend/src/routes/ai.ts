@@ -308,6 +308,17 @@ router.get('/index/status', authenticate, requireAdmin, async (_req, res) => {
   }
 });
 
+router.get('/taste-profile', authenticate, requireAdmin, async (_req, res) => {
+  try {
+    return success(res, await aiClient.getTasteProfile());
+  } catch (err) {
+    apiLog.warn('AI taste profile unavailable', {
+      errorType: err instanceof Error ? err.name : 'UnknownError',
+    });
+    return error(res, 'AI taste profile unavailable', 503);
+  }
+});
+
 router.get('/grounding/status', authenticate, requireAdmin, async (_req, res) => {
   try {
     return success(res, await aiClient.getGroundingStatus());

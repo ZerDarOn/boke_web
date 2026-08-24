@@ -93,6 +93,8 @@ export interface DashboardStats {
     articles: number;
     photos: number;
     diaries: number;
+    anime: number;
+    games: number;
   };
   commentDistribution: { label: string; count: number; percentage: number; color: string }[];
   trafficTrend?: Array<{ date: string; pageViews: number; uniqueVisitors: number }>;

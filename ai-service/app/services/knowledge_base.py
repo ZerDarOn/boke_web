@@ -25,6 +25,14 @@ from dataclasses import dataclass
 import numpy as np
 
 logger = logging.getLogger("ai-service.kb")
+DEFAULT_MUSIC_SOURCE = {
+    "id": "default",
+    "name": "默认歌单",
+    "server": "netease",
+    "type": "playlist",
+    "sourceId": "2619366284",
+    "enabled": True,
+}
 
 # ─────────────────────────────────────────────────────────
 # Pure-Python vector store (drop-in replacement for the subset
@@ -279,6 +287,7 @@ class DocumentChunk:
     post_slug: str
     content: str
     index: int  # chunk position within the post
+    source_type: str = "post"
 
 
 # ─────────────────────────────────────────────────────────
@@ -406,6 +415,14 @@ class KnowledgeBase:
         return hashlib.sha256(source.encode("utf-8")).hexdigest()
 
     @staticmethod
+    def _source_counts(rows: List[Mapping[str, Any]]) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for row in rows:
+            source_type = str(row.get("source_type", "post"))
+            counts[source_type] = counts.get(source_type, 0) + 1
+        return counts
+
+    @staticmethod
     def _chunk_id(post_id: str, index: int) -> str:
         return hashlib.md5(f"{post_id}:{index}".encode()).hexdigest()[:16]
 
@@ -471,25 +488,156 @@ class KnowledgeBase:
         finally:
             await conn.close()
 
-    async def _fetch_public_post_ids(self, post_ids: set[str]) -> set[str]:
+    async def _fetch_public_media_documents(self) -> List[dict]:
+        """Build public, non-diary media documents from structured blog records."""
         import asyncpg
         from app.core.config import settings
 
-        if not post_ids:
-            return set()
         if not settings.DATABASE_URL:
             raise RuntimeError("DATABASE_URL not configured")
-
         conn = await asyncpg.connect(settings.DATABASE_URL)
         try:
-            rows = await conn.fetch(
-                "SELECT id FROM posts WHERE id = ANY($1::text[]) "
-                "AND \"isPublished\" = true AND \"accessLevel\" = 'PUBLIC'",
-                list(post_ids),
+            anime_rows, game_rows, config_rows = await asyncio.gather(
+                conn.fetch(
+                    'SELECT id, title, type, genres, tags, synopsis, notes, score, favorite, status FROM anime'
+                ),
+                conn.fetch(
+                    'SELECT id, title, platform, genres, tags, description, notes, score, favorite, status, playtime FROM games WHERE "isHidden" = false'
+                ),
+                conn.fetch("SELECT key, value FROM site_config WHERE key = ANY($1::text[])", ["music_sources", "music_track_curations"]),
             )
-            return {str(row["id"]) for row in rows}
         finally:
             await conn.close()
+
+        documents: List[dict] = []
+        for row in anime_rows:
+            content = (
+                f"追番《{row['title']}》。类型：{row['type']}；题材：{'、'.join(row['genres'] or [])}；"
+                f"标签：{'、'.join(row['tags'] or [])}；观看状态：{row['status']}；评分：{row['score'] or '未评分'}；"
+                f"收藏：{'是' if row['favorite'] else '否'}。\n简介：{row['synopsis'] or '暂无'}\n我的笔记：{row['notes'] or '暂无'}"
+            )
+            documents.append({"id": f"anime:{row['id']}", "title": f"追番·{row['title']}", "slug": str(row['id']), "content": content, "source_type": "anime"})
+        for row in game_rows:
+            content = (
+                f"游戏《{row['title']}》。平台：{row['platform']}；类型：{'、'.join(row['genres'] or [])}；"
+                f"标签：{'、'.join(row['tags'] or [])}；状态：{row['status']}；游玩时长：{row['playtime']} 分钟；"
+                f"评分：{row['score'] or '未评分'}；收藏：{'是' if row['favorite'] else '否'}。\n简介：{row['description'] or '暂无'}\n我的笔记：{row['notes'] or '暂无'}"
+            )
+            documents.append({"id": f"game:{row['id']}", "title": f"游戏·{row['title']}", "slug": str(row['id']), "content": content, "source_type": "game"})
+
+        config = {row["key"]: row["value"] for row in config_rows}
+        try:
+            music_sources = json.loads(config.get("music_sources", "[]"))
+        except (TypeError, ValueError):
+            music_sources = []
+        if not isinstance(music_sources, list) or not music_sources:
+            music_sources = [DEFAULT_MUSIC_SOURCE]
+        try:
+            curations = json.loads(config.get("music_track_curations", "[]"))
+        except (TypeError, ValueError):
+            curations = []
+        for source in music_sources:
+            if not isinstance(source, dict) or not source.get("enabled", True):
+                continue
+            source_id = str(source.get("id") or source.get("sourceId") or "")
+            if not source_id:
+                continue
+            content = (
+                f"音乐馆歌单《{source.get('name') or '未命名'}》。音源：{source.get('server') or '未知'}；"
+                f"资源类型：{source.get('type') or 'playlist'}；分类：{source.get('category') or '未分类'}；"
+                f"置顶：{'是' if source.get('pinned') else '否'}。\n说明：{source.get('description') or '暂无'}"
+            )
+            documents.append({"id": f"music:source:{source_id}", "title": f"音乐歌单·{source.get('name') or '未命名'}", "slug": source_id, "content": content, "source_type": "music"})
+        for curation in curations if isinstance(curations, list) else []:
+            if not isinstance(curation, dict) or not curation.get("trackKey"):
+                continue
+            content = (
+                f"音乐馆单曲策展。曲目：{curation.get('trackKey')}；分类：{curation.get('category') or '未分类'}；"
+                f"置顶：{'是' if curation.get('pinned') else '否'}。\n策展说明：{curation.get('note') or '暂无'}"
+            )
+            documents.append({"id": f"music:track:{curation['trackKey']}", "title": f"单曲策展·{curation['trackKey']}", "slug": str(curation['trackKey']), "content": content, "source_type": "music"})
+        return documents
+
+    async def _fetch_public_documents(self) -> List[dict]:
+        posts, media = await asyncio.gather(self._fetch_public_posts(), self._fetch_public_media_documents())
+        divination = [{**doc, "source_type": "divination"} for doc in self._load_divination_documents()]
+        return [dict(row, source_type="post") for row in posts] + media + divination
+
+    async def taste_profile(self) -> dict:
+        """Return evidence-based media tendencies without accessing private diary content."""
+        import asyncpg
+        from app.core.config import settings
+
+        if not settings.DATABASE_URL:
+            raise RuntimeError("DATABASE_URL not configured")
+        conn = await asyncpg.connect(settings.DATABASE_URL)
+        try:
+            anime_rows, game_rows, config_rows, post_count = await asyncio.gather(
+                conn.fetch('SELECT genres, tags, favorite, score FROM anime'),
+                conn.fetch('SELECT genres, tags, platform, favorite, score, playtime FROM games WHERE "isHidden" = false'),
+                conn.fetch("SELECT key, value FROM site_config WHERE key = ANY($1::text[])", ["music_sources", "music_track_curations"]),
+                conn.fetchval("SELECT count(*) FROM posts WHERE \"isPublished\" = true AND \"accessLevel\" = 'PUBLIC'"),
+            )
+        finally:
+            await conn.close()
+
+        def top_values(rows, field: str, limit: int = 6) -> List[dict]:
+            counts: dict[str, int] = {}
+            for row in rows:
+                values = row[field] or []
+                if not isinstance(values, list):
+                    values = [str(values)]
+                for value in values:
+                    normalized = str(value).strip()
+                    if normalized:
+                        counts[normalized] = counts.get(normalized, 0) + 1
+            return [
+                {"label": label, "count": count}
+                for label, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
+            ]
+
+        config = {row["key"]: row["value"] for row in config_rows}
+        try:
+            music_sources = json.loads(config.get("music_sources", "[]"))
+        except (TypeError, ValueError):
+            music_sources = []
+        if not isinstance(music_sources, list) or not music_sources:
+            music_sources = [DEFAULT_MUSIC_SOURCE]
+        try:
+            curations = json.loads(config.get("music_track_curations", "[]"))
+        except (TypeError, ValueError):
+            curations = []
+        music_categories: dict[str, int] = {}
+        for entry in list(music_sources) + list(curations if isinstance(curations, list) else []):
+            if not isinstance(entry, dict):
+                continue
+            category = str(entry.get("category") or "未分类").strip()
+            music_categories[category] = music_categories.get(category, 0) + 1
+        return {
+            "coverage": {
+                "post": int(post_count or 0),
+                "anime": len(anime_rows),
+                "game": len(game_rows),
+                "music": len(music_sources),
+                "music_curation": len(curations) if isinstance(curations, list) else 0,
+            },
+            "insights": [
+                {"key": "anime_genres", "label": "追番题材", "values": top_values(anime_rows, "genres")},
+                {"key": "game_genres", "label": "游戏类型", "values": top_values(game_rows, "genres")},
+                {"key": "game_platforms", "label": "游戏平台", "values": top_values(game_rows, "platform")},
+                {"key": "music_scenes", "label": "音乐场景", "values": [{"label": label, "count": count} for label, count in sorted(music_categories.items(), key=lambda item: (-item[1], item[0]))[:6]]},
+            ],
+            "notice": "以上只基于公开文章、公开游戏、追番与音乐馆策展字段；不读取日记、私密文章或隐藏游戏。",
+        }
+
+    async def _fetch_public_document_ids(self, document_ids: set[str]) -> set[str]:
+        """Re-check current visibility before returning any indexed media evidence."""
+        if not document_ids:
+            return set()
+        posts, media = await asyncio.gather(self._fetch_public_posts(), self._fetch_public_media_documents())
+        public_post_ids = {str(row["id"]) for row in posts}
+        public_media_ids = {doc["id"] for doc in media}
+        return ({doc_id for doc_id in document_ids if doc_id in public_post_ids} | (document_ids & public_media_ids))
 
     # ── 占卜知识（内置，无需数据库）─────────────────────
 
@@ -648,6 +796,7 @@ class KnowledgeBase:
                 "post_slug": str(post["slug"]),
                 "chunk_index": index,
                 "content_hash": content_hash,
+                "source_type": str(post.get("source_type", "post")),
             }
             for index in range(len(chunk_texts))
         ]
@@ -722,10 +871,9 @@ class KnowledgeBase:
         Fetch all published posts from PostgreSQL, chunk them,
         embed, and replace the active collection.
         """
-        rows = await self._fetch_public_posts()
-        div_docs = self._load_divination_documents()
+        rows = await self._fetch_public_documents()
 
-        # 分块（文章 + 占卜知识）
+        # 分块（公开文章、媒体资料与内置占卜知识）
         all_chunks: List[DocumentChunk] = []
         for row in rows:
             post_chunks = self._chunk_post(row["title"], row["content"], self.CHUNK_SIZE, self.CHUNK_OVERLAP)
@@ -738,28 +886,13 @@ class KnowledgeBase:
                     post_slug=row["slug"],
                     content=chunk_text,
                     index=i,
-                ))
-        for doc in div_docs:
-            doc_chunks = self._chunk_post(doc["title"], doc["content"], self.CHUNK_SIZE, self.CHUNK_OVERLAP)
-            for i, chunk_text in enumerate(doc_chunks):
-                chunk_id = self._chunk_id(doc["id"], i)
-                all_chunks.append(DocumentChunk(
-                    id=chunk_id,
-                    post_id=doc["id"],
-                    post_title=doc["title"],
-                    post_slug=doc["slug"],
-                    content=chunk_text,
-                    index=i,
+                    source_type=row.get("source_type", "divination" if str(row["id"]).startswith(self.DIVINATION_POST_ID_PREFIX) else "post"),
                 ))
 
         # 嵌入 & 写入向量库
         texts = [f"[{c.post_title}]\n{c.content}" for c in all_chunks]
         embeddings = await self._embed_texts(texts) if texts else []
-        content_hashes = {
-            str(row["id"]): self._content_hash(row) for row in rows
-        }
-        for doc in div_docs:
-            content_hashes[doc["id"]] = self._content_hash(doc)
+        content_hashes = {str(row["id"]): self._content_hash(row) for row in rows}
 
         # Build a complete version before atomically switching the active pointer.
         staging_name = f"{self.COLLECTION_NAME}_{uuid.uuid4().hex}"
@@ -782,6 +915,7 @@ class KnowledgeBase:
                             "post_slug": c.post_slug,
                             "chunk_index": c.index,
                             "content_hash": content_hashes[c.post_id],
+                            "source_type": c.source_type,
                         }
                         for c in all_chunks
                     ],
@@ -824,7 +958,7 @@ class KnowledgeBase:
             )
 
         logger.info(
-            "Knowledge index activated collection=%s previous_collection=%s posts=%d chunks=%d",
+            "Knowledge index activated collection=%s previous_collection=%s documents=%d chunks=%d",
             staging_name,
             previous_name,
             len(rows),
@@ -832,7 +966,8 @@ class KnowledgeBase:
         )
         return {
             "indexed": len(all_chunks),
-            "posts": len(rows),
+            "posts": sum(1 for row in rows if row.get("source_type", "post") == "post"),
+            "sources": self._source_counts(rows),
             "chunks": len(all_chunks),
         }
 
@@ -845,9 +980,15 @@ class KnowledgeBase:
         post_ids = {
             metadata.get("post_id") for metadata in metadatas if metadata
         }
+        source_counts: dict[str, int] = {}
+        for metadata in metadatas:
+            if metadata:
+                source_type = metadata.get("source_type", "post")
+                source_counts[source_type] = source_counts.get(source_type, 0) + 1
         return {
             "collection": self._collection.name,
             "posts": len(post_ids),
+            "sources": source_counts,
             "chunks": len(snapshot.get("ids") or []),
             "last_operation": self._last_operation,
             "last_mutation_at": self._last_mutation_at,
@@ -857,17 +998,11 @@ class KnowledgeBase:
     async def reconcile(self) -> dict:
         async with self._mutation_lock:
             try:
-                rows = await self._fetch_public_posts()
-                div_docs = self._load_divination_documents()
-                public_ids = {str(row["id"]) for row in rows} | {
-                    doc["id"] for doc in div_docs
-                }
+                rows = await self._fetch_public_documents()
+                public_ids = {str(row["id"]) for row in rows}
                 summary = {"updated": 0, "unchanged": 0, "removed": 0}
                 for row in rows:
                     result = await self._upsert_post_unlocked(row)
-                    summary[result["action"]] += 1
-                for doc in div_docs:
-                    result = await self._upsert_post_unlocked(doc)
                     summary[result["action"]] += 1
 
                 snapshot = await asyncio.to_thread(
@@ -946,15 +1081,14 @@ class KnowledgeBase:
             for metadata in results["metadatas"][0]
             if metadata and metadata.get("post_id")
         }
-        # 占卜知识（div-*）为内置内容，无需数据库校验；其余以数据库为
-        # 授权来源，Fail closed——无法验证当前公开状态时宁可丢弃。
+        # 占卜知识为内置内容；其余每次检索都以当前公开数据重新授权。
         db_post_ids = {
             post_id
             for post_id in candidate_post_ids
             if not self._is_divination_post_id(post_id)
         }
         div_post_ids = candidate_post_ids - db_post_ids
-        public_post_ids = await self._fetch_public_post_ids(db_post_ids)
+        public_post_ids = await self._fetch_public_document_ids(db_post_ids)
         public_post_ids |= div_post_ids
         matches = self._filter_public_matches(
             results["ids"][0],
@@ -985,6 +1119,7 @@ class KnowledgeBase:
                 "content": doc,
                 "title": meta["post_title"],
                 "slug": meta["post_slug"],
+                "source_type": meta.get("source_type", "post"),
                 "score": round(similarity, 3),
             })
 

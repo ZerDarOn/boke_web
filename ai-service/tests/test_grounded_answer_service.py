@@ -42,6 +42,20 @@ class FakePersonaService:
 
 
 class GroundedAnswerTests(unittest.IsolatedAsyncioTestCase):
+    def test_media_evidence_uses_its_public_collection_url(self):
+        self.assertEqual(
+            GroundedAnswerService._source_url({"source_type": "anime", "slug": "frieren"}),
+            "/anime",
+        )
+        self.assertEqual(
+            GroundedAnswerService._source_url({"source_type": "game", "slug": "hades"}),
+            "/games",
+        )
+        self.assertEqual(
+            GroundedAnswerService._source_url({"source_type": "music", "slug": "night"}),
+            "/music",
+        )
+
     async def test_valid_inline_citations_return_only_referenced_sources(self):
         ai_service = FakeAIService({
             "answer": "The implementation switched to SVG filters [S1].",

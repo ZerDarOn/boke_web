@@ -33,4 +33,33 @@ export class DashboardController {
       response.error(res, error.message || 'Failed to fetch content distribution');
     }
   }
+
+  // POST /api/dashboard/track
+  static async trackVisit(req: Request, res: Response) {
+    try {
+      await DashboardService.recordVisit(req.body.visitorId);
+      res.status(204).end();
+    } catch (error: any) {
+      response.error(res, error.message || 'Failed to record visit');
+    }
+  }
+
+  // POST /api/dashboard/events
+  static async trackEvent(req: Request, res: Response) {
+    try {
+      await DashboardService.recordBehaviorEvent(req.body.visitorId, req.body);
+      res.status(204).end();
+    } catch (error: any) {
+      response.error(res, error.message || 'Failed to record behavior event');
+    }
+  }
+
+  // GET /api/dashboard/admin-overview
+  static async getAdminOverview(req: Request, res: Response) {
+    try {
+      response.success(res, await DashboardService.getAdminOverview());
+    } catch (error: any) {
+      response.error(res, error.message || 'Failed to fetch admin overview');
+    }
+  }
 }

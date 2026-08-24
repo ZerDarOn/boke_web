@@ -80,6 +80,7 @@ const AdminAI: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [indexStatus, setIndexStatus] = useState<Awaited<ReturnType<typeof aiApi.getIndexStatus>>['data']>();
   const [groundingStatus, setGroundingStatus] = useState<Awaited<ReturnType<typeof aiApi.getGroundingStatus>>['data']>();
+  const [tasteProfile, setTasteProfile] = useState<Awaited<ReturnType<typeof aiApi.getTasteProfile>>['data']>();
   const [indexAction, setIndexAction] = useState<'idle' | 'reconcile' | 'rebuild'>('idle');
 
   useEffect(() => {
@@ -89,12 +90,14 @@ const AdminAI: React.FC = () => {
   }, []);
 
   const loadKnowledgeStatus = async () => {
-    const [index, grounding] = await Promise.all([
+    const [index, grounding, profile] = await Promise.all([
       aiApi.getIndexStatus(),
       aiApi.getGroundingStatus(),
+      aiApi.getTasteProfile(),
     ]);
     if (index.success) setIndexStatus(index.data);
     if (grounding.success) setGroundingStatus(grounding.data);
+    if (profile.success) setTasteProfile(profile.data);
   };
 
   const runIndexAction = async (action: 'reconcile' | 'rebuild') => {
@@ -271,7 +274,7 @@ const AdminAI: React.FC = () => {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-base font-semibold text-gray-900">知识库管理</h3>
-                <p className="text-xs text-gray-400 mt-1">查看索引状态、校准文章变更，并在调整分块策略后重建向量索引。</p>
+                <p className="text-xs text-gray-400 mt-1">索引公开文章、追番、游戏与音乐馆；日记、私密文章和隐藏游戏不会进入知识库。</p>
               </div>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => void runIndexAction('reconcile')} disabled={indexAction !== 'idle'} className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50">
@@ -288,7 +291,18 @@ const AdminAI: React.FC = () => {
               <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">有依据回答率</p><p className="text-lg font-semibold text-gray-900">{groundingStatus ? `${Math.round(groundingStatus.grounded_rate * 100)}%` : '—'}</p></div>
               <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">最近操作</p><p className="text-sm font-medium text-gray-900 truncate">{indexStatus?.last_operation ?? '—'}</p></div>
             </div>
+            <div className="mt-4 flex flex-wrap gap-2" aria-label="知识来源覆盖率">
+              {Object.entries(indexStatus?.sources ?? {}).map(([source, count]) => <span key={source} className="rounded-full bg-violet-50 px-2.5 py-1 text-xs text-violet-700">{source === 'post' ? '文章' : source === 'anime' ? '追番' : source === 'game' ? '游戏' : source === 'music' ? '音乐' : '占卜'} {count} 个分块</span>)}
+            </div>
             {indexStatus?.last_error_type && <p className="mt-3 text-xs text-red-600">最近索引错误：{indexStatus.last_error_type}</p>}
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="text-base font-semibold text-gray-900">AI 档案画像</h3>
+            <p className="mt-1 text-xs text-gray-400">基于公开的结构化媒体数据生成；这是内容分布，不把它伪装成主观性格判断。</p>
+            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">{Object.entries(tasteProfile?.coverage ?? {}).map(([key, count]) => <div key={key} className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">{key === 'post' ? '文章' : key === 'anime' ? '追番' : key === 'game' ? '游戏' : key === 'music' ? '歌单' : '单曲策展'}</p><p className="mt-1 text-lg font-semibold text-gray-900">{count}</p></div>)}</div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">{tasteProfile?.insights.map((insight) => <div key={insight.key} className="rounded-lg border border-gray-100 p-3"><p className="text-sm font-medium text-gray-700">{insight.label}</p><div className="mt-2 flex flex-wrap gap-1.5">{insight.values.length ? insight.values.map((value) => <span key={value.label} className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">{value.label} · {value.count}</span>) : <span className="text-xs text-gray-400">暂无可分析资料</span>}</div></div>)}</div>
+            {tasteProfile?.notice && <p className="mt-4 text-xs text-gray-500">{tasteProfile.notice}</p>}
           </div>
 
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">

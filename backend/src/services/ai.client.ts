@@ -321,6 +321,14 @@ class AIClient {
     return response.data;
   }
 
+  async getTasteProfile(): Promise<any> {
+    const response = await axios.get(
+      `${this.baseURL}/api/v1/ai/taste-profile`,
+      { timeout: REQUEST_TIMEOUT, headers: this.internalHeaders }
+    );
+    return response.data;
+  }
+
   async getGroundingStatus(): Promise<any> {
     const response = await axios.get(
       `${this.baseURL}/api/v1/ai/grounding/status`,

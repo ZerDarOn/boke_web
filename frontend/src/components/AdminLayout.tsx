@@ -36,8 +36,11 @@ const AdminLayout: React.FC = () => {
     }
   }, [user, isAdmin, loading, navigate]);
 
-  const menuItems = [
+  const menuGroups = [
+    { label: '概览', items: [
     { icon: '📊', label: '仪表盘', path: '/admin/dashboard' },
+    ]},
+    { label: '内容', items: [
     { icon: '📝', label: '文章管理', path: '/admin/posts' },
     { icon: '🚀', label: '项目管理', path: '/admin/projects' },
     { icon: '🎬', label: '动漫管理', path: '/admin/anime' },
@@ -46,6 +49,10 @@ const AdminLayout: React.FC = () => {
     { icon: '🎵', label: '音乐管理', path: '/admin/music' },
     { icon: '📔', label: '长日记管理', path: '/admin/diary' },
     { icon: '💭', label: '短日记管理', path: '/admin/short-diary' },
+    { icon: '📢', label: '公告管理', path: '/admin/announcements' },
+    { icon: '⚡', label: '最新动态', path: '/admin/activities' },
+    ]},
+    { label: '站点', items: [
     { icon: '🌌', label: '宇宙图管理', path: '/admin/universe' },
     { icon: '🎯', label: '宇宙图可视化', path: '/admin/universe-visual' },
     { icon: '⚔️', label: '技能管理', path: '/admin/skills' },
@@ -53,15 +60,17 @@ const AdminLayout: React.FC = () => {
     { icon: '📡', label: '当前状态管理', path: '/admin/current-status' },
     { icon: '📚', label: '历史项目管理', path: '/admin/history' },
     { icon: '🕸️', label: '网络管理', path: '/admin/network' },
-     { icon: '📢', label: '公告管理', path: '/admin/announcements' },
      { icon: '👥', label: '用户管理', path: '/admin/users' },
-       { icon: '⚡', label: '最新动态', path: '/admin/activities' },
+    ]},
+    { label: '系统', items: [
         { icon: '📝', label: '内容初始化', path: '/admin/import' },
         { icon: '📤', label: '内容导出', path: '/admin/export' },
         { icon: '📁', label: '文件管理', path: '/admin/files' },
         { icon: '⚙️', label: '系统设置', path: '/admin/settings' },
         { icon: '🤖', label: 'AI 服务配置', path: '/admin/ai' },
-     ];
+    ]},
+  ];
+  const menuItems = menuGroups.flatMap(group => group.items);
 
   // 根据当前路由动态设置激活菜单
   const getActiveMenu = () => {
@@ -122,20 +131,18 @@ const AdminLayout: React.FC = () => {
             <X size={20} />
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-1 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-          {menuItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer ${
-                activeMenu === item.path
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              }`}
-            >
-              <span className="mr-3 text-xl">{item.icon}</span>
-              <span className="font-medium">{item.label}</span>
-            </button>
+        <nav className="flex-1 overflow-y-auto px-3 pb-4 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+          {menuGroups.map((group) => (
+            <section key={group.label} className="mb-5">
+              <h3 className="px-3 pb-2 text-xs font-medium tracking-widest text-gray-500">{group.label}</h3>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <button key={item.path} onClick={() => navigate(item.path)} className={`w-full text-left px-4 py-2.5 rounded-lg transition-all duration-200 cursor-pointer ${activeMenu === item.path ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                    <span className="mr-3 text-lg">{item.icon}</span><span className="font-medium">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
         </nav>
         <div className="flex-shrink-0 p-4 border-t border-gray-700 bg-gray-900">

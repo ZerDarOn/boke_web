@@ -62,6 +62,12 @@ export interface ChatReply {
   refusal_reason?: 'insufficient_evidence' | 'invalid_citations' | 'invalid_model_output' | null;
 }
 
+export interface TasteProfile {
+  coverage: Record<'post' | 'anime' | 'game' | 'music' | 'music_curation', number>;
+  insights: Array<{ key: string; label: string; values: Array<{ label: string; count: number }> }>;
+  notice: string;
+}
+
 export const aiApi = {
   /** 与博客 AI 伙伴对话，并提供受限的公开页面上下文。 */
   chat: async (
@@ -116,11 +122,15 @@ export const aiApi = {
     apiRequest<{
       collection: string;
       posts: number;
+      sources?: Record<string, number>;
       chunks: number;
       last_operation: string | null;
       last_mutation_at: string | null;
       last_error_type: string | null;
     }>('/api/ai/index/status'),
+
+  getTasteProfile: async () =>
+    apiRequest<TasteProfile>('/api/ai/taste-profile'),
 
   getGroundingStatus: async () =>
     apiRequest<{

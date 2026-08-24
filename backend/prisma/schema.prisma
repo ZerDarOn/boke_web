@@ -429,6 +429,33 @@ model SiteStats {
   @@map("site_stats")
 }
 
+// 每日匿名访客去重记录。仅保存哈希，不保存原始浏览器标识。
+model DailyVisit {
+  id          String   @id @default(cuid())
+  date        DateTime
+  visitorHash String
+  createdAt   DateTime @default(now())
+
+  @@unique([date, visitorHash])
+  @@index([date])
+  @@map("daily_visits")
+}
+
+// 匿名站内行为事件。不保存 IP、User-Agent、搜索词或表单内容。
+model VisitorEvent {
+  id          String   @id @default(cuid())
+  date        DateTime @default(now())
+  visitorHash String
+  eventType   String
+  path        String
+  targetPath  String?
+
+  @@index([date])
+  @@index([eventType, date])
+  @@index([path, date])
+  @@map("visitor_events")
+}
+
 // 最新活动
 model Activity {
   id          String   @id @default(cuid())

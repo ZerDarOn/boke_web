@@ -87,6 +87,7 @@ class GroundedAnswerService:
                 "post_id": chunk["post_id"],
                 "title": chunk["title"],
                 "slug": chunk["slug"],
+                "source_type": chunk.get("source_type", "post"),
                 "content": chunk["content"],
                 "score": float(chunk["score"]),
             }
@@ -143,6 +144,13 @@ quotes 必须为每个 citation 提供一段能在对应证据中逐字找到的
 
     @staticmethod
     def _source_url(item: dict) -> str:
+        source_type = item.get("source_type")
+        if source_type == "anime":
+            return "/anime"
+        if source_type == "game":
+            return "/games"
+        if source_type == "music":
+            return "/music"
         post_id = str(item.get("post_id", ""))
         if post_id.startswith("div-tarot-"):
             return "/divination/tarot"

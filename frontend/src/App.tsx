@@ -11,6 +11,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import { LoadingProgress } from './components/LoadingProgress';
 import SiteCursor from './components/SiteCursor';
 import InteractionGuard from './components/InteractionGuard';
+import VisitTracker from './components/VisitTracker';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
@@ -75,30 +76,9 @@ const MaintenancePanel = lazy(() => import('./components/MaintenancePanel'));
 const ScrollToTop: React.FC = () => {
   const location = useLocation();
   
-  // 详情页面路径（包含 :id 的路由）
-  const isDetailPage = /\/(posts|announcement|anime|diary|gallery|projects)\/.+$/.test(location.pathname);
-  const isHomePage = location.pathname === '/';
-  const isDivinationPage = location.pathname === '/divination' || location.pathname.startsWith('/divination/');
-  
   React.useLayoutEffect(() => {
-    // 占卜馆页面较长，路由切换必须立即落在内容区，避免结果页滚动位置造成“返回无反应”的错觉。
-    if (isDivinationPage) {
-      window.scrollTo({ top: window.innerHeight, left: 0, behavior: 'auto' });
-      return;
-    }
-    // 详情页：平滑滚动到100%位置
-    if (isDetailPage) {
-      window.scrollTo({ top: window.innerHeight, left: 0, behavior: 'smooth' });
-    }
-    // 其他列表页：平滑滚动到70%位置
-    else if (!isHomePage) {
-      window.scrollTo({ top: window.innerHeight * 0.7, left: 0, behavior: 'smooth' });
-    }
-    // 主页：回到顶部
-    else {
-      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-    }
-  }, [location.pathname, isHomePage, isDetailPage, isDivinationPage]);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname]);
   
   return null;
 };
@@ -169,6 +149,7 @@ const App: React.FC = () => {
               <BrowserRouter>
               <LoadingProgress />
               <ScrollToTop />
+              <VisitTracker />
               <Suspense fallback={<LoadingSpinner />}>
               <Routes>
           {/* Layout包裹的页面 */}

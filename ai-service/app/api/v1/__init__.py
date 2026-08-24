@@ -588,6 +588,19 @@ async def knowledge_index_status():
         raise service_error("Index status", e)
 
 
+@ai_router.get(
+    "/taste-profile",
+    response_model=dict,
+    dependencies=[Depends(require_internal_access)],
+)
+async def knowledge_taste_profile():
+    """Return a structured, evidence-only profile of public media collections."""
+    try:
+        return {"success": True, **(await get_kb().taste_profile())}
+    except Exception as e:
+        raise service_error("Taste profile", e)
+
+
 @ai_router.post(
     "/index/reconcile",
     response_model=dict,

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   dashboardApi,
   type DashboardStats,
+  type AdminDashboardOverview,
   type Post,
   type Project,
 } from '../../lib/api';
@@ -50,4 +51,13 @@ export function useDashboardContentDistribution() {
   });
 }
 
-export type { DashboardStats, Post, Project };
+export function useAdminDashboardOverview() {
+  return useQuery({
+    queryKey: [...dashboardKey, 'admin-overview'],
+    queryFn: () => unwrapApi<AdminDashboardOverview>(dashboardApi.getAdminOverview()),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export type { AdminDashboardOverview, DashboardStats, Post, Project };

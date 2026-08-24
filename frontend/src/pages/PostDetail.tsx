@@ -387,13 +387,11 @@ const PostDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* 内容区 + 目录 */}
+      {/* 内容区：目录以悬浮抽屉呈现，不再压缩正文宽度 */}
       <div className="mb-12">
-          {/* 文章内容 */}
-        <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_13rem] gap-8">
-          <div className="min-w-0">
-            <div className="prose prose-lg dark:prose-invert max-w-3xl">
-              <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-white/10 p-8 md:p-12 relative overflow-hidden">
+        <div className="min-w-0">
+          <div className="prose prose-lg dark:prose-invert max-w-4xl">
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-white/10 p-8 md:p-12 relative overflow-hidden">
                 {/* 装饰角标 */}
                 <div className="absolute top-0 right-0 w-20 h-20 opacity-5">
                   <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -401,7 +399,7 @@ const PostDetail: React.FC = () => {
                   </svg>
                 </div>
 
-                <div className="relative z-10">
+                <div className="relative z-10" data-article-content>
                   <MarkdownRenderer
                     content={post.content}
                     onCopyCode={copyToClipboard}
@@ -413,12 +411,7 @@ const PostDetail: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* 目录：桌面端放在右侧，避免挤压文章正文；移动端自然排在正文之后 */}
-          <div className="w-full lg:w-52">
-            <TableOfContents content={post.content} />
-          </div>
-        </div>
+        <TableOfContents content={post.content} />
       </div>
 
       {/* 标签区 */}
