@@ -48,6 +48,7 @@ export interface AdminDashboardOverview {
     eventTypes: Array<{ eventType: 'page_view' | 'content_click' | 'site_search'; count: number }>;
     topPaths: Array<{ path: string; count: number }>;
   };
+  contentOperations: { total: number; path: string };
 }
 
  export const dashboardApi = {

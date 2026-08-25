@@ -18,6 +18,7 @@ export { default as gameRoutes } from './game';
 export { default as historyRoutes } from './history';
 export { default as maintenanceRoutes } from './maintenance';
 export { default as minioRoutes } from './minio';
+export { default as musicRoutes } from './music';
 export { default as networkRoutes } from './network';
 export { default as postRoutes } from './posts';
 export { default as projectRoutes } from './projects';

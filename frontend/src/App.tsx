@@ -53,6 +53,7 @@ const AdminGames = lazy(() => import('./pages/Admin/AdminGames'));
 const AdminMusic = lazy(() => import('./pages/Admin/AdminMusic'));
 const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
 const AdminAI = lazy(() => import('./pages/Admin/AdminAI'));
+const AdminContentOperations = lazy(() => import('./pages/Admin/AdminContentOperations'));
 const AdminShortDiary = lazy(() => import('./pages/Admin/AdminShortDiary'));
 const AdminActivities = lazy(() => import('./pages/Admin/AdminActivities'));
 const AdminGallery = lazy(() => import('./pages/Admin/AdminGallery'));
@@ -213,6 +214,7 @@ const App: React.FC = () => {
              <Route path="activities" element={<AdminActivities />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="ai" element={<AdminAI />} />
+              <Route path="content-operations" element={<AdminContentOperations />} />
               <Route path="import" element={<ContentImport />} />
               <Route path="export" element={<ContentExport />} />
              </Route>

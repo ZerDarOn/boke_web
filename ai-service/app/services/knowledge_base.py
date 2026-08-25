@@ -504,7 +504,7 @@ class KnowledgeBase:
                 conn.fetch(
                     'SELECT id, title, platform, genres, tags, description, notes, score, favorite, status, playtime FROM games WHERE "isHidden" = false'
                 ),
-                conn.fetch("SELECT key, value FROM site_config WHERE key = ANY($1::text[])", ["music_sources", "music_track_curations"]),
+                conn.fetch("SELECT key, value FROM site_config WHERE key = ANY($1::text[])", ["music_sources", "music_track_curations", "music_catalog"]),
             )
         finally:
             await conn.close()
@@ -536,6 +536,10 @@ class KnowledgeBase:
             curations = json.loads(config.get("music_track_curations", "[]"))
         except (TypeError, ValueError):
             curations = []
+        try:
+            catalog = json.loads(config.get("music_catalog", "{}"))
+        except (TypeError, ValueError):
+            catalog = {}
         for source in music_sources:
             if not isinstance(source, dict) or not source.get("enabled", True):
                 continue
@@ -556,6 +560,16 @@ class KnowledgeBase:
                 f"置顶：{'是' if curation.get('pinned') else '否'}。\n策展说明：{curation.get('note') or '暂无'}"
             )
             documents.append({"id": f"music:track:{curation['trackKey']}", "title": f"单曲策展·{curation['trackKey']}", "slug": str(curation['trackKey']), "content": content, "source_type": "music"})
+        for track in (catalog.get("tracks", []) if isinstance(catalog, dict) else []):
+            if not isinstance(track, dict) or not track.get("trackKey") or not track.get("name"):
+                continue
+            documents.append({
+                "id": f"music:catalog:{track['trackKey']}",
+                "title": f"音乐曲目·{track['name']}",
+                "slug": str(track['trackKey']),
+                "content": f"音乐馆曲目《{track['name']}》；艺人：{track.get('artist') or '未知'}；专辑：{track.get('album') or '未知'}；歌单：{track.get('sourceName') or '未知'}。",
+                "source_type": "music",
+            })
         return documents
 
     async def _fetch_public_documents(self) -> List[dict]:

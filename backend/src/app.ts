@@ -32,6 +32,7 @@ import {
   searchRoutes,
   uploadRoutes,
   minioRoutes,
+  musicRoutes,
   authRoutes,
   fileRoutes,
   rssRoutes,
@@ -202,6 +203,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/upload', uploadRateLimit, uploadRoutes);  // 文件上传速率限制
 app.use('/api/minio', minioRoutes);
+app.use('/api/music', musicRoutes);
 app.use('/api/auth', authRateLimit, authRoutes);     // 认证路由速率限制
 app.use('/api/files', fileRoutes);
 app.use('/api/rss', rssRoutes);

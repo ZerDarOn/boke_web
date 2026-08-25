@@ -16,6 +16,20 @@ test('admin dashboard overview remains protected', () => {
   assert.match(source, /router\.get\('\/admin-overview', authenticate, requireAdmin/);
 });
 
+test('content operations is restricted to administrators and does not expose a public scan endpoint', () => {
+  const source = readSource('src', 'routes', 'dashboard.ts');
+  assert.match(source, /router\.get\('\/content-operations', authenticate, requireAdmin, DashboardController\.getContentOperations\)/);
+});
+
+test('content operations only scans editable public-facing fields and produces a bounded checklist', () => {
+  const source = readSource('src', 'services', 'dashboard.service.ts');
+  assert.match(source, /static async getContentOperations\(\)/);
+  assert.match(source, /where: \{ isPublished: true, accessLevel: 'PUBLIC' \}/);
+  assert.match(source, /where: \{ isHidden: false \}/);
+  assert.match(source, /CONTENT_OPERATIONS_MAX_ITEMS/);
+  assert.match(source, /Content operations scan completed/);
+});
+
 test('visit tracking hashes identifiers and only increments daily uniques once', () => {
   const source = readSource('src', 'services', 'dashboard.service.ts');
   assert.match(source, /createHash\('sha256'\)\.update\(visitorId\)\.digest\('hex'\)/);

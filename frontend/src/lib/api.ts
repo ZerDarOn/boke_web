@@ -31,6 +31,8 @@ export * from './api/users';
 export * from './api/settings';
 export * from './api/ai';
 export * from './api/divination';
+export * from './api/music';
+export * from './api/content-operations';
 
 export { api } from './api/client';
 export { getApiBaseUrl } from './apiConfig';

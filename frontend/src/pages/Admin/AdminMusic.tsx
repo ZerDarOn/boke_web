@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Plus, Edit, Trash2, Loader2, X, Save, Music, Eye, EyeOff, Info,
+  Plus, Edit, Trash2, Loader2, X, Save, Music, Eye, EyeOff, Info, RefreshCw,
 } from 'lucide-react';
 import {
   useMusicSources,
@@ -14,6 +14,7 @@ import {
 import { useToastActions } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import TrackCurationPanel from '../../components/TrackCurationPanel';
+import { musicApi } from '../../lib/api';
 
 const emptyForm: Partial<MusicSource> = {
   name: '',
@@ -41,6 +42,20 @@ const AdminMusic: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<MusicSource | null>(null);
   const [formData, setFormData] = useState<Partial<MusicSource>>(emptyForm);
+  const [syncingCatalog, setSyncingCatalog] = useState(false);
+
+  const handleSyncCatalog = async () => {
+    setSyncingCatalog(true);
+    try {
+      const result = await musicApi.syncCatalog();
+      if (!result.success || !result.data) throw new Error(result.error);
+      toast.success(`已同步 ${result.data.tracks.length} 首歌曲${result.data.failures.length ? `，${result.data.failures.length} 个歌单失败` : ''}`);
+    } catch {
+      toast.error('歌曲同步失败，请检查歌单是否公开或稍后重试');
+    } finally {
+      setSyncingCatalog(false);
+    }
+  };
 
   const persist = async (next: MusicSource[]) => {
     try {
@@ -117,13 +132,7 @@ const AdminMusic: React.FC = () => {
             里的 <b>123456</b>。改完即时生效，无需重新构建。
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-neon text-white rounded-lg hover:bg-neon/90 transition-colors"
-        >
-          <Plus size={20} />
-          添加歌单
-        </button>
+        <div className="flex flex-wrap gap-2"><button onClick={() => void handleSyncCatalog()} disabled={syncingCatalog} className="flex items-center gap-2 rounded-lg border border-neon px-4 py-2 text-neon hover:bg-neon/10 disabled:opacity-50"><RefreshCw size={18} className={syncingCatalog ? 'animate-spin' : ''} />同步曲目</button><button onClick={handleCreate} className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-neon text-white rounded-lg hover:bg-neon/90 transition-colors"><Plus size={20} />添加歌单</button></div>
       </div>
 
       {error && (

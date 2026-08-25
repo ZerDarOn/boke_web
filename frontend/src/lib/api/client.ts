@@ -17,6 +17,8 @@ import { healthApi } from './health';
 import { usersApi } from './users';
 import { settingsApi } from './settings';
 import { filesApi } from './files';
+import { musicApi } from './music';
+import { contentOperationsApi } from './content-operations';
 
 export const api = {
   auth: authApi,
@@ -38,4 +40,6 @@ export const api = {
   users: usersApi,
   settings: settingsApi,
   files: filesApi,
+  music: musicApi,
+  contentOperations: contentOperationsApi,
 };

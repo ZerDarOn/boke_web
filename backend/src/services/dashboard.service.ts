@@ -8,6 +8,20 @@ import { apiLog } from '../lib/logger';
 // 记录服务器启动时间
 const SERVER_START_TIME = new Date();
 
+type ContentOperationType = 'post' | 'game' | 'anime' | 'gallery';
+type ContentOperationPriority = 'high' | 'medium' | 'low';
+
+interface ContentOperationItem {
+  id: string;
+  type: ContentOperationType;
+  title: string;
+  path: string;
+  priority: ContentOperationPriority;
+  issues: string[];
+}
+
+const CONTENT_OPERATIONS_MAX_ITEMS = 80;
+
 export class DashboardService {
   private static readonly HEALTH_TIMEOUT_MS = 3_000;
   private static readonly BEHAVIOR_LOOKBACK_DAYS = 30;
@@ -88,7 +102,7 @@ export class DashboardService {
 
   static async getAdminOverview() {
     const startedAt = Date.now();
-    const [stats, drafts, gamesMissingDetails, animeMissingDetails, postsMissingCover, aiHealthy, behavior] = await Promise.all([
+    const [stats, drafts, gamesMissingDetails, animeMissingDetails, postsMissingCover, aiHealthy, behavior, contentOperations] = await Promise.all([
       this.getStats(),
       prisma.post.count({ where: { isPublished: false } }),
       prisma.game.count({ where: { OR: [{ description: null }, { screenshots: { isEmpty: true } }, { notes: null }] } }),
@@ -96,6 +110,7 @@ export class DashboardService {
       prisma.post.count({ where: { isPublished: true, coverImage: null } }),
       this.withTimeout(aiClient.health(), this.HEALTH_TIMEOUT_MS, false),
       this.getBehaviorOverview(),
+      this.getContentOperations(),
     ]);
 
     const databaseStartedAt = Date.now();
@@ -121,7 +136,86 @@ export class DashboardService {
       ],
       services,
       behavior,
+      contentOperations: { total: contentOperations.total, path: '/admin/content-operations' },
       runtime: { uptime: process.uptime(), memoryUsedBytes: memory.heapUsed, memoryTotalBytes: memory.heapTotal },
+    };
+  }
+
+  static async getContentOperations() {
+    const startedAt = Date.now();
+    const [posts, games, anime, gallery] = await Promise.all([
+      prisma.post.findMany({
+        where: { isPublished: true, accessLevel: 'PUBLIC' },
+        select: { id: true, title: true, excerpt: true, coverImage: true, tags: true },
+      }),
+      prisma.game.findMany({
+        where: { isHidden: false },
+        select: { id: true, title: true, description: true, notes: true, screenshots: true, highlights: true },
+      }),
+      prisma.anime.findMany({
+        select: { id: true, title: true, synopsis: true, notes: true, highlights: true },
+      }),
+      prisma.galleryImage.findMany({
+        select: { id: true, title: true, description: true, tags: true, albumId: true },
+      }),
+    ]);
+
+    const items: ContentOperationItem[] = [
+      ...posts.flatMap((post) => {
+        const issues = [
+          ...(!post.excerpt?.trim() ? ['补充摘要'] : []),
+          ...(!post.coverImage?.trim() ? ['补充封面'] : []),
+          ...(post.tags.length === 0 ? ['添加标签'] : []),
+        ];
+        return issues.length ? [{ id: post.id, type: 'post' as const, title: post.title, path: '/admin/posts', priority: issues.length >= 2 ? 'high' as const : 'medium' as const, issues }] : [];
+      }),
+      ...games.flatMap((game) => {
+        const issues = [
+          ...(!game.description?.trim() ? ['补充游戏介绍'] : []),
+          ...(!game.notes?.trim() ? ['写下游玩点评'] : []),
+          ...(game.screenshots.length === 0 ? ['添加截图'] : []),
+          ...(!Array.isArray(game.highlights) || game.highlights.length === 0 ? ['补充精彩片段'] : []),
+        ];
+        return issues.length ? [{ id: game.id, type: 'game' as const, title: game.title, path: '/admin/games', priority: issues.length >= 3 ? 'high' as const : 'medium' as const, issues }] : [];
+      }),
+      ...anime.flatMap((entry) => {
+        const issues = [
+          ...(!entry.synopsis?.trim() ? ['补充作品简介'] : []),
+          ...(!entry.notes?.trim() ? ['写下追番感想'] : []),
+          ...(!Array.isArray(entry.highlights) || entry.highlights.length === 0 ? ['补充精彩片段'] : []),
+        ];
+        return issues.length ? [{ id: entry.id, type: 'anime' as const, title: entry.title, path: '/admin/anime', priority: issues.length >= 2 ? 'high' as const : 'medium' as const, issues }] : [];
+      }),
+      ...gallery.flatMap((photo) => {
+        const issues = [
+          ...(!photo.description?.trim() ? ['补充照片描述'] : []),
+          ...(photo.tags.length === 0 ? ['添加标签'] : []),
+          ...(!photo.albumId ? ['归入相册'] : []),
+        ];
+        return issues.length ? [{ id: photo.id, type: 'gallery' as const, title: photo.title, path: '/admin/gallery', priority: issues.length >= 2 ? 'medium' as const : 'low' as const, issues }] : [];
+      }),
+    ];
+
+    const priorityOrder: Record<ContentOperationPriority, number> = { high: 0, medium: 1, low: 2 };
+    items.sort((left, right) => priorityOrder[left.priority] - priorityOrder[right.priority] || right.issues.length - left.issues.length || left.title.localeCompare(right.title, 'zh-CN'));
+    const visibleItems = items.slice(0, CONTENT_OPERATIONS_MAX_ITEMS);
+    const byType = (['post', 'game', 'anime', 'gallery'] as ContentOperationType[]).map((type) => ({
+      type,
+      count: items.filter((item) => item.type === type).length,
+    }));
+
+    apiLog.info('Content operations scan completed', {
+      durationMs: Date.now() - startedAt,
+      totalItems: items.length,
+      returnedItems: visibleItems.length,
+    });
+
+    return {
+      total: items.length,
+      visibleCount: visibleItems.length,
+      maxItems: CONTENT_OPERATIONS_MAX_ITEMS,
+      byType,
+      items: visibleItems,
     };
   }
 

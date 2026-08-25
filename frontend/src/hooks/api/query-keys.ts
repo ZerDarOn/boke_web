@@ -55,7 +55,10 @@ export const queryKeys = {
   },
   network: { all: ['network'] as const, list: () => [...queryKeys.network.all, 'list'] as const },
   universe: { all: ['universe'] as const, list: () => [...queryKeys.universe.all, 'list'] as const },
-  dashboard: { stats: () => ['dashboard', 'stats'] as const },
+  dashboard: {
+    stats: () => ['dashboard', 'stats'] as const,
+    contentOperations: () => ['dashboard', 'content-operations'] as const,
+  },
   settings: {
     all: ['settings'] as const,
     site: () => [...queryKeys.settings.all, 'site'] as const,

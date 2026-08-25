@@ -25,5 +25,6 @@ const trackingRateLimit = createRateLimit({ windowMs: 60_000, max: 120, message:
 router.post('/track', trackingRateLimit, validateBody(visitSchema), DashboardController.trackVisit);
 router.post('/events', trackingRateLimit, validateBody(eventSchema), DashboardController.trackEvent);
 router.get('/admin-overview', authenticate, requireAdmin, DashboardController.getAdminOverview);
+router.get('/content-operations', authenticate, requireAdmin, DashboardController.getContentOperations);
 
 export default router;

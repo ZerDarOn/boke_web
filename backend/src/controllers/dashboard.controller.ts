@@ -62,4 +62,13 @@ export class DashboardController {
       response.error(res, error.message || 'Failed to fetch admin overview');
     }
   }
+
+  // GET /api/dashboard/content-operations
+  static async getContentOperations(req: Request, res: Response) {
+    try {
+      response.success(res, await DashboardService.getContentOperations());
+    } catch (error: any) {
+      response.error(res, error.message || 'Failed to scan content operations');
+    }
+  }
 }
