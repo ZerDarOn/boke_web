@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { DashboardService } from '../services/dashboard.service';
+import { DashboardService, type ContentOperationType } from '../services/dashboard.service';
 import * as response from '../utils/response';
 
 export class DashboardController {
@@ -69,6 +69,30 @@ export class DashboardController {
       response.success(res, await DashboardService.getContentOperations());
     } catch (error: any) {
       response.error(res, error.message || 'Failed to scan content operations');
+    }
+  }
+
+  // POST /api/dashboard/content-operations/:type/:id/suggestions
+  static async getContentSuggestions(req: Request, res: Response) {
+    try {
+      response.success(res, await DashboardService.getContentSuggestions(req.params.type as ContentOperationType, req.params.id));
+    } catch (error: any) {
+      if (error.message === 'Content not found or not eligible for operations') {
+        return response.notFound(res, error.message);
+      }
+      response.error(res, error.message || 'Failed to generate content suggestions');
+    }
+  }
+
+  // POST /api/dashboard/content-operations/:type/:id/apply
+  static async applyContentSuggestions(req: Request, res: Response) {
+    try {
+      response.success(res, await DashboardService.applyContentSuggestions(req.params.type as ContentOperationType, req.params.id, req.body));
+    } catch (error: any) {
+      if (error.message === 'Content not found or not eligible for operations') {
+        return response.notFound(res, error.message);
+      }
+      response.badRequest(res, error.message || 'Failed to apply content suggestions');
     }
   }
 }

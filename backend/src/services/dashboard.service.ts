@@ -4,11 +4,15 @@ import crypto from 'crypto';
 import { cache } from '../lib/cache';
 import { aiClient } from './ai.client';
 import { apiLog } from '../lib/logger';
+import { PostService } from './post.service';
+import { GameService } from './game.service';
+import { AnimeService } from './anime.service';
+import { GalleryService } from './gallery.service';
 
 // 记录服务器启动时间
 const SERVER_START_TIME = new Date();
 
-type ContentOperationType = 'post' | 'game' | 'anime' | 'gallery';
+export type ContentOperationType = 'post' | 'game' | 'anime' | 'gallery';
 type ContentOperationPriority = 'high' | 'medium' | 'low';
 
 interface ContentOperationItem {
@@ -20,7 +24,25 @@ interface ContentOperationItem {
   issues: string[];
 }
 
+export interface ContentSuggestionProposal {
+  field: 'excerpt' | 'tags';
+  value: string | string[];
+  label: string;
+}
+
+export interface ContentSuggestionResult {
+  suggestions: ContentSuggestionProposal[];
+  notice?: string;
+}
+
+export interface ContentSuggestionInput {
+  excerpt?: string;
+  tags?: string[];
+}
+
 const CONTENT_OPERATIONS_MAX_ITEMS = 80;
+const CONTENT_SUGGESTION_SOURCE_MAX_LENGTH = 12_000;
+const CONTENT_SUGGESTION_MAX_TAGS = 5;
 
 export class DashboardService {
   private static readonly HEALTH_TIMEOUT_MS = 3_000;
@@ -150,10 +172,10 @@ export class DashboardService {
       }),
       prisma.game.findMany({
         where: { isHidden: false },
-        select: { id: true, title: true, description: true, notes: true, screenshots: true, highlights: true },
+        select: { id: true, title: true, description: true, notes: true, screenshots: true, highlights: true, tags: true },
       }),
       prisma.anime.findMany({
-        select: { id: true, title: true, synopsis: true, notes: true, highlights: true },
+        select: { id: true, title: true, synopsis: true, notes: true, highlights: true, tags: true },
       }),
       prisma.galleryImage.findMany({
         select: { id: true, title: true, description: true, tags: true, albumId: true },
@@ -175,6 +197,7 @@ export class DashboardService {
           ...(!game.notes?.trim() ? ['写下游玩点评'] : []),
           ...(game.screenshots.length === 0 ? ['添加截图'] : []),
           ...(!Array.isArray(game.highlights) || game.highlights.length === 0 ? ['补充精彩片段'] : []),
+          ...(game.tags.length === 0 ? ['添加标签'] : []),
         ];
         return issues.length ? [{ id: game.id, type: 'game' as const, title: game.title, path: '/admin/games', priority: issues.length >= 3 ? 'high' as const : 'medium' as const, issues }] : [];
       }),
@@ -183,6 +206,7 @@ export class DashboardService {
           ...(!entry.synopsis?.trim() ? ['补充作品简介'] : []),
           ...(!entry.notes?.trim() ? ['写下追番感想'] : []),
           ...(!Array.isArray(entry.highlights) || entry.highlights.length === 0 ? ['补充精彩片段'] : []),
+          ...(entry.tags.length === 0 ? ['添加标签'] : []),
         ];
         return issues.length ? [{ id: entry.id, type: 'anime' as const, title: entry.title, path: '/admin/anime', priority: issues.length >= 2 ? 'high' as const : 'medium' as const, issues }] : [];
       }),
@@ -217,6 +241,106 @@ export class DashboardService {
       byType,
       items: visibleItems,
     };
+  }
+
+  static async getContentSuggestions(type: ContentOperationType, id: string): Promise<ContentSuggestionResult> {
+    const target = await this.findSuggestionTarget(type, id);
+    if (!target) throw new Error('Content not found or not eligible for operations');
+
+    const suggestions: ContentSuggestionProposal[] = [];
+    const source = target.source.slice(0, CONTENT_SUGGESTION_SOURCE_MAX_LENGTH);
+    const tasks: Array<() => Promise<void>> = [];
+
+    if (type === 'post' && !target.excerpt && source.length >= 80) {
+      tasks.push(async () => {
+        const result = await aiClient.summarizeContent(source, 180);
+        const excerpt = result.summary.trim();
+        if (excerpt) suggestions.push({ field: 'excerpt', value: excerpt, label: '摘要建议' });
+      });
+    }
+
+    if (target.tags.length === 0 && source.length >= 20) {
+      tasks.push(async () => {
+        const result = await aiClient.generateTags(target.title, source, CONTENT_SUGGESTION_MAX_TAGS);
+        const tags = this.normalizeSuggestedTags(result.tags);
+        if (tags.length) suggestions.push({ field: 'tags', value: tags, label: '标签建议' });
+      });
+    }
+
+    if (tasks.length === 0) {
+      return { suggestions, notice: '这条内容缺少可依据的已有资料，暂不生成，避免 AI 凭空补写。' };
+    }
+
+    const startedAt = Date.now();
+    apiLog.info('Content operations AI suggestion requested', { type, contentId: id, taskCount: tasks.length });
+    await Promise.all(tasks.map((task) => task()));
+    apiLog.info('Content operations AI suggestion completed', {
+      type,
+      contentId: id,
+      suggestionCount: suggestions.length,
+      durationMs: Date.now() - startedAt,
+    });
+
+    return suggestions.length
+      ? { suggestions }
+      : { suggestions, notice: 'AI 没有给出可安全应用的建议，请保留原内容自行补充。' };
+  }
+
+  static async applyContentSuggestions(type: ContentOperationType, id: string, input: ContentSuggestionInput) {
+    const target = await this.findSuggestionTarget(type, id);
+    if (!target) throw new Error('Content not found or not eligible for operations');
+
+    const update: ContentSuggestionInput = {};
+    if (input.excerpt && type === 'post' && !target.excerpt) update.excerpt = input.excerpt.trim();
+    if (input.tags?.length && target.tags.length === 0) update.tags = this.normalizeSuggestedTags(input.tags);
+    if (!update.excerpt && !update.tags?.length) throw new Error('Suggested fields are no longer eligible to apply');
+
+    apiLog.info('Content operations suggestions applying', { type, contentId: id, fields: Object.keys(update) });
+    if (type === 'post') await PostService.update(id, update);
+    if (type === 'game') await GameService.update(id, update);
+    if (type === 'anime') await AnimeService.update(id, update);
+    if (type === 'gallery') await GalleryService.update(id, update);
+    apiLog.info('Content operations suggestions applied', { type, contentId: id, fields: Object.keys(update) });
+
+    return { applied: Object.keys(update), indexRebuildRequired: type !== 'post' };
+  }
+
+  private static normalizeSuggestedTags(tags: string[]): string[] {
+    return Array.from(new Set(tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0 && tag.length <= 30))).slice(0, CONTENT_SUGGESTION_MAX_TAGS);
+  }
+
+  private static async findSuggestionTarget(type: ContentOperationType, id: string): Promise<{
+    title: string;
+    source: string;
+    tags: string[];
+    excerpt?: string | null;
+  } | null> {
+    if (type === 'post') {
+      const post = await prisma.post.findFirst({
+        where: { id, isPublished: true, accessLevel: 'PUBLIC' },
+        select: { title: true, content: true, excerpt: true, tags: true },
+      });
+      return post ? { title: post.title, source: post.content, tags: post.tags, excerpt: post.excerpt } : null;
+    }
+    if (type === 'game') {
+      const game = await prisma.game.findFirst({
+        where: { id, isHidden: false },
+        select: { title: true, description: true, notes: true, genres: true, developer: true, publisher: true, tags: true },
+      });
+      return game ? { title: game.title, tags: game.tags, source: [game.description, game.notes, game.genres.join('、'), game.developer, game.publisher].filter(Boolean).join('\n') } : null;
+    }
+    if (type === 'anime') {
+      const anime = await prisma.anime.findUnique({
+        where: { id },
+        select: { title: true, synopsis: true, notes: true, genres: true, studios: true, tags: true },
+      });
+      return anime ? { title: anime.title, tags: anime.tags, source: [anime.synopsis, anime.notes, anime.genres.join('、'), anime.studios.join('、')].filter(Boolean).join('\n') } : null;
+    }
+    const photo = await prisma.galleryImage.findUnique({
+      where: { id },
+      select: { title: true, description: true, location: true, camera: true, settings: true, tags: true },
+    });
+    return photo ? { title: photo.title, tags: photo.tags, source: [photo.description, photo.location, photo.camera, photo.settings].filter(Boolean).join('\n') } : null;
   }
 
   private static async withTimeout<T>(operation: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {

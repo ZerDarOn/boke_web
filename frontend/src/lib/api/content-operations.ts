@@ -20,6 +20,24 @@ export interface ContentOperationsOverview {
   items: ContentOperationItem[];
 }
 
+export interface ContentSuggestionProposal {
+  field: 'excerpt' | 'tags';
+  value: string | string[];
+  label: string;
+}
+
+export interface ContentSuggestionResult {
+  suggestions: ContentSuggestionProposal[];
+  notice?: string;
+}
+
 export const contentOperationsApi = {
   getOverview: () => apiRequest<ContentOperationsOverview>('/api/dashboard/content-operations'),
+  getSuggestions: (type: ContentOperationType, id: string) =>
+    apiRequest<ContentSuggestionResult>(`/api/dashboard/content-operations/${type}/${id}/suggestions`, { method: 'POST' }),
+  applySuggestions: (type: ContentOperationType, id: string, suggestions: { excerpt?: string; tags?: string[] }) =>
+    apiRequest<{ applied: string[]; indexRebuildRequired: boolean }>(`/api/dashboard/content-operations/${type}/${id}/apply`, {
+      method: 'POST',
+      body: JSON.stringify(suggestions),
+    }),
 };

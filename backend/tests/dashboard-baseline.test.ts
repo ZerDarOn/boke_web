@@ -19,6 +19,8 @@ test('admin dashboard overview remains protected', () => {
 test('content operations is restricted to administrators and does not expose a public scan endpoint', () => {
   const source = readSource('src', 'routes', 'dashboard.ts');
   assert.match(source, /router\.get\('\/content-operations', authenticate, requireAdmin, DashboardController\.getContentOperations\)/);
+  assert.match(source, /router\.post\('\/content-operations\/:type\/:id\/suggestions', authenticate, requireAdmin, validate\(contentOperationsTargetSchema\), DashboardController\.getContentSuggestions\)/);
+  assert.match(source, /router\.post\('\/content-operations\/:type\/:id\/apply', authenticate, requireAdmin, validate\(contentOperationsTargetSchema\), validateBody\(contentOperationsApplySchema\), DashboardController\.applyContentSuggestions\)/);
 });
 
 test('content operations only scans editable public-facing fields and produces a bounded checklist', () => {
@@ -28,6 +30,9 @@ test('content operations only scans editable public-facing fields and produces a
   assert.match(source, /where: \{ isHidden: false \}/);
   assert.match(source, /CONTENT_OPERATIONS_MAX_ITEMS/);
   assert.match(source, /Content operations scan completed/);
+  assert.match(source, /static async getContentSuggestions\(type: ContentOperationType, id: string\)/);
+  assert.match(source, /static async applyContentSuggestions\(/);
+  assert.match(source, /PostService\.update\(id, update\)/);
 });
 
 test('visit tracking hashes identifiers and only increments daily uniques once', () => {
