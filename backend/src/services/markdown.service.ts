@@ -151,145 +151,185 @@ function extractImages(markdown: string): string[] {
 
 /**
  * 根据 Front Matter 字段构建 Prisma 模型数据
+ * 按内容类型分发给对应的 builder
  */
 export function buildPrismaData(parsed: ParsedContent): any {
-  const { type, metadata, content } = parsed;
-  const createdAt = new Date(parsed.date);
-  const tags = asStringArray(metadata.tags);
-
-  switch (type) {
-    case 'post':
-      return {
-        id: parsed.id,
-        title: parsed.title,
-        slug: parsed.slug,
-        content,
-        date: createdAt,
-        category: metadata.category || 'UNCATEGORIZED',
-        tags,
-        excerpt: metadata.excerpt || content.substring(0, 200),
-        readingTime: metadata.readingTime || '5 min',
-        isPublished: parsed.published,
-        accessLevel: parsed.accessLevel,
-        coverImage: asOptionalString(metadata.coverImage) || asOptionalString(metadata.cover),
-        password: asOptionalString(metadata.password),
-      };
-
-    case 'project':
-      return {
-        id: parsed.id,
-        name: parsed.title,
-        slug: parsed.slug,
-        status: normalizeProjectStatus(metadata.status),
-        tech: asStringArray(metadata.tech),
-        type: asOptionalString(metadata.projectType) || 'PROJECT',
-        description: metadata.description || content.substring(0, 500),
-        readme: content,
-        link: asOptionalString(metadata.link),
-        imageUrl: asOptionalString(metadata.imageUrl) || asOptionalString(metadata.cover),
-        githubUrl: asOptionalString(metadata.githubUrl) || asOptionalString(metadata.repository),
-        demoUrl: asOptionalString(metadata.demoUrl),
-        featured: metadata.featured === true,
-        startDate: parseOptionalDate(metadata.startDate),
-        endDate: parseOptionalDate(metadata.endDate),
-      };
-
-    case 'anime':
-      return {
-        id: parsed.id,
-        title: parsed.title,
-        cover: requireString(metadata.cover, 'anime.cover'),
-        bannerImage: asOptionalString(metadata.bannerImage),
-        type: ANIME_TYPES.has(String(metadata.animeType || metadata.type))
-          ? (metadata.animeType || metadata.type)
-          : 'TV',
-        episodes: Number.isInteger(metadata.episodes) ? metadata.episodes : 1,
-        aired: asOptionalString(metadata.aired),
-        currentEp: Number.isInteger(metadata.currentEp) ? metadata.currentEp : 0,
-        status: ANIME_STATUSES.has(String(metadata.status)) ? metadata.status : 'WATCHING',
-        score: metadata.score,
-        favorite: metadata.favorite || false,
-        studios: asStringArray(metadata.studios),
-        genres: asStringArray(metadata.genres),
-        synopsis: asOptionalString(metadata.synopsis) || content,
-        notes: asOptionalString(metadata.notes),
-        tags,
-        startDate: parseOptionalDate(metadata.startDate),
-        finishDate: parseOptionalDate(metadata.finishDate),
-        bilibiliUrl: asOptionalString(metadata.bilibiliUrl),
-      };
-
-    case 'diary':
-      const diaryType = String(metadata.diaryType || metadata.entryType || 'SHORT').toUpperCase() === 'LONG'
-        ? 'LONG'
-        : 'SHORT';
-      return {
-        id: parsed.id,
-        type: diaryType,
-        title: diaryType === 'LONG' ? parsed.title : undefined,
-        content: diaryType === 'SHORT' ? content : undefined,
-        longContent: diaryType === 'LONG' ? content : undefined,
-        stamp: asOptionalString(metadata.stamp),
-        subtitle: asOptionalString(metadata.subtitle),
-        location: asOptionalString(metadata.location),
-        mood: asOptionalString(metadata.mood),
-        weather: asOptionalString(metadata.weather),
-        coverImage: asOptionalString(metadata.coverImage) || asOptionalString(metadata.cover),
-        date: createdAt,
-        tags,
-        readingTime: asOptionalString(metadata.readingTime),
-      };
-
-    case 'timeline':
-      return {
-        id: parsed.id,
-        year: asOptionalString(metadata.year) || String(createdAt.getFullYear()),
-        date: asOptionalString(metadata.timelineDate) || createdAt.toISOString().slice(5, 10).replace('-', '.'),
-        title: parsed.title,
-        description: asOptionalString(metadata.description) || content.substring(0, 500),
-        type: normalizeTimelineType(metadata.eventType || metadata.category),
-        projectId: asOptionalString(metadata.projectId),
-      };
-
-    case 'skill':
-      return {
-        id: parsed.id,
-        name: parsed.title,
-        category: asOptionalString(metadata.category) || 'GENERAL',
-        level: normalizeSkillLevel(metadata.level),
-        rank: normalizeSkillRank(metadata.rank || metadata.level),
-        projectCount: Number.isInteger(metadata.projectCount) ? metadata.projectCount : 0,
-        connections: asStringArray(metadata.connections),
-        image: asOptionalString(metadata.image) || asOptionalString(metadata.icon),
-      };
-
-    case 'gallery':
-      return {
-        id: parsed.id,
-        title: parsed.title,
-        src: requireString(metadata.src, 'gallery.src'),
-        date: createdAt,
-        albumId: metadata.album,
-        aspect: metadata.aspect || 'landscape',
-        location: metadata.location,
-        camera: metadata.camera,
-        settings: metadata.settings,
-        description: asOptionalString(metadata.description) || content,
-        tags,
-      };
-
-    case 'announcement':
-      return {
-        id: parsed.id,
-        title: parsed.title,
-        content,
-        date: createdAt,
-        type: normalizeAnnouncementType(metadata.announcementType || metadata.type),
-      };
-
-    default:
-      throw new Error(`不支持的内容类型: ${type}`);
+  const builder = CONTENT_BUILDERS[parsed.type];
+  if (!builder) {
+    throw new Error(`不支持的内容类型: ${parsed.type}`);
   }
+  return builder(parsed);
+}
+
+type ContentBuilder = (parsed: ParsedContent) => Record<string, unknown>;
+
+const CONTENT_BUILDERS: Record<string, ContentBuilder> = {
+  post: buildPostData,
+  project: buildProjectData,
+  anime: buildAnimeData,
+  diary: buildDiaryData,
+  timeline: buildTimelineData,
+  skill: buildSkillData,
+  gallery: buildGalleryData,
+  announcement: buildAnnouncementData,
+};
+
+function buildPostData(parsed: ParsedContent) {
+  const { metadata, content } = parsed;
+  const createdAt = new Date(parsed.date);
+
+  return {
+    id: parsed.id,
+    title: parsed.title,
+    slug: parsed.slug,
+    content,
+    date: createdAt,
+    category: metadata.category || 'UNCATEGORIZED',
+    tags: asStringArray(metadata.tags),
+    excerpt: metadata.excerpt || content.substring(0, 200),
+    readingTime: metadata.readingTime || '5 min',
+    isPublished: parsed.published,
+    accessLevel: parsed.accessLevel,
+    coverImage: asOptionalString(metadata.coverImage) || asOptionalString(metadata.cover),
+    password: asOptionalString(metadata.password),
+  };
+}
+
+function buildProjectData(parsed: ParsedContent) {
+  const { metadata, content } = parsed;
+
+  return {
+    id: parsed.id,
+    name: parsed.title,
+    slug: parsed.slug,
+    status: normalizeProjectStatus(metadata.status),
+    tech: asStringArray(metadata.tech),
+    type: asOptionalString(metadata.projectType) || 'PROJECT',
+    description: metadata.description || content.substring(0, 500),
+    readme: content,
+    link: asOptionalString(metadata.link),
+    imageUrl: asOptionalString(metadata.imageUrl) || asOptionalString(metadata.cover),
+    githubUrl: asOptionalString(metadata.githubUrl) || asOptionalString(metadata.repository),
+    demoUrl: asOptionalString(metadata.demoUrl),
+    featured: metadata.featured === true,
+    startDate: parseOptionalDate(metadata.startDate),
+    endDate: parseOptionalDate(metadata.endDate),
+  };
+}
+
+function buildAnimeData(parsed: ParsedContent) {
+  const { metadata, content } = parsed;
+
+  return {
+    id: parsed.id,
+    title: parsed.title,
+    cover: requireString(metadata.cover, 'anime.cover'),
+    bannerImage: asOptionalString(metadata.bannerImage),
+    type: ANIME_TYPES.has(String(metadata.animeType || metadata.type))
+      ? (metadata.animeType || metadata.type)
+      : 'TV',
+    episodes: Number.isInteger(metadata.episodes) ? metadata.episodes : 1,
+    aired: asOptionalString(metadata.aired),
+    currentEp: Number.isInteger(metadata.currentEp) ? metadata.currentEp : 0,
+    status: ANIME_STATUSES.has(String(metadata.status)) ? metadata.status : 'WATCHING',
+    score: metadata.score,
+    favorite: metadata.favorite || false,
+    studios: asStringArray(metadata.studios),
+    genres: asStringArray(metadata.genres),
+    synopsis: asOptionalString(metadata.synopsis) || content,
+    notes: asOptionalString(metadata.notes),
+    tags: asStringArray(metadata.tags),
+    startDate: parseOptionalDate(metadata.startDate),
+    finishDate: parseOptionalDate(metadata.finishDate),
+    bilibiliUrl: asOptionalString(metadata.bilibiliUrl),
+  };
+}
+
+function buildDiaryData(parsed: ParsedContent) {
+  const { metadata, content } = parsed;
+  const createdAt = new Date(parsed.date);
+  const diaryType = String(metadata.diaryType || metadata.entryType || 'SHORT').toUpperCase() === 'LONG'
+    ? 'LONG'
+    : 'SHORT';
+
+  return {
+    id: parsed.id,
+    type: diaryType,
+    title: diaryType === 'LONG' ? parsed.title : undefined,
+    content: diaryType === 'SHORT' ? content : undefined,
+    longContent: diaryType === 'LONG' ? content : undefined,
+    stamp: asOptionalString(metadata.stamp),
+    subtitle: asOptionalString(metadata.subtitle),
+    location: asOptionalString(metadata.location),
+    mood: asOptionalString(metadata.mood),
+    weather: asOptionalString(metadata.weather),
+    coverImage: asOptionalString(metadata.coverImage) || asOptionalString(metadata.cover),
+    date: createdAt,
+    tags: asStringArray(metadata.tags),
+    readingTime: asOptionalString(metadata.readingTime),
+  };
+}
+
+function buildTimelineData(parsed: ParsedContent) {
+  const { metadata, content } = parsed;
+  const createdAt = new Date(parsed.date);
+
+  return {
+    id: parsed.id,
+    year: asOptionalString(metadata.year) || String(createdAt.getFullYear()),
+    date: asOptionalString(metadata.timelineDate) || createdAt.toISOString().slice(5, 10).replace('-', '.'),
+    title: parsed.title,
+    description: asOptionalString(metadata.description) || content.substring(0, 500),
+    type: normalizeTimelineType(metadata.eventType || metadata.category),
+    projectId: asOptionalString(metadata.projectId),
+  };
+}
+
+function buildSkillData(parsed: ParsedContent) {
+  const { metadata } = parsed;
+
+  return {
+    id: parsed.id,
+    name: parsed.title,
+    category: asOptionalString(metadata.category) || 'GENERAL',
+    level: normalizeSkillLevel(metadata.level),
+    rank: normalizeSkillRank(metadata.rank || metadata.level),
+    projectCount: Number.isInteger(metadata.projectCount) ? metadata.projectCount : 0,
+    connections: asStringArray(metadata.connections),
+    image: asOptionalString(metadata.image) || asOptionalString(metadata.icon),
+  };
+}
+
+function buildGalleryData(parsed: ParsedContent) {
+  const { metadata, content } = parsed;
+  const createdAt = new Date(parsed.date);
+
+  return {
+    id: parsed.id,
+    title: parsed.title,
+    src: requireString(metadata.src, 'gallery.src'),
+    date: createdAt,
+    albumId: metadata.album,
+    aspect: metadata.aspect || 'landscape',
+    location: metadata.location,
+    camera: metadata.camera,
+    settings: metadata.settings,
+    description: asOptionalString(metadata.description) || content,
+    tags: asStringArray(metadata.tags),
+  };
+}
+
+function buildAnnouncementData(parsed: ParsedContent) {
+  const { metadata, content } = parsed;
+  const createdAt = new Date(parsed.date);
+
+  return {
+    id: parsed.id,
+    title: parsed.title,
+    content,
+    date: createdAt,
+    type: normalizeAnnouncementType(metadata.announcementType || metadata.type),
+  };
 }
 
 function requireString(value: unknown, field: string): string {
