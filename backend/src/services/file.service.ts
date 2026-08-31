@@ -2,6 +2,7 @@ import { Client } from 'minio';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { getMinioClient, getObjectKey } from '../config/minio';
 import { resolveStoragePath } from '../lib/storage-path-security';
 
@@ -59,16 +60,13 @@ const saveMetadata = (metadata: Map<string, InternalFileMetadata>) => {
   }
 };
 
-// 哈希密码
-const hashPassword = (password: string): string => {
-  return crypto.createHash('sha256').update(password).digest('hex');
+// 哈希密码（bcrypt，带盐慢哈希，防 GPU/彩虹表破解）
+const hashPassword = async (password: string): Promise<string> => {
+  return bcrypt.hash(password, 10);
 };
 
-// 验证密码
-const verifyPassword = (password: string, hash: string): boolean => {
-  const passwordHash = hashPassword(password);
-  return passwordHash === hash;
-};
+// 识别旧版无盐 SHA-256 哈希（64 位十六进制），验证成功后自动升级为 bcrypt
+const isLegacySha256Hash = (hash: string): boolean => /^[0-9a-f]{64}$/.test(hash);
 
 class FileService {
   private minioClient: Client | null;
@@ -348,7 +346,7 @@ class FileService {
     const meta = this.metadata.get(key);
     if (meta) {
       meta.protected = true;
-      meta.passwordHash = hashPassword(password);
+      meta.passwordHash = await hashPassword(password);
       this.metadata.set(key, meta);
       saveMetadata(this.metadata);
     }
@@ -365,13 +363,28 @@ class FileService {
     }
   }
 
-  // 验证文件密码
+  // 验证文件密码（兼容旧 SHA-256 哈希，验证成功后自动升级为 bcrypt）
   async verifyPassword(key: string, password: string): Promise<boolean> {
     const meta = this.metadata.get(key);
     if (!meta?.protected || !meta?.passwordHash) {
       return true; // 未受保护的文件
     }
-    return verifyPassword(password, meta.passwordHash);
+
+    const storedHash = meta.passwordHash;
+
+    if (isLegacySha256Hash(storedHash)) {
+      const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
+      if (legacyHash !== storedHash) {
+        return false;
+      }
+      // 旧哈希验证通过，升级为 bcrypt
+      meta.passwordHash = await hashPassword(password);
+      this.metadata.set(key, meta);
+      saveMetadata(this.metadata);
+      return true;
+    }
+
+    return bcrypt.compare(password, storedHash);
   }
 
   // 获取文件下载URL

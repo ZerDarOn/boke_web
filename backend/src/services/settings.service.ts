@@ -6,16 +6,30 @@ interface SiteConfigRow {
   value: string;
 }
 
+// 敏感配置键：公开接口不得返回，防止 AI API Key 等密钥泄露
+const SENSITIVE_KEY_PATTERNS: RegExp[] = [
+  /^aiConfig$/i, // 含 apiKey 明文
+  /apikey|api[-_]?key/i,
+  /secret/i,
+  /password/i,
+  /token/i,
+];
+
+export const isSensitiveKey = (key: string): boolean =>
+  SENSITIVE_KEY_PATTERNS.some((re) => re.test(key));
+
 export class SettingsService {
-  // 获取所有配置
-  static async getAll(): Promise<Record<string, any>> {
+  // 获取所有配置（默认过滤敏感键；includeSensitive 仅供已鉴权的管理员使用）
+  static async getAll(options?: { includeSensitive?: boolean }): Promise<Record<string, any>> {
+    const includeSensitive = options?.includeSensitive === true;
     const configs = await prisma.$queryRaw<SiteConfigRow[]>`
       SELECT key, value FROM site_config
     `;
-    
+
     // 转换为对象格式
     const result: Record<string, any> = {};
     for (const config of configs) {
+      if (!includeSensitive && isSensitiveKey(config.key)) continue;
       try {
         // 尝试解析 JSON
         result[config.key] = JSON.parse(config.value);
@@ -24,12 +38,15 @@ export class SettingsService {
         result[config.key] = config.value;
       }
     }
-    
+
     return result;
   }
 
-  // 获取单个配置
-  static async getByKey(key: string): Promise<any | null> {
+  // 获取单个配置（敏感键对非管理员返回 null）
+  static async getByKey(key: string, options?: { includeSensitive?: boolean }): Promise<any | null> {
+    if (options?.includeSensitive !== true && isSensitiveKey(key)) {
+      return null;
+    }
     const configs = await prisma.$queryRaw<SiteConfigRow[]>`
       SELECT key, value FROM site_config WHERE key = ${key}
     `;

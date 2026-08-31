@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { SettingsService } from '../services/settings.service';
 import * as response from '../utils/response';
 import * as fs from 'fs';
@@ -6,6 +6,7 @@ import * as path from 'path';
 import axios from 'axios';
 import { apiLog } from '../lib/logger';
 import { isMusicTrackCurations } from '../lib/music-track-curations';
+import { AuthenticatedRequest } from '../types';
 
 /**
  * 通知 ai-service Python 进程重新加载 .env 配置。
@@ -76,10 +77,11 @@ function syncAiEnv(aiConfig: any): void {
 }
 
 export class SettingsController {
-  // GET /api/settings - 获取所有站点配置
-  static async getAll(req: Request, res: Response) {
+  // GET /api/settings - 获取所有站点配置（公开；敏感键仅管理员可见）
+  static async getAll(req: AuthenticatedRequest, res: Response) {
     try {
-      const settings = await SettingsService.getAll();
+      const isAdmin = req.user?.role === 'ADMIN';
+      const settings = await SettingsService.getAll({ includeSensitive: isAdmin });
       response.success(res, settings);
     } catch (error: any) {
       console.error('Get settings error:', error);
@@ -87,16 +89,17 @@ export class SettingsController {
     }
   }
 
-  // GET /api/settings/:key - 获取单个配置
-  static async getByKey(req: Request, res: Response) {
+  // GET /api/settings/:key - 获取单个配置（公开；敏感键仅管理员可见）
+  static async getByKey(req: AuthenticatedRequest, res: Response) {
     try {
       const { key } = req.params;
-      const value = await SettingsService.getByKey(key);
-      
+      const isAdmin = req.user?.role === 'ADMIN';
+      const value = await SettingsService.getByKey(key, { includeSensitive: isAdmin });
+
       if (value === null) {
         return response.error(res, 'Setting not found', 404);
       }
-      
+
       response.success(res, { key, value });
     } catch (error: any) {
       console.error('Get setting error:', error);
@@ -105,7 +108,7 @@ export class SettingsController {
   }
 
   // PUT /api/settings - 更新单个配置
-  static async update(req: Request, res: Response) {
+  static async update(req: AuthenticatedRequest, res: Response) {
     try {
       const { key, value } = req.body;
       
@@ -129,7 +132,7 @@ export class SettingsController {
   }
 
   // PUT /api/settings/bulk - 批量更新配置
-  static async bulkUpdate(req: Request, res: Response) {
+  static async bulkUpdate(req: AuthenticatedRequest, res: Response) {
     try {
       const { settings } = req.body;
       
