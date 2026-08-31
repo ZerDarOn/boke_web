@@ -107,6 +107,16 @@ export class PostController {
     }
   }
 
+  // GET /api/posts/nav/list
+  static async getNavList(_req: Request, res: Response) {
+    try {
+      const navList = await PostService.getNavList();
+      response.success(res, navList);
+    } catch (error: any) {
+      response.error(res, error.message || 'Failed to fetch post nav list');
+    }
+  }
+
   // GET /api/posts/:id/related
   static async getRelated(req: Request, res: Response) {
     try {

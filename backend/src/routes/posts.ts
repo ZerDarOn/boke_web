@@ -21,6 +21,9 @@ router.get('/tags', cacheMiddleware({ ttl: 600, keyPrefix: 'posts' }), PostContr
 
 router.get('/tags/popular', cacheMiddleware({ ttl: 600, keyPrefix: 'posts' }), PostController.getPopularTags);
 
+// 轻量导航列表：仅 id/slug/title/date，供上一篇/下一篇使用（必须注册在 /:id 之前）
+router.get('/nav/list', cacheMiddleware({ ttl: 300, keyPrefix: 'posts' }), PostController.getNavList);
+
 router.get('/:id', optionalAuth, PostController.getById);
 
 router.get('/:id/related', cacheMiddleware({ ttl: 300, keyPrefix: 'post' }), PostController.getRelated);

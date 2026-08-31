@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePost, usePostNavList } from '../hooks/queries/posts';
+import { usePost, usePostNavList, useRelatedPosts, useVerifyPostPassword } from '../hooks/queries/posts';
 import { useScrollProgress } from '../hooks/useScrollProgress';
 import { useThemeClass } from '../hooks/useThemeClass';
 import { queryKeys } from '../hooks/api/query-keys';
-import { postsApi, setPostAccessToken } from '../lib/api';
+import { setPostAccessToken } from '../lib/api';
 import {
   ArrowLeft,
   ArrowRight,
@@ -26,7 +26,6 @@ import PrevNextNavigation from '../components/PrevNextNavigation';
 import { SEO } from '../components/SEO';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { postMarkdownComponents } from '../components/markdown/contentMarkdownComponents';
-import type { Post } from '../lib/api';
 
 const DETAIL_REHYPE_PLUGINS: [] = [];
 
@@ -35,7 +34,8 @@ const PostDetail: React.FC = () => {
   const queryClient = useQueryClient();
   const { data: post, isLoading: loading, refetch } = usePost(id);
   const { data: navList = [] } = usePostNavList();
-  const allPosts = navList as Post[];
+  const { data: relatedPosts = [] } = useRelatedPosts(id);
+  const verifyPasswordMutation = useVerifyPostPassword();
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
   const scrollProgress = useScrollProgress();
   const theme = useThemeClass();
@@ -89,52 +89,37 @@ const PostDetail: React.FC = () => {
 
   // Verify password
   const handleVerifyPassword = async () => {
-    if (!post || !password) return;
+    if (!post || !password || !id) return;
 
     setVerifying(true);
     setPasswordError('');
 
     try {
-      const result = await postsApi.verifyPassword(post.id, password);
-      if (result.success && result.data?.success && result.data.accessToken) {
-        setPostAccessToken(post.id, result.data.accessToken);
-        setPostAccessToken(id!, result.data.accessToken);
-        await queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(id!) });
+      const result = await verifyPasswordMutation.mutateAsync({ id: post.id, password });
+      if (result.success && result.accessToken) {
+        setPostAccessToken(post.id, result.accessToken);
+        setPostAccessToken(id, result.accessToken);
+        await queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(id) });
         await refetch();
         setNeedPassword(false);
         setPassword('');
       } else {
         setPasswordError('密码错误');
       }
-    } catch (error) {
+    } catch {
       setPasswordError('验证失败，请重试');
     } finally {
       setVerifying(false);
     }
   };
 
-  // 将 useMemo 移到条件渲染之前，确保 Hooks 顺序一致
-  const postsList = allPosts.length > 0 ? allPosts : [];
-  // 使用 slug 或 id 匹配当前文章
+  // 上一篇/下一篇：基于轻量导航列表（已按日期倒序）
+  const postsList = navList;
   const currentIndex = postsList.findIndex((p) =>
     p.slug === post?.slug || p.id === post?.id
   );
   const prevPost = currentIndex > 0 ? postsList[currentIndex - 1] : null;
   const nextPost = currentIndex < postsList.length - 1 ? postsList[currentIndex + 1] : null;
-
-  const relatedPosts = React.useMemo(() => {
-    if (!post) return [];
-
-    return postsList
-      .filter((p) => p.slug !== post.slug && p.id !== post.id)
-      .map((p) => ({
-        ...p,
-        relevanceScore: p.tags?.filter((tag: string) => post.tags?.includes(tag)).length || 0
-      }))
-      .filter((p: any) => p.relevanceScore > 0)
-      .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
-      .slice(0, 3);
-  }, [post, postsList]);
 
   if (loading) {
     return (
@@ -441,7 +426,7 @@ const PostDetail: React.FC = () => {
             相关文章
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {relatedPosts.map((relatedPost: any) => (
+            {relatedPosts.map((relatedPost) => (
               <Link
                 key={relatedPost.id}
                 to={`/posts/${relatedPost.slug || relatedPost.id}`}

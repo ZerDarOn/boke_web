@@ -83,6 +83,11 @@ export const postsApi = {
     return apiRequest<{ name: string; count: number }[]>(`/api/posts/tags`);
   },
 
+  // GET /api/posts/nav/list - 轻量导航列表（上一篇/下一篇）
+  getNavList: async () => {
+    return apiRequest<Array<Pick<Post, 'id' | 'slug' | 'title' | 'date'>>>(`/api/posts/nav/list`);
+  },
+
   // GET /api/posts/:id - 获取文章详情
   getById: async (id: string) => {
     const accessToken = getPostAccessToken(id);

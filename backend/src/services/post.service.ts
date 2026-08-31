@@ -205,6 +205,21 @@ export class PostService {
   }
 
   // 获取相关文章
+  // 轻量导航列表：仅返回上一篇/下一篇所需的最小字段集
+  static async getNavList(limit = 500) {
+    return prisma.post.findMany({
+      where: publicPostWhere,
+      orderBy: { date: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        date: true,
+      },
+    });
+  }
+
   static async findRelated(id: string, limit = 3) {
     const post = await prisma.post.findUnique({
       where: { id },
@@ -231,6 +246,7 @@ export class PostService {
         excerpt: true,
         date: true,
         category: true,
+        readingTime: true,
       },
     });
   }

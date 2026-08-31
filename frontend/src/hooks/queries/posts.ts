@@ -3,8 +3,6 @@ import { postsApi, type Post, type CreatePostData } from '../../lib/api';
 import { queryKeys } from '../api/query-keys';
 import { unwrapApi } from '../api/fetcher';
 
-export type PostSummary = Pick<Post, 'id' | 'slug' | 'title' | 'date' | 'category'>;
-
 export function usePostsList(params?: {
   page?: number;
   limit?: number;
@@ -21,17 +19,18 @@ export function usePostsList(params?: {
 export function usePostNavList() {
   return useQuery({
     queryKey: queryKeys.posts.nav(),
-    queryFn: async (): Promise<PostSummary[]> => {
-      const posts = await unwrapApi(postsApi.getAll({ limit: 200 }));
-      return posts.map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        title: p.title,
-        date: p.date,
-        category: p.category,
-      }));
-    },
+    queryFn: () => unwrapApi(postsApi.getNavList()),
     staleTime: 10 * 60 * 1000,
+  });
+}
+
+// 相关文章推荐（后端按标签/分类匹配）
+export function useRelatedPosts(id: string | undefined) {
+  return useQuery({
+    queryKey: ['posts', 'related', id ?? ''],
+    queryFn: () => unwrapApi(postsApi.getRelated(id!)),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
