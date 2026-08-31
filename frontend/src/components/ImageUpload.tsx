@@ -1,10 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Crop } from 'lucide-react';
-import { getAuthToken } from '../lib/api/request';
-import { API_BASE_URL } from '../lib/apiConfig';
 import AvatarCropper from './AvatarCropper';
 import { useToastActions } from '../contexts/ToastContext';
 import { resolveImageSrc } from '../lib/image';
+import { uploadImage } from '../lib/upload';
 
 /**
  * 把 base64 data URL 转成 Blob（纯本地解码，不经过 fetch）。
@@ -82,38 +81,15 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       // 将 base64 转换为 Blob（本地解码，避免 CSP connect-src 拦截 data: URL）
       const blob = dataURLtoBlob(croppedImage);
 
-      // 创建 FormData 上传
-      const formData = new FormData();
-      formData.append('image', blob, 'avatar.png');
+      const uploadTypeMap = { network: 'avatars', skill: 'skills', author: 'avatars' } as const;
 
-      // 上传到服务器
-      const uploadTypeMap = { network: 'avatars', skill: 'skills', author: 'avatars' };
-      const uploadType = uploadTypeMap[type];
-
-      // 获取认证 token
-      const token = getAuthToken();
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const uploadRes = await fetch(`${API_BASE_URL}/api/upload/image/${uploadType}`, {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-
-      const result = await uploadRes.json();
-      
-      if (result.success && result.data?.originalUrl) {
-        onChange(result.data.originalUrl);
-        toast.success('图片上传成功');
-      } else {
-        toast.error(result.message || '上传失败，请重试');
-      }
+      // 统一走 lib/upload 的上传入口
+      const url = await uploadImage(blob, uploadTypeMap[type], 'avatar.png');
+      onChange(url);
+      toast.success('图片上传成功');
     } catch (error) {
       console.error('上传失败:', error);
-      toast.error('上传失败，请检查网络后重试');
+      toast.error(error instanceof Error ? error.message : '上传失败，请检查网络后重试');
     } finally {
       setUploading(false);
       setTempImage(null);

@@ -6,19 +6,34 @@ import { getAuthHeaders } from './api/request';
  * 支持多种类型的图片上传
  */
 
+export type UploadImageType =
+  | 'posts' | 'anime' | 'game' | 'gallery' | 'network' | 'skills' | 'avatars' | 'general';
+
+/** 与后端 multer imageFileFilter 保持一致的白名单 */
+const ALLOWED_IMAGE_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+];
+
+/** 与后端 multer 图片限制保持一致（提前在客户端拦截，避免上传后才报错） */
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
 export const uploadImage = async (
-  file: File,
-  type: 'posts' | 'anime' | 'gallery' | 'network' | 'skills' | 'avatars' | 'general'
+  file: File | Blob,
+  type: UploadImageType,
+  filename?: string
 ): Promise<string> => {
   // 验证文件类型
-  if (!file.type.startsWith('image/')) {
-    throw new Error('请选择图片文件');
+  if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.type)) {
+    throw new Error('请选择有效的图片文件 (JPG/PNG/GIF/WebP/SVG)');
   }
 
-  // 验证文件大小（默认最大 10MB）
-  const maxSize = 10 * 1024 * 1024;
-  if (file.size > maxSize) {
-    throw new Error('图片大小不能超过 10MB');
+  // 验证文件大小
+  if (file.size > MAX_IMAGE_SIZE) {
+    throw new Error('图片大小不能超过 5MB');
   }
 
   const headers: Record<string, string> = {
@@ -26,9 +41,9 @@ export const uploadImage = async (
     ...getAuthHeaders(),
   };
 
-  // 创建 FormData
+  // 创建 FormData（Blob 需要显式文件名）
   const formData = new FormData();
-  formData.append('image', file);
+  formData.append('image', file, filename || (file instanceof File ? file.name : 'image.png'));
 
   try {
     // 上传到服务器

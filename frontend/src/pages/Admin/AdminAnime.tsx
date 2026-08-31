@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { api } from '../../lib/api';
-import { getAuthHeaders } from '../../lib/api/request';
-import { API_BASE_URL } from '../../lib/apiConfig';
+import { uploadImage } from '../../lib/upload';
 import {
   useAnimeList,
   useCreateAnime,
@@ -151,47 +150,14 @@ const AdminAnime: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 验证文件类型
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      toast.warning('请选择有效的图片文件 (JPG/PNG/GIF/WebP)');
-      return;
-    }
-
-    // 验证文件大小 (最大 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      toast.warning('图片大小不能超过 5MB');
-      return;
-    }
-
     try {
       setUploading(true);
-
-      const formData = new FormData();
-      formData.append('image', file);
-
-      // 获取认证 token
-      const response = await fetch(`${API_BASE_URL}/api/upload/image/anime`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('上传失败');
-      }
-
-      const result = await response.json();
-      if (result.success && result.data?.originalUrl) {
-        handleInputChange('cover', result.data.originalUrl);
-        setCoverPreview(result.data.originalUrl);
-      } else {
-        throw new Error(result.error || '上传失败');
-      }
+      const url = await uploadImage(file, 'anime');
+      handleInputChange('cover', url);
+      setCoverPreview(url);
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('图片上传失败，请重试');
+      toast.error(error instanceof Error ? error.message : '图片上传失败，请重试');
     } finally {
       setUploading(false);
     }
