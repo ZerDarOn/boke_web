@@ -15,11 +15,13 @@ export const CardActions: React.FC<{
   editLabel?: string;
   deleteLabel?: string;
   accent?: CrudAccent;
-}> = ({ onEdit, onDelete, editLabel, deleteLabel, accent = 'purple' }) => (
+  /** 覆盖编辑按钮配色（如 bg-purple-600 hover:bg-purple-700） */
+  editClassName?: string;
+}> = ({ onEdit, onDelete, editLabel, deleteLabel, accent = 'purple', editClassName }) => (
   <div className="mt-4 flex gap-2">
     <button
       onClick={onEdit}
-      className={`flex-1 py-2 px-3 ${EDIT_CLASSES[accent]} text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1.5`}
+      className={`flex-1 py-2 px-3 ${editClassName ?? EDIT_CLASSES[accent]} text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1.5`}
     >
       <Edit size={14} />
       {editLabel}

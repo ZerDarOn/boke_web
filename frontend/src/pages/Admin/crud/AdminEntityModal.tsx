@@ -16,11 +16,11 @@ export const AdminEntityModal: React.FC<{
   onSubmit: () => void;
   submitting: boolean;
   accent?: CrudAccent;
-  size?: 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   children: React.ReactNode;
-}> = ({ open, title, onClose, onSubmit, submitting, accent = 'purple', size = 'lg', children }) => {
+}> = ({ open, title, onClose, onSubmit, submitting, accent = 'purple', size = 'md', children }) => {
   if (!open) return null;
-  const width = size === 'xl' ? 'max-w-4xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-xl';
+  const width = size === 'xl' ? 'max-w-4xl' : size === 'lg' ? 'max-w-3xl' : size === 'md' ? 'max-w-2xl' : 'max-w-xl';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className={`bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full ${width} max-h-[90vh] overflow-hidden`}>
