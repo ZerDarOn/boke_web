@@ -13,6 +13,71 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
+/** 单个待导入文件（内容已在客户端读取为文本） */
+interface ImportFile {
+  name: string;
+  content: string;
+  path?: string;
+  size?: number;
+}
+
+/** 批量导入结果聚合 */
+interface ImportResults {
+  success: Array<{ file: string; type?: string; saved: unknown }>;
+  failed: Array<{ file: string; message: string }>;
+  skipped: Array<{ file: string; message: string }>;
+}
+
+const createImportResults = (): ImportResults => ({
+  success: [],
+  failed: [],
+  skipped: [],
+});
+
+/** folder/zip 导入的文件数量上限（batch 单独限 10 个） */
+const MAX_BATCH_IMPORT_FILES = 100;
+/** ZIP 解压前的体积上限 */
+const MAX_ZIP_SIZE = 50 * 1024 * 1024;
+
+/**
+ * 导入单个 Markdown 文件：解析 → 冲突检测 →（跳过/覆盖）→ 保存
+ * 四个导入端点共用的核心流程
+ */
+async function importOneFile(
+  file: ImportFile,
+  conflictResolution: string,
+  results: ImportResults,
+  options?: { inferTypeFromPath?: boolean }
+): Promise<void> {
+  try {
+    const parsed = await parseMarkdown(file.content);
+
+    if (options?.inferTypeFromPath) {
+      parsed.type = detectContentType(file); // 文件夹/ZIP 导入按路径推断类型
+    }
+
+    const existing = await findExistingContent(parsed);
+    if (existing) {
+      if (conflictResolution === 'skip') {
+        results.skipped.push({ file: file.name, message: '内容已存在' });
+        return;
+      }
+      // 覆盖模式：删除旧内容
+      await deleteContent(parsed.type, existing.id);
+    }
+
+    const saved = await saveContent(parsed);
+    results.success.push({
+      file: file.name,
+      ...(options?.inferTypeFromPath ? { type: parsed.type } : {}),
+      saved,
+    });
+  } catch (err: any) {
+    console.error(`导入 ${file.name} 失败:`, err);
+    results.failed.push({ file: file.name, message: err.message || '导入失败' });
+  }
+}
+
 /**
  * POST /api/content/import/single
  * 导入单个 Markdown 文件
@@ -66,46 +131,23 @@ router.post('/import/batch', authenticate, requireAdmin, async (req: Request, re
       return error(res, '一次最多上传 10 个文件', 400);
     }
 
-    const results = {
-      success: [] as any[],
-      failed: [] as any[],
-      skipped: [] as any[]
-    };
+    const results = createImportResults();
 
     // 逐个处理文件
     for (const file of files) {
-      try {
-        // 验证文件
-        if (!file.name || !file.name.endsWith('.md')) {
-          results.failed.push({ file: file.name, message: '只支持 Markdown 文件' });
-          continue;
-        }
-
-        // 验证文件大小
-        if (file.size > 1 * 1024 * 1024) { // 1MB
-          results.failed.push({ file: file.name, message: '文件大小不能超过 1MB' });
-          continue;
-        }
-
-        // 解析并保存
-        const parsed = await parseMarkdown(file.content);
-        const existing = await findExistingContent(parsed);
-
-        if (existing) {
-          if (conflictResolution === 'skip') {
-            results.skipped.push({ file: file.name, message: '内容已存在' });
-            continue;
-          }
-          // 覆盖模式：删除旧内容
-          await deleteContent(parsed.type, existing.id);
-        }
-
-        const saved = await saveContent(parsed);
-        results.success.push({ file: file.name, saved });
-      } catch (err: any) {
-        console.error(`导入 ${file.name} 失败:`, err);
-        results.failed.push({ file: file.name, message: err.message || '导入失败' });
+      // 验证文件
+      if (!file.name || !file.name.endsWith('.md')) {
+        results.failed.push({ file: file.name, message: '只支持 Markdown 文件' });
+        continue;
       }
+
+      // 验证文件大小
+      if (file.size > 1 * 1024 * 1024) { // 1MB
+        results.failed.push({ file: file.name, message: '文件大小不能超过 1MB' });
+        continue;
+      }
+
+      await importOneFile(file, conflictResolution, results);
     }
 
     return success(
@@ -131,37 +173,15 @@ router.post('/import/folder', authenticate, requireAdmin, async (req: Request, r
       return error(res, '请选择文件', 400);
     }
 
-    const results = {
-      success: [] as any[],
-      failed: [] as any[],
-      skipped: [] as any[]
-    };
+    if (files.length > MAX_BATCH_IMPORT_FILES) {
+      return error(res, `一次最多导入 ${MAX_BATCH_IMPORT_FILES} 个文件`, 400);
+    }
+
+    const results = createImportResults();
 
     for (const file of files) {
-      try {
-        // 检测内容类型
-        const type = detectContentType(file);
-
-        // 解析并保存
-        const parsed = await parseMarkdown(file.content);
-        parsed.type = type; // 使用文件夹检测的类型
-
-        const existing = await findExistingContent(parsed);
-
-        if (existing) {
-          if (conflictResolution === 'skip') {
-            results.skipped.push({ file: file.name, message: '内容已存在' });
-            continue;
-          }
-          await deleteContent(parsed.type, existing.id);
-        }
-
-        const saved = await saveContent(parsed);
-        results.success.push({ file: file.name, type, saved });
-      } catch (err: any) {
-        console.error(`导入 ${file.name} 失败:`, err);
-        results.failed.push({ file: file.name, message: err.message || '导入失败' });
-      }
+      // 按文件路径推断内容类型
+      await importOneFile(file, conflictResolution, results, { inferTypeFromPath: true });
     }
 
     return success(res, results, '文件夹导入完成');
@@ -190,6 +210,12 @@ router.post('/import/zip', authenticate, requireAdmin, async (req: Request, res:
     try {
       // 将 base64 数据写入临时 ZIP 文件
       const zipBuffer = Buffer.from(zipData, 'base64');
+      if (zipBuffer.length === 0) {
+        return error(res, '无效的 ZIP 数据', 400);
+      }
+      if (zipBuffer.length > MAX_ZIP_SIZE) {
+        return error(res, 'ZIP 文件不能超过 50MB', 400);
+      }
       const zipPath = path.join(tempDir, 'upload.zip');
       await fs.promises.writeFile(zipPath, zipBuffer);
 
@@ -201,6 +227,10 @@ router.post('/import/zip', authenticate, requireAdmin, async (req: Request, res:
 
       if (mdFiles.length === 0) {
         return error(res, 'ZIP 文件中未找到 Markdown 文件', 400);
+      }
+
+      if (mdFiles.length > MAX_BATCH_IMPORT_FILES) {
+        return error(res, `ZIP 内 Markdown 文件超过 ${MAX_BATCH_IMPORT_FILES} 个上限`, 400);
       }
 
       // 读取所有 Markdown 文件内容
@@ -220,35 +250,10 @@ router.post('/import/zip', authenticate, requireAdmin, async (req: Request, res:
         })
       );
 
-      // 复用文件夹导入的逻辑
-      const results = {
-        success: [] as any[],
-        failed: [] as any[],
-        skipped: [] as any[]
-      };
+      const results = createImportResults();
 
       for (const file of filesWithContent) {
-        try {
-          const type = detectContentType(file);
-          const parsed = await parseMarkdown(file.content);
-          parsed.type = type;
-
-          const existing = await findExistingContent(parsed);
-
-          if (existing) {
-            if (conflictResolution === 'skip') {
-              results.skipped.push({ file: file.name, message: '内容已存在' });
-              continue;
-            }
-            await deleteContent(parsed.type, existing.id);
-          }
-
-          const saved = await saveContent(parsed);
-          results.success.push({ file: file.name, type, saved });
-        } catch (err: any) {
-          console.error(`导入 ${file.name} 失败:`, err);
-          results.failed.push({ file: file.name, message: err.message || '导入失败' });
-        }
+        await importOneFile(file, conflictResolution, results, { inferTypeFromPath: true });
       }
 
       return success(res, results, `ZIP 导入完成：成功 ${results.success.length}，失败 ${results.failed.length}，跳过 ${results.skipped.length}`);
@@ -286,7 +291,7 @@ async function findMarkdownFiles(dir: string): Promise<string[]> {
 /**
  * 检测内容类型（基于文件路径）
  */
-function detectContentType(file: any): string {
+function detectContentType(file: ImportFile): string {
   const path = file.path || file.name;
   const pathParts = path.split(/[/\\]/);
 
@@ -315,7 +320,7 @@ function detectContentType(file: any): string {
 /**
  * 查找已存在的内容
  */
-async function findExistingContent(parsed: any): Promise<any> {
+async function findExistingContent(parsed: ParsedContent): Promise<{ id: string } | null> {
   const { type, id, slug } = parsed;
 
   try {
