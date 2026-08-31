@@ -110,32 +110,52 @@ export class GameService {
     let updated = 0;
     const syncTime = new Date();
 
+    // 一次性取回现有 Steam 游戏，避免循环内逐条查询（N+1）
+    const existingGames = await prisma.game.findMany({
+      where: { platform: 'STEAM' },
+      select: { id: true, platformId: true },
+    });
+    const existingIds = new Map(
+      existingGames
+        .filter((g) => g.platformId !== null)
+        .map((g) => [g.platformId as string, g.id])
+    );
+
+    const operations: Prisma.PrismaPromise<unknown>[] = [];
+
     for (const sg of steamGames) {
       const platformId = String(sg.appid);
-      const existing = await prisma.game.findFirst({
-        where: { platform: 'STEAM', platformId },
-      });
+      const existingId = existingIds.get(platformId);
 
-      if (existing) {
+      if (existingId) {
         // 仅更新 Steam 可提供的运行时数据，不覆盖用户手动设置的字段
-        await prisma.game.update({
-          where: { id: existing.id },
-          data: {
-            playtime: sg.playtime_forever,
-            lastPlayed: sg.rtime_last_played
-              ? new Date(sg.rtime_last_played * 1000)
-              : null,
-            steamLastSync: syncTime,
-          },
-        });
+        operations.push(
+          prisma.game.update({
+            where: { id: existingId },
+            data: {
+              playtime: sg.playtime_forever,
+              lastPlayed: sg.rtime_last_played
+                ? new Date(sg.rtime_last_played * 1000)
+                : null,
+              steamLastSync: syncTime,
+            },
+          })
+        );
         updated++;
       } else {
         const data = steamGameToPrisma(sg);
-        await prisma.game.create({
-          data: { ...data, steamLastSync: syncTime },
-        });
+        operations.push(
+          prisma.game.create({
+            data: { ...data, steamLastSync: syncTime },
+          })
+        );
         created++;
       }
+    }
+
+    // 单事务批量提交，替代逐条往返数据库
+    if (operations.length > 0) {
+      await prisma.$transaction(operations);
     }
 
     log('info', 'SteamSync', `Sync completed: ${created} created, ${updated} updated, ${steamGames.length} total`);
