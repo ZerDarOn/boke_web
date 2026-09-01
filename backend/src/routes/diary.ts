@@ -4,12 +4,13 @@ import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 import { diarySchema } from '../schemas';
 
 const router = Router();
 
 // GET /api/diary - 日记列表
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'diary' }), async (req, res) => {
   try {
     const pagination = getPagination(
       req.query.page as string,
@@ -28,7 +29,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/diary/:id - 日记详情
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'diary' }), async (req, res) => {
   try {
     const diary = await DiaryService.findById(req.params.id);
     if (!diary) {
@@ -41,7 +42,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/diary - 创建日记
-router.post('/', authenticate, requireAdmin, validateBody(diarySchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, invalidateCache('diary:*'), validateBody(diarySchema), async (req, res) => {
   try {
     const diary = await DiaryService.create(req.body);
     response.created(res, diary);
@@ -51,7 +52,7 @@ router.post('/', authenticate, requireAdmin, validateBody(diarySchema), async (r
 });
 
 // PUT /api/diary/:id - 更新日记
-router.put('/:id', authenticate, requireAdmin, validateBody(diarySchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, invalidateCache('diary:*'), validateBody(diarySchema.partial()), async (req, res) => {
   try {
     const diary = await DiaryService.update(req.params.id, req.body);
     response.success(res, diary);
@@ -61,7 +62,7 @@ router.put('/:id', authenticate, requireAdmin, validateBody(diarySchema.partial(
 });
 
 // DELETE /api/diary/:id - 删除日记
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, invalidateCache('diary:*'), async (req, res) => {
   try {
     await DiaryService.delete(req.params.id);
     response.noContent(res);

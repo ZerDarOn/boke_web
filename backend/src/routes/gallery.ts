@@ -5,13 +5,14 @@ import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.middleware';
 import { formRateLimit } from '../middleware/rate-limit.middleware';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 import { galleryImageSchema, albumSchema, photoCommentSchema } from '../schemas';
 import { log, logError } from '../lib/logger';
 
 const router = Router();
 
 // GET /api/gallery - 照片列表
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'gallery' }), async (req, res) => {
   try {
     const pagination = getPagination(
       req.query.page as string,
@@ -30,7 +31,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/gallery/albums - 相册列表
-router.get('/albums', async (req, res) => {
+router.get('/albums', cacheMiddleware({ ttl: 300, keyPrefix: 'gallery' }), async (req, res) => {
   try {
     const albums = await GalleryService.findAlbums();
     response.success(res, albums);
@@ -40,7 +41,7 @@ router.get('/albums', async (req, res) => {
 });
 
 // GET /api/gallery/albums/:id - 相册详情
-router.get('/albums/:id', async (req, res) => {
+router.get('/albums/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'gallery' }), async (req, res) => {
   try {
     const album = await GalleryService.findAlbumById(req.params.id);
     if (!album) {
@@ -53,7 +54,7 @@ router.get('/albums/:id', async (req, res) => {
 });
 
 // GET /api/gallery/:id - 照片详情
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'gallery' }), async (req, res) => {
   try {
     const image = await GalleryService.findById(req.params.id);
     if (!image) {
@@ -66,7 +67,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/gallery - 上传照片
-router.post('/', authenticate, requireAdmin, validateBody(galleryImageSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, invalidateCache('gallery:*'), validateBody(galleryImageSchema), async (req, res) => {
   try {
     const image = await GalleryService.create(req.body);
     response.created(res, image);
@@ -76,7 +77,7 @@ router.post('/', authenticate, requireAdmin, validateBody(galleryImageSchema), a
 });
 
 // POST /api/gallery/albums - 创建相册
-router.post('/albums', authenticate, requireAdmin, validateBody(albumSchema), async (req, res) => {
+router.post('/albums', authenticate, requireAdmin, invalidateCache('gallery:*'), validateBody(albumSchema), async (req, res) => {
   try {
     const album = await GalleryService.createAlbum(req.body);
     response.created(res, album);
@@ -86,7 +87,7 @@ router.post('/albums', authenticate, requireAdmin, validateBody(albumSchema), as
 });
 
 // POST /api/gallery/:id/comments - 添加评论（需提供邮箱，限流防滥用）
-router.post('/:id/comments', formRateLimit, optionalAuth, validateBody(photoCommentSchema), async (req, res) => {
+router.post('/:id/comments', formRateLimit, optionalAuth, invalidateCache('gallery:*'), validateBody(photoCommentSchema), async (req, res) => {
   try {
     const comment = await GalleryService.addComment(req.params.id, req.body);
     log('info', 'GalleryComment', 'Photo comment created', {
@@ -102,7 +103,7 @@ router.post('/:id/comments', formRateLimit, optionalAuth, validateBody(photoComm
   }
 });
 
-router.put('/albums/:id', authenticate, requireAdmin, validateBody(albumSchema.partial()), async (req, res) => {
+router.put('/albums/:id', authenticate, requireAdmin, invalidateCache('gallery:*'), validateBody(albumSchema.partial()), async (req, res) => {
   try {
     const album = await GalleryService.updateAlbum(req.params.id, req.body);
     response.success(res, album);
@@ -111,7 +112,7 @@ router.put('/albums/:id', authenticate, requireAdmin, validateBody(albumSchema.p
   }
 });
 
-router.delete('/albums/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/albums/:id', authenticate, requireAdmin, invalidateCache('gallery:*'), async (req, res) => {
   try {
     await GalleryService.deleteAlbum(req.params.id);
     response.noContent(res);
@@ -121,7 +122,7 @@ router.delete('/albums/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/gallery/:id - 更新照片
-router.put('/:id', authenticate, requireAdmin, validateBody(galleryImageSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, invalidateCache('gallery:*'), validateBody(galleryImageSchema.partial()), async (req, res) => {
   try {
     const image = await GalleryService.update(req.params.id, req.body);
     response.success(res, image);
@@ -131,7 +132,7 @@ router.put('/:id', authenticate, requireAdmin, validateBody(galleryImageSchema.p
 });
 
 // DELETE /api/gallery/:id - 删除照片
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, invalidateCache('gallery:*'), async (req, res) => {
   try {
     await GalleryService.delete(req.params.id);
     response.noContent(res);

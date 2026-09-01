@@ -2,12 +2,13 @@ import { Router } from 'express';
 import { UniverseService } from '../services/universe.service';
 import * as response from '../utils/response';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 
 const router = Router();
 
 // GET /api/universe - 获取完整宇宙图
 // query.mode: 'all' | 'skill' | 'person' - 不同模式使用不同坐标系统
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'universe' }), async (req, res) => {
   try {
     const mode = (req.query.mode as 'all' | 'skill' | 'person') || 'all';
     const nodes = await UniverseService.getUniverse(mode);
@@ -18,7 +19,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/universe/connections - 获取宇宙图连接关系
-router.get('/connections', async (req, res) => {
+router.get('/connections', cacheMiddleware({ ttl: 300, keyPrefix: 'universe' }), async (req, res) => {
   try {
     const connections = await UniverseService.getConnections();
     response.success(res, connections);
@@ -28,7 +29,7 @@ router.get('/connections', async (req, res) => {
 });
 
 // PUT /api/universe/layout - 更新宇宙图布局（全部模式专用坐标）
-router.put('/layout', authenticate, requireAdmin, async (req, res) => {
+router.put('/layout', authenticate, requireAdmin, invalidateCache('universe:*'), async (req, res) => {
   try {
     const { nodeId, nodeType, x, y } = req.body;
     if (!nodeId || !nodeType || x === undefined || y === undefined) {

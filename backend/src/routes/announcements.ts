@@ -4,12 +4,13 @@ import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 import { announcementSchema } from '../schemas';
 
 const router = Router();
 
 // GET /api/announcements - 公告列表
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'announcements' }), async (req, res) => {
   try {
     const pagination = getPagination(
       req.query.page as string,
@@ -28,7 +29,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/announcements/latest - 最新公告
-router.get('/latest', async (req, res) => {
+router.get('/latest', cacheMiddleware({ ttl: 300, keyPrefix: 'announcements' }), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 3;
     const announcements = await AnnouncementService.getLatest(limit);
@@ -39,7 +40,7 @@ router.get('/latest', async (req, res) => {
 });
 
 // GET /api/announcements/:id - 公告详情
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'announcements' }), async (req, res) => {
   try {
     const announcement = await AnnouncementService.findById(req.params.id);
     if (!announcement) {
@@ -52,7 +53,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/announcements - 创建公告
-router.post('/', authenticate, requireAdmin, validateBody(announcementSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, invalidateCache('announcements:*'), validateBody(announcementSchema), async (req, res) => {
   try {
     const announcement = await AnnouncementService.create(req.body);
     response.created(res, announcement);
@@ -62,7 +63,7 @@ router.post('/', authenticate, requireAdmin, validateBody(announcementSchema), a
 });
 
 // PUT /api/announcements/:id - 更新公告
-router.put('/:id', authenticate, requireAdmin, validateBody(announcementSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, invalidateCache('announcements:*'), validateBody(announcementSchema.partial()), async (req, res) => {
   try {
     const announcement = await AnnouncementService.update(req.params.id, req.body);
     response.success(res, announcement);
@@ -72,7 +73,7 @@ router.put('/:id', authenticate, requireAdmin, validateBody(announcementSchema.p
 });
 
 // DELETE /api/announcements/:id - 删除公告
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, invalidateCache('announcements:*'), async (req, res) => {
   try {
     await AnnouncementService.delete(req.params.id);
     response.noContent(res);

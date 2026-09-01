@@ -4,6 +4,7 @@ import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 import { log, logError } from '../lib/logger';
 import {
   animeSchema,
@@ -14,7 +15,7 @@ import {
 const router = Router();
 
 // GET /api/anime - 动漫列表
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'anime' }), async (req, res) => {
   try {
     const pagination = getPagination(
       req.query.page as string,
@@ -35,7 +36,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/anime/:id - 动漫详情
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'anime' }), async (req, res) => {
   try {
     const anime = await AnimeService.findById(req.params.id);
     if (!anime) {
@@ -48,7 +49,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/anime - 创建动漫
-router.post('/', authenticate, requireAdmin, validateBody(animeSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, invalidateCache('anime:*'), validateBody(animeSchema), async (req, res) => {
   try {
     const anime = await AnimeService.create(req.body);
     log('info', 'AnimeHighlights', 'Anime created', {
@@ -63,7 +64,7 @@ router.post('/', authenticate, requireAdmin, validateBody(animeSchema), async (r
 });
 
 // PUT /api/anime/:id - 更新动漫
-router.put('/:id', authenticate, requireAdmin, validateBody(animeSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, invalidateCache('anime:*'), validateBody(animeSchema.partial()), async (req, res) => {
   try {
     const anime = await AnimeService.update(req.params.id, req.body);
     log('info', 'AnimeHighlights', 'Anime updated', {
@@ -78,7 +79,7 @@ router.put('/:id', authenticate, requireAdmin, validateBody(animeSchema.partial(
 });
 
 // PUT /api/anime/:id/progress - 更新观看进度
-router.put('/:id/progress', authenticate, requireAdmin, validateBody(animeProgressSchema), async (req, res) => {
+router.put('/:id/progress', authenticate, requireAdmin, invalidateCache('anime:*'), validateBody(animeProgressSchema), async (req, res) => {
   try {
     const { episodes } = req.body;
     const anime = await AnimeService.updateProgress(req.params.id, episodes);
@@ -92,7 +93,7 @@ router.put('/:id/progress', authenticate, requireAdmin, validateBody(animeProgre
 });
 
 // POST /api/anime/:id/score - 评分
-router.post('/:id/score', authenticate, requireAdmin, validateBody(animeScoreSchema), async (req, res) => {
+router.post('/:id/score', authenticate, requireAdmin, invalidateCache('anime:*'), validateBody(animeScoreSchema), async (req, res) => {
   try {
     const { score } = req.body;
     const anime = await AnimeService.updateScore(req.params.id, score);
@@ -106,7 +107,7 @@ router.post('/:id/score', authenticate, requireAdmin, validateBody(animeScoreSch
 });
 
 // POST /api/anime/:id/favorite - 切换收藏
-router.post('/:id/favorite', authenticate, requireAdmin, async (req, res) => {
+router.post('/:id/favorite', authenticate, requireAdmin, invalidateCache('anime:*'), async (req, res) => {
   try {
     const anime = await AnimeService.toggleFavorite(req.params.id);
     if (!anime) {
@@ -119,7 +120,7 @@ router.post('/:id/favorite', authenticate, requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/anime/:id - 删除动漫
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, invalidateCache('anime:*'), async (req, res) => {
   try {
     await AnimeService.delete(req.params.id);
     response.noContent(res);

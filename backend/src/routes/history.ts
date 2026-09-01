@@ -3,12 +3,13 @@ import { HistoryItemService } from '../services/history-item.service';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 import { historyItemSchema } from '../schemas';
 
 const router = Router();
 
 // GET /api/history - 获取所有历史项目
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'history' }), async (req, res) => {
   try {
     const isActive = req.query.active === 'true' ? true : 
                      req.query.active === 'false' ? false : undefined;
@@ -21,7 +22,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/history/:id - 获取单个历史项目
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'history' }), async (req, res) => {
   try {
     const item = await HistoryItemService.findById(req.params.id);
     if (!item) {
@@ -34,7 +35,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/history - 创建历史项目
-router.post('/', authenticate, requireAdmin, validateBody(historyItemSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, invalidateCache('history:*'), validateBody(historyItemSchema), async (req, res) => {
   try {
     // 如果没有指定 order，自动设置为最大值+1
     if (req.body.order === undefined) {
@@ -49,7 +50,7 @@ router.post('/', authenticate, requireAdmin, validateBody(historyItemSchema), as
 });
 
 // PUT /api/history/:id - 更新历史项目
-router.put('/:id', authenticate, requireAdmin, validateBody(historyItemSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, invalidateCache('history:*'), validateBody(historyItemSchema.partial()), async (req, res) => {
   try {
     const item = await HistoryItemService.update(req.params.id, req.body);
     response.success(res, item);
@@ -59,7 +60,7 @@ router.put('/:id', authenticate, requireAdmin, validateBody(historyItemSchema.pa
 });
 
 // DELETE /api/history/:id - 删除历史项目
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, invalidateCache('history:*'), async (req, res) => {
   try {
     await HistoryItemService.delete(req.params.id);
     response.noContent(res);
@@ -69,7 +70,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/history/:id/reorder - 重新排序
-router.put('/:id/reorder', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id/reorder', authenticate, requireAdmin, invalidateCache('history:*'), async (req, res) => {
   try {
     const { order } = req.body;
     if (typeof order !== 'number') {

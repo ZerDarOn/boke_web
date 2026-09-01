@@ -3,12 +3,13 @@ import { TimelineService } from '../services/timeline.service';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 import { timelineEventSchema } from '../schemas';
 
 const router = Router();
 
 // GET /api/timeline - 时间线事件
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), async (req, res) => {
   try {
     const events = await TimelineService.findAll({
       type: req.query.type as string,
@@ -21,7 +22,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/timeline/years - 年份列表
-router.get('/years', async (req, res) => {
+router.get('/years', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), async (req, res) => {
   try {
     const years = await TimelineService.getYears();
     response.success(res, years);
@@ -31,7 +32,7 @@ router.get('/years', async (req, res) => {
 });
 
 // GET /api/timeline/current - 当前状态
-router.get('/current', async (req, res) => {
+router.get('/current', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), async (req, res) => {
   try {
     const status = await TimelineService.getCurrentStatus();
     response.success(res, status);
@@ -41,7 +42,7 @@ router.get('/current', async (req, res) => {
 });
 
 // GET /api/timeline/:id - 事件详情
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), async (req, res) => {
   try {
     const event = await TimelineService.findById(req.params.id);
     if (!event) {
@@ -54,7 +55,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/timeline - 创建事件
-router.post('/', authenticate, requireAdmin, validateBody(timelineEventSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, invalidateCache('timeline:*'), validateBody(timelineEventSchema), async (req, res) => {
   try {
     const event = await TimelineService.create(req.body);
     response.created(res, event);
@@ -64,7 +65,7 @@ router.post('/', authenticate, requireAdmin, validateBody(timelineEventSchema), 
 });
 
 // PUT /api/timeline/:id - 更新事件
-router.put('/:id', authenticate, requireAdmin, validateBody(timelineEventSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, invalidateCache('timeline:*'), validateBody(timelineEventSchema.partial()), async (req, res) => {
   try {
     const event = await TimelineService.update(req.params.id, req.body);
     response.success(res, event);
@@ -74,7 +75,7 @@ router.put('/:id', authenticate, requireAdmin, validateBody(timelineEventSchema.
 });
 
 // DELETE /api/timeline/:id - 删除事件
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, invalidateCache('timeline:*'), async (req, res) => {
   try {
     await TimelineService.delete(req.params.id);
     response.noContent(res);

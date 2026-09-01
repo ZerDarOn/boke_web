@@ -3,12 +3,13 @@ import { CurrentStatusService } from '../services/current-status.service';
 import * as response from '../utils/response';
 import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 import { currentStatusSchema } from '../schemas';
 
 const router = Router();
 
 // GET /api/current-status - 获取所有状态
-router.get('/', async (req, res) => {
+router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'current-status' }), async (req, res) => {
   try {
     const statuses = await CurrentStatusService.findAll();
     response.success(res, statuses);
@@ -19,7 +20,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/current-status/active - 获取当前激活的状态
-router.get('/active', async (req, res) => {
+router.get('/active', cacheMiddleware({ ttl: 300, keyPrefix: 'current-status' }), async (req, res) => {
   try {
     const status = await CurrentStatusService.findActive();
     if (!status) {
@@ -41,7 +42,7 @@ router.get('/active', async (req, res) => {
 });
 
 // GET /api/current-status/:id - 获取单个状态
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'current-status' }), async (req, res) => {
   try {
     const status = await CurrentStatusService.findById(req.params.id);
     if (!status) {
@@ -54,7 +55,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/current-status - 创建状态
-router.post('/', authenticate, requireAdmin, validateBody(currentStatusSchema), async (req, res) => {
+router.post('/', authenticate, requireAdmin, invalidateCache('current-status:*'), validateBody(currentStatusSchema), async (req, res) => {
   try {
     const status = await CurrentStatusService.create(req.body);
     response.created(res, status);
@@ -64,7 +65,7 @@ router.post('/', authenticate, requireAdmin, validateBody(currentStatusSchema), 
 });
 
 // PUT /api/current-status/:id - 更新状态
-router.put('/:id', authenticate, requireAdmin, validateBody(currentStatusSchema.partial()), async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, invalidateCache('current-status:*'), validateBody(currentStatusSchema.partial()), async (req, res) => {
   try {
     const status = await CurrentStatusService.update(req.params.id, req.body);
     response.success(res, status);
@@ -74,7 +75,7 @@ router.put('/:id', authenticate, requireAdmin, validateBody(currentStatusSchema.
 });
 
 // DELETE /api/current-status/:id - 删除状态
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, invalidateCache('current-status:*'), async (req, res) => {
   try {
     await CurrentStatusService.delete(req.params.id);
     response.noContent(res);
@@ -84,7 +85,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // POST /api/current-status/:id/activate - 激活指定状态
-router.post('/:id/activate', authenticate, requireAdmin, async (req, res) => {
+router.post('/:id/activate', authenticate, requireAdmin, invalidateCache('current-status:*'), async (req, res) => {
   try {
     const status = await CurrentStatusService.setActive(req.params.id);
     response.success(res, status);
