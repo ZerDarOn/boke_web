@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { AlertCircle, CheckCircle, Info, X, AlertTriangle } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -12,25 +12,31 @@ export interface Toast {
   persistent?: boolean;
 }
 
-interface ToastContextType {
-  toasts: Toast[];
+interface ToastActions {
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
   clearToasts: () => void;
 }
 
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+// 拆分为两个 context：actions 引用恒定，toast 弹出/消失只触发
+// ToastContainer 重渲染，不再牵连 20 个消费 useToastActions 的组件
+const ToastActionsContext = createContext<ToastActions | undefined>(undefined);
+const ToastStateContext = createContext<Toast[] | undefined>(undefined);
 
-export function useToast() {
-  const context = useContext(ToastContext);
+function useToastActionsContext() {
+  const context = useContext(ToastActionsContext);
   if (!context) {
-    throw new Error('useToast must be used within ToastProvider');
+    throw new Error('useToastActions must be used within ToastProvider');
   }
   return context;
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
 
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -43,26 +49,30 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         removeToast(id);
       }, toast.duration || 3000);
     }
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
+  }, [removeToast]);
 
   const clearToasts = useCallback(() => {
     setToasts([]);
   }, []);
 
+  const actions = useMemo(
+    () => ({ addToast, removeToast, clearToasts }),
+    [addToast, removeToast, clearToasts]
+  );
+
   return (
-    <ToastContext.Provider value={{ toasts, addToast, removeToast, clearToasts }}>
-      {children}
-      <ToastContainer />
-    </ToastContext.Provider>
+    <ToastActionsContext.Provider value={actions}>
+      <ToastStateContext.Provider value={toasts}>
+        {children}
+        <ToastContainer />
+      </ToastStateContext.Provider>
+    </ToastActionsContext.Provider>
   );
 }
 
 function ToastContainer() {
-  const { toasts, removeToast } = useToast();
+  const toasts = useContext(ToastStateContext) ?? [];
+  const { removeToast } = useToastActionsContext();
 
   if (toasts.length === 0) return null;
 
@@ -120,14 +130,17 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   );
 }
 
-// 便捷的 toast 方法
+// 便捷的 toast 方法（引用稳定，可安全用于依赖数组与 memo 子组件）
 export function useToastActions() {
-  const { addToast } = useToast();
+  const { addToast } = useToastActionsContext();
 
-  return {
-    success: (title: string, message?: string) => addToast({ type: 'success', title, message }),
-    error: (title: string, message?: string) => addToast({ type: 'error', title, message, duration: 5000 }),
-    warning: (title: string, message?: string) => addToast({ type: 'warning', title, message, duration: 4000 }),
-    info: (title: string, message?: string) => addToast({ type: 'info', title, message, duration: 3000 }),
-  };
+  return useMemo(
+    () => ({
+      success: (title: string, message?: string) => addToast({ type: 'success', title, message }),
+      error: (title: string, message?: string) => addToast({ type: 'error', title, message, duration: 5000 }),
+      warning: (title: string, message?: string) => addToast({ type: 'warning', title, message, duration: 4000 }),
+      info: (title: string, message?: string) => addToast({ type: 'info', title, message, duration: 3000 }),
+    }),
+    [addToast]
+  );
 }
