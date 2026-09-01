@@ -142,11 +142,12 @@ export const AdminField: React.FC<{
             value={value ?? ''}
             onChange={(e) => {
               if (e.target.value === '') {
-                onChange(field.key, undefined);
+                // 清空按 0 提交：后端 validateBody 的 stripNulls 会丢弃 null 键，
+                // 发 null/省略键都无法清除已有值，置 0 才能真正生效
+                onChange(field.key, 0);
                 return;
               }
-              const num = Number(e.target.value);
-              onChange(field.key, Number.isNaN(num) ? undefined : num);
+              onChange(field.key, Number(e.target.value));
             }}
             placeholder={field.placeholder}
             className={`${BASE_INPUT} ${focus}`}

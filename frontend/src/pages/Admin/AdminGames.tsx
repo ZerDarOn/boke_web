@@ -76,7 +76,7 @@ const FORM_FIELDS: FieldConfig[] = [
     type: 'image',
     colSpan: 2,
     uploadType: 'game',
-    previewClassName: 'w-32 h-18',
+    previewClassName: 'w-32 h-20',
     hint: '支持 JPG/PNG/GIF/WebP，最大 5MB；也可直接输入图片链接',
   },
   { key: 'bannerImage', label: '横幅图片 URL', type: 'text', colSpan: 2, placeholder: '横幅图片链接' },
