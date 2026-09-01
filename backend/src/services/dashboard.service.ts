@@ -348,7 +348,7 @@ export class DashboardService {
   }
 
   static async getStats(): Promise<DashboardStats> {
-    const [postCount, diaryCount, photoCount, animeCount, gameCount, totalLikes, siteStatsAgg, recentSiteStats] = await Promise.all([
+    const [postCount, diaryCount, photoCount, animeCount, gameCount, totalLikes, siteStatsAgg, recentSiteStats, postCommentsCount, galleryCommentsCount, totalFavorites] = await Promise.all([
       prisma.post.count({ where: { isPublished: true } }),
       prisma.diary.count(),
       prisma.galleryImage.count(),
@@ -362,7 +362,10 @@ export class DashboardService {
         orderBy: { date: 'desc' },
         take: 7,
         select: { date: true, pageViews: true, uniqueVisitors: true }
-      })
+      }),
+      prisma.comment.count(),
+      prisma.photoComment.count(),
+      prisma.anime.count({ where: { favorite: true } })
     ]);
 
     // 使用服务器启动时间计算运行时间
@@ -370,17 +373,12 @@ export class DashboardService {
 
     const totalContent = postCount + diaryCount + photoCount + animeCount + gameCount;
 
-    const postCommentsCount = await prisma.comment.count();
-    const galleryCommentsCount = await prisma.photoComment.count();
     const animeCommentsCount = 0;
 
     const totalCommentsCount = postCommentsCount + galleryCommentsCount + animeCommentsCount;
 
     const totalRequests = siteStatsAgg._sum.pageViews ?? 0;
     const uniqueVisitors = siteStatsAgg._sum.uniqueVisitors ?? 0;
-    
-    // 从 anime 表统计 favorites - 使用 count 避免全表扫描
-    const totalFavorites = await prisma.anime.count({ where: { favorite: true } });
 
     // 计算评论分布百分比
     const totalComments = postCommentsCount + galleryCommentsCount + animeCommentsCount;

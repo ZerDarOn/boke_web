@@ -34,7 +34,8 @@ const contentOperationsApplySchema = z.object({
 const trackingRateLimit = createRateLimit({ windowMs: 60_000, max: 120, message: '访问统计提交过于频繁，请稍后再试' });
 router.post('/track', trackingRateLimit, validateBody(visitSchema), DashboardController.trackVisit);
 router.post('/events', trackingRateLimit, validateBody(eventSchema), DashboardController.trackEvent);
-router.get('/admin-overview', authenticate, requireAdmin, DashboardController.getAdminOverview);
+// admin-overview 触发 post/game/anime/gallery 四表扫描，挂 60s 短缓存削峰
+router.get('/admin-overview', authenticate, requireAdmin, cacheMiddleware({ ttl: 60, keyPrefix: 'dashboard' }), DashboardController.getAdminOverview);
 router.get('/content-operations', authenticate, requireAdmin, DashboardController.getContentOperations);
 router.post('/content-operations/:type/:id/suggestions', authenticate, requireAdmin, validate(contentOperationsTargetSchema), DashboardController.getContentSuggestions);
 router.post('/content-operations/:type/:id/apply', authenticate, requireAdmin, validate(contentOperationsTargetSchema), validateBody(contentOperationsApplySchema), DashboardController.applyContentSuggestions);
