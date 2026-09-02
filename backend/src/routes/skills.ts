@@ -1,22 +1,13 @@
 import { Router } from 'express';
 import { SkillService } from '../services/skill.service';
 import * as response from '../utils/response';
-import { validateBody } from '../middleware/validate.middleware';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { cacheMiddleware } from '../middleware/cache.middleware';
+import { registerCrudRoutes } from '../lib/crud-router';
 import { skillSchema } from '../schemas';
-import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 
 const router = Router();
 
-router.get('/', cacheMiddleware({ ttl: 600, keyPrefix: 'skills' }), async (req, res) => {
-  try {
-    const skills = await SkillService.findAll();
-    response.success(res, skills);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch skills');
-  }
-});
-
+// GET /api/skills/nodes - 技能节点（特有路由，须在 /:id 之前）
 router.get('/nodes', cacheMiddleware({ ttl: 600, keyPrefix: 'skills' }), async (req, res) => {
   try {
     const nodes = await SkillService.findNodes();
@@ -26,6 +17,7 @@ router.get('/nodes', cacheMiddleware({ ttl: 600, keyPrefix: 'skills' }), async (
   }
 });
 
+// GET /api/skills/stats - 技能统计（特有路由，须在 /:id 之前）
 router.get('/stats', cacheMiddleware({ ttl: 120, keyPrefix: 'skills' }), async (req, res) => {
   try {
     const stats = await SkillService.getStats();
@@ -35,43 +27,17 @@ router.get('/stats', cacheMiddleware({ ttl: 120, keyPrefix: 'skills' }), async (
   }
 });
 
-router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'skill' }), async (req, res) => {
-  try {
-    const skill = await SkillService.findById(req.params.id);
-    if (!skill) {
-      return response.notFound(res, 'Skill not found');
-    }
-    response.success(res, skill);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch skill');
-  }
-});
-
-router.post('/', authenticate, requireAdmin, validateBody(skillSchema), invalidateCache('skills:*'), async (req, res) => {
-  try {
-    const skill = await SkillService.create(req.body);
-    response.created(res, skill);
-  } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
-router.put('/:id', authenticate, requireAdmin, validateBody(skillSchema.partial()), invalidateCache('skills:*'), async (req, res) => {
-  try {
-    const skill = await SkillService.update(req.params.id, req.body);
-    response.success(res, skill);
-  } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
-router.delete('/:id', authenticate, requireAdmin, invalidateCache('skills:*'), async (req, res) => {
-  try {
-    await SkillService.delete(req.params.id);
-    response.noContent(res);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to delete skill');
-  }
+registerCrudRoutes(router, {
+  service: SkillService,
+  schema: skillSchema,
+  keyPrefix: 'skills',
+  ttl: 600,
+  list: async () => ({ data: await SkillService.findAll() }),
+  messages: {
+    notFound: 'Skill not found',
+    fetchFailed: 'Failed to fetch skills',
+    deleteFailed: 'Failed to delete skill',
+  },
 });
 
 export default router;

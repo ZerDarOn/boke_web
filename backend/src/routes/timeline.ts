@@ -1,27 +1,13 @@
 import { Router } from 'express';
 import { TimelineService } from '../services/timeline.service';
 import * as response from '../utils/response';
-import { validateBody } from '../middleware/validate.middleware';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
-import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
+import { cacheMiddleware } from '../middleware/cache.middleware';
+import { registerCrudRoutes } from '../lib/crud-router';
 import { timelineEventSchema } from '../schemas';
 
 const router = Router();
 
-// GET /api/timeline - 时间线事件
-router.get('/', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), async (req, res) => {
-  try {
-    const events = await TimelineService.findAll({
-      type: req.query.type as string,
-      year: req.query.year as string,
-    });
-    response.success(res, events);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch timeline events');
-  }
-});
-
-// GET /api/timeline/years - 年份列表
+// GET /api/timeline/years - 年份列表（特有路由，须在 /:id 之前）
 router.get('/years', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), async (req, res) => {
   try {
     const years = await TimelineService.getYears();
@@ -31,7 +17,7 @@ router.get('/years', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), async
   }
 });
 
-// GET /api/timeline/current - 当前状态
+// GET /api/timeline/current - 当前状态（特有路由，须在 /:id 之前）
 router.get('/current', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), async (req, res) => {
   try {
     const status = await TimelineService.getCurrentStatus();
@@ -41,47 +27,23 @@ router.get('/current', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), asy
   }
 });
 
-// GET /api/timeline/:id - 事件详情
-router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'timeline' }), async (req, res) => {
-  try {
-    const event = await TimelineService.findById(req.params.id);
-    if (!event) {
-      return response.notFound(res, 'Event not found');
-    }
-    response.success(res, event);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch event');
-  }
-});
-
-// POST /api/timeline - 创建事件
-router.post('/', authenticate, requireAdmin, invalidateCache('timeline:*'), validateBody(timelineEventSchema), async (req, res) => {
-  try {
-    const event = await TimelineService.create(req.body);
-    response.created(res, event);
-  } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
-// PUT /api/timeline/:id - 更新事件
-router.put('/:id', authenticate, requireAdmin, invalidateCache('timeline:*'), validateBody(timelineEventSchema.partial()), async (req, res) => {
-  try {
-    const event = await TimelineService.update(req.params.id, req.body);
-    response.success(res, event);
-  } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
-// DELETE /api/timeline/:id - 删除事件
-router.delete('/:id', authenticate, requireAdmin, invalidateCache('timeline:*'), async (req, res) => {
-  try {
-    await TimelineService.delete(req.params.id);
-    response.noContent(res);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to delete event');
-  }
+registerCrudRoutes(router, {
+  service: TimelineService,
+  schema: timelineEventSchema,
+  keyPrefix: 'timeline',
+  ttl: 600,
+  list: async (req) => {
+    const events = await TimelineService.findAll({
+      type: req.query.type as string,
+      year: req.query.year as string,
+    });
+    return { data: events };
+  },
+  messages: {
+    notFound: 'Event not found',
+    fetchFailed: 'Failed to fetch timeline events',
+    deleteFailed: 'Failed to delete event',
+  },
 });
 
 export default router;

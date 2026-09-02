@@ -2,34 +2,13 @@ import { Router } from 'express';
 import { ProjectService } from '../services/project.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
-import { validateBody } from '../middleware/validate.middleware';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { cacheMiddleware } from '../middleware/cache.middleware';
+import { registerCrudRoutes } from '../lib/crud-router';
 import { projectSchema } from '../schemas';
-import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 
 const router = Router();
 
-router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'projects' }), async (req, res) => {
-  try {
-    const pagination = getPagination(
-      req.query.page as string,
-      req.query.limit as string
-    );
-
-    const featured = req.query.featured !== undefined ? req.query.featured === 'true' : undefined;
-
-    const { projects, total } = await ProjectService.findMany({
-      pagination,
-      featured,
-      status: req.query.status as string,
-    });
-
-    response.success(res, projects, undefined, createMeta(total, pagination));
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch projects');
-  }
-});
-
+// GET /api/projects/stats - 项目统计（特有路由，须在 /:id 之前）
 router.get('/stats', cacheMiddleware({ ttl: 120, keyPrefix: 'projects' }), async (req, res) => {
   try {
     const stats = await ProjectService.getStats();
@@ -39,43 +18,31 @@ router.get('/stats', cacheMiddleware({ ttl: 120, keyPrefix: 'projects' }), async
   }
 });
 
-router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'project' }), async (req, res) => {
-  try {
-    const project = await ProjectService.findById(req.params.id);
-    if (!project) {
-      return response.notFound(res, 'Project not found');
-    }
-    response.success(res, project);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch project');
-  }
-});
-
-router.post('/', authenticate, requireAdmin, validateBody(projectSchema), invalidateCache('projects:*'), async (req, res) => {
-  try {
-    const project = await ProjectService.create(req.body);
-    response.created(res, project);
-  } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
-router.put('/:id', authenticate, requireAdmin, validateBody(projectSchema.partial()), invalidateCache('projects:*'), invalidateCache('project:*'), async (req, res) => {
-  try {
-    const project = await ProjectService.update(req.params.id, req.body);
-    response.success(res, project);
-  } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
-router.delete('/:id', authenticate, requireAdmin, invalidateCache('projects:*'), invalidateCache('project:*'), async (req, res) => {
-  try {
-    await ProjectService.delete(req.params.id);
-    response.noContent(res);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to delete project');
-  }
+registerCrudRoutes(router, {
+  service: ProjectService,
+  schema: projectSchema,
+  keyPrefix: 'projects',
+  ttl: 300,
+  detailKeyPrefix: 'project',
+  detailTtl: 600,
+  list: async (req) => {
+    const pagination = getPagination(
+      req.query.page as string,
+      req.query.limit as string
+    );
+    const featured = req.query.featured !== undefined ? req.query.featured === 'true' : undefined;
+    const { projects, total } = await ProjectService.findMany({
+      pagination,
+      featured,
+      status: req.query.status as string,
+    });
+    return { data: projects, meta: createMeta(total, pagination) };
+  },
+  messages: {
+    notFound: 'Project not found',
+    fetchFailed: 'Failed to fetch projects',
+    deleteFailed: 'Failed to delete project',
+  },
 });
 
 export default router;

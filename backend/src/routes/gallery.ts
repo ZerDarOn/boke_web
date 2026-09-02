@@ -6,29 +6,13 @@ import { validateBody } from '../middleware/validate.middleware';
 import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.middleware';
 import { formRateLimit } from '../middleware/rate-limit.middleware';
 import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
-import { galleryImageSchema, albumSchema, photoCommentSchema } from '../schemas';
+import { registerCrudRoutes } from '../lib/crud-router';
+import { albumSchema, photoCommentSchema, galleryImageSchema } from '../schemas';
 import { log, logError } from '../lib/logger';
 
 const router = Router();
 
-// GET /api/gallery - 照片列表
-router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'gallery' }), async (req, res) => {
-  try {
-    const pagination = getPagination(
-      req.query.page as string,
-      req.query.limit as string
-    );
-
-    const { images, total } = await GalleryService.findMany({
-      pagination,
-      albumId: req.query.albumId as string,
-    });
-
-    response.success(res, images, undefined, createMeta(total, pagination));
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch gallery');
-  }
-});
+// ===== 相册子资源与评论（域特有，须在照片五件套的 GET /:id 之前注册）=====
 
 // GET /api/gallery/albums - 相册列表
 router.get('/albums', cacheMiddleware({ ttl: 300, keyPrefix: 'gallery' }), async (req, res) => {
@@ -53,52 +37,12 @@ router.get('/albums/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'gallery' }), a
   }
 });
 
-// GET /api/gallery/:id - 照片详情
-router.get('/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'gallery' }), async (req, res) => {
-  try {
-    const image = await GalleryService.findById(req.params.id);
-    if (!image) {
-      return response.notFound(res, 'Image not found');
-    }
-    response.success(res, image);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch image');
-  }
-});
-
-// POST /api/gallery - 上传照片
-router.post('/', authenticate, requireAdmin, invalidateCache('gallery:*'), validateBody(galleryImageSchema), async (req, res) => {
-  try {
-    const image = await GalleryService.create(req.body);
-    response.created(res, image);
-  } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
 // POST /api/gallery/albums - 创建相册
 router.post('/albums', authenticate, requireAdmin, invalidateCache('gallery:*'), validateBody(albumSchema), async (req, res) => {
   try {
     const album = await GalleryService.createAlbum(req.body);
     response.created(res, album);
   } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
-// POST /api/gallery/:id/comments - 添加评论（需提供邮箱，限流防滥用）
-router.post('/:id/comments', formRateLimit, optionalAuth, invalidateCache('gallery:*'), validateBody(photoCommentSchema), async (req, res) => {
-  try {
-    const comment = await GalleryService.addComment(req.params.id, req.body);
-    log('info', 'GalleryComment', 'Photo comment created', {
-      commentId: comment.id,
-      photoId: req.params.id,
-    });
-    response.created(res, comment);
-  } catch (error: any) {
-    logError('GalleryComment', error instanceof Error ? error : 'Failed to create photo comment', {
-      photoId: req.params.id,
-    });
     response.badRequest(res, error.message);
   }
 });
@@ -121,24 +65,45 @@ router.delete('/albums/:id', authenticate, requireAdmin, invalidateCache('galler
   }
 });
 
-// PUT /api/gallery/:id - 更新照片
-router.put('/:id', authenticate, requireAdmin, invalidateCache('gallery:*'), validateBody(galleryImageSchema.partial()), async (req, res) => {
+// POST /api/gallery/:id/comments - 添加评论（需提供邮箱，限流防滥用）
+router.post('/:id/comments', formRateLimit, optionalAuth, invalidateCache('gallery:*'), validateBody(photoCommentSchema), async (req, res) => {
   try {
-    const image = await GalleryService.update(req.params.id, req.body);
-    response.success(res, image);
+    const comment = await GalleryService.addComment(req.params.id, req.body);
+    log('info', 'GalleryComment', 'Photo comment created', {
+      commentId: comment.id,
+      photoId: req.params.id,
+    });
+    response.created(res, comment);
   } catch (error: any) {
+    logError('GalleryComment', error instanceof Error ? error : 'Failed to create photo comment', {
+      photoId: req.params.id,
+    });
     response.badRequest(res, error.message);
   }
 });
 
-// DELETE /api/gallery/:id - 删除照片
-router.delete('/:id', authenticate, requireAdmin, invalidateCache('gallery:*'), async (req, res) => {
-  try {
-    await GalleryService.delete(req.params.id);
-    response.noContent(res);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to delete image');
-  }
+// ===== 照片五件套 =====
+registerCrudRoutes(router, {
+  service: GalleryService,
+  schema: galleryImageSchema,
+  keyPrefix: 'gallery',
+  ttl: 300,
+  list: async (req) => {
+    const pagination = getPagination(
+      req.query.page as string,
+      req.query.limit as string
+    );
+    const { images, total } = await GalleryService.findMany({
+      pagination,
+      albumId: req.query.albumId as string,
+    });
+    return { data: images, meta: createMeta(total, pagination) };
+  },
+  messages: {
+    notFound: 'Image not found',
+    fetchFailed: 'Failed to fetch gallery',
+    deleteFailed: 'Failed to delete image',
+  },
 });
 
 export default router;

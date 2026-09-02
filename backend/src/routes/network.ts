@@ -1,24 +1,13 @@
 import { Router } from 'express';
 import { NetworkService } from '../services/network.service';
 import * as response from '../utils/response';
-import { validateBody } from '../middleware/validate.middleware';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
-import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
+import { cacheMiddleware } from '../middleware/cache.middleware';
+import { registerCrudRoutes } from '../lib/crud-router';
 import { networkNodeSchema } from '../schemas';
 
 const router = Router();
 
-// GET /api/network/nodes - 关系节点
-router.get('/nodes', cacheMiddleware({ ttl: 300, keyPrefix: 'network' }), async (req, res) => {
-  try {
-    const nodes = await NetworkService.findNodes();
-    response.success(res, nodes);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch network nodes');
-  }
-});
-
-// GET /api/network/connections - 节点连接关系
+// GET /api/network/connections - 节点连接关系（特有路由）
 router.get('/connections', cacheMiddleware({ ttl: 300, keyPrefix: 'network' }), async (req, res) => {
   try {
     const connections = await NetworkService.getConnections();
@@ -28,47 +17,19 @@ router.get('/connections', cacheMiddleware({ ttl: 300, keyPrefix: 'network' }), 
   }
 });
 
-// GET /api/network/nodes/:id - 节点详情
-router.get('/nodes/:id', cacheMiddleware({ ttl: 300, keyPrefix: 'network' }), async (req, res) => {
-  try {
-    const node = await NetworkService.findById(req.params.id);
-    if (!node) {
-      return response.notFound(res, 'Node not found');
-    }
-    response.success(res, node);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to fetch node');
-  }
-});
-
-// POST /api/network/nodes - 创建节点
-router.post('/nodes', authenticate, requireAdmin, invalidateCache('network:*'), validateBody(networkNodeSchema), async (req, res) => {
-  try {
-    const node = await NetworkService.create(req.body);
-    response.created(res, node);
-  } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
-// PUT /api/network/nodes/:id - 更新节点
-router.put('/nodes/:id', authenticate, requireAdmin, invalidateCache('network:*'), validateBody(networkNodeSchema.partial()), async (req, res) => {
-  try {
-    const node = await NetworkService.update(req.params.id, req.body);
-    response.success(res, node);
-  } catch (error: any) {
-    response.badRequest(res, error.message);
-  }
-});
-
-// DELETE /api/network/nodes/:id - 删除节点
-router.delete('/nodes/:id', authenticate, requireAdmin, invalidateCache('network:*'), async (req, res) => {
-  try {
-    await NetworkService.delete(req.params.id);
-    response.noContent(res);
-  } catch (error: any) {
-    response.error(res, error.message || 'Failed to delete node');
-  }
+// ===== 节点 CRUD（挂在 /nodes 前缀下）=====
+registerCrudRoutes(router, {
+  service: NetworkService,
+  schema: networkNodeSchema,
+  basePath: '/nodes',
+  keyPrefix: 'network',
+  ttl: 300,
+  list: async () => ({ data: await NetworkService.findNodes() }),
+  messages: {
+    notFound: 'Node not found',
+    fetchFailed: 'Failed to fetch network nodes',
+    deleteFailed: 'Failed to delete node',
+  },
 });
 
 export default router;
