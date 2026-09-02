@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePostsList } from '../hooks/queries/posts';
-import { ArrowRight, LayoutList, LayoutGrid, Loader2 } from 'lucide-react';
+import { ArrowRight, LayoutList, LayoutGrid } from 'lucide-react';
+import { PageLoader } from './DataState';
 
 const Archives: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -51,11 +52,7 @@ const Archives: React.FC = () => {
       </div>
 
       {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="py-20" />}
 
       {/* Posts Grid */}
       {!loading && (

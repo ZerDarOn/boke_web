@@ -10,9 +10,9 @@ import {
   MessageSquare,
   Send,
   ArrowLeft,
-  ArrowRight,
-  Loader2
+  ArrowRight
 } from 'lucide-react';
+import { PageLoader } from '../components/DataState';
 import BreadcrumbNav from '../components/BreadcrumbNav';
 import BackToTop from '../components/BackToTop';
 
@@ -49,11 +49,7 @@ const GalleryDetail: React.FC = () => {
   }, [selectedPhoto]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[600px]">
-        <Loader2 className="animate-spin text-neon" size={32} />
-      </div>
-    );
+    return <PageLoader className="min-h-[600px]" />;
   }
 
   if (error || !album) {

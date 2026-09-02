@@ -1,7 +1,8 @@
 import React from 'react';
 import type { Project } from '../lib/api';
 import { useProjectsList } from '../hooks/queries/projects';
-import { Terminal, Cpu, Layers, ExternalLink, Loader2 } from 'lucide-react';
+import { Terminal, Cpu, Layers, ExternalLink } from 'lucide-react';
+import { PageLoader } from './DataState';
 
 const Arsenal: React.FC = () => {
   const { data: projects = [], isLoading: loading } = useProjectsList({
@@ -36,11 +37,7 @@ const Arsenal: React.FC = () => {
       </div>
 
       {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="py-20" />}
 
       {/* Empty State */}
       {!loading && projects.length === 0 && (

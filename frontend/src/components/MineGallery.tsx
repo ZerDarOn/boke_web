@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useGalleryImages } from '../hooks/queries/gallery';
-import { Camera, MapPin, Calendar, Loader2 } from 'lucide-react';
+import { Camera, MapPin, Calendar } from 'lucide-react';
+import { PageLoader, ErrorBanner } from './DataState';
 
 const MineGallery: React.FC = () => {
   const { data: allImages = [], isLoading: loading, error: queryError } = useGalleryImages();
@@ -23,21 +24,9 @@ const MineGallery: React.FC = () => {
             </p>
        </div>
 
-       {loading && (
-         <div className="flex items-center justify-center min-h-[300px]">
-           <Loader2 className="animate-spin text-neon" size={32} />
-         </div>
-       )}
+       {loading && <PageLoader className="min-h-[300px]" />}
 
-       {error && (
-         <div className="p-8">
-           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-             <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-               ERROR: {error}
-             </p>
-           </div>
-         </div>
-       )}
+       {error && <ErrorBanner error={error} className="m-8" />}
 
        {!loading && !error && images.length === 0 && (
          <div className="flex items-center justify-center p-12 bg-gray-50 dark:bg-white/5 border-2 border-dashed border-gray-300 dark:border-white/10 rounded-xl">

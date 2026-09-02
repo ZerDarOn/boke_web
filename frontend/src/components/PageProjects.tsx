@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { TRANSLATIONS } from '../constants';
-import { ArrowUpRight, Github, ExternalLink, Box, Activity, Layers, Tag, Loader2 } from 'lucide-react';
+import { ArrowUpRight, Github, ExternalLink, Box, Activity, Layers, Tag } from 'lucide-react';
+import { PageLoader, ErrorBanner } from './DataState';
 import { useProjectsList } from '../hooks/queries/projects';
 
 interface PageProjectsProps {
@@ -66,19 +67,9 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
 
   return (
     <div className="w-full bg-white dark:bg-ink p-6 md:p-8 min-h-[800px] flex flex-col gap-12">
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="py-20" />}
       
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-            ERROR: {error}
-          </p>
-        </div>
-      )}
+      {error && <ErrorBanner error={error} />}
       
       {!loading && !error && (
         <>

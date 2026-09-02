@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Loader2, Gamepad2 } from 'lucide-react';
+import { Gamepad2 } from 'lucide-react';
+import { PageLoader, ErrorBanner } from '../components/DataState';
 import { useGameList } from '../hooks/queries/games';
 import GameCard from '../components/GameCard';
 import GameFilter, { type GameStatusFilter } from '../components/GameFilter';
@@ -49,19 +50,9 @@ const Games: React.FC = () => {
   return (
     <div className="animate-in fade-in duration-500">
       <div className="w-full bg-white dark:bg-[#0a0a0a] p-6 md:p-8 rounded-lg min-h-[600px] transition-colors">
-        {loading && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="animate-spin text-neon" size={32} />
-          </div>
-        )}
+        {loading && <PageLoader className="py-20" />}
 
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-            <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-              ERROR: {error}
-            </p>
-          </div>
-        )}
+        {error && <ErrorBanner error={error} />}
 
         {!loading && !error && (
           <>

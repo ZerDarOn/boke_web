@@ -39,6 +39,64 @@ const viewToPath: Record<string, string> = {
   'skills': '/skills',
 };
 
+// 设置面板文案（模块级工厂，避免组件每次渲染重建大对象字面量）
+const buildUiText = (lang: 'EN' | 'ZH') => ({
+    themeColor: lang === 'EN' ? 'Theme Colors' : '主题色调',
+    primary: lang === 'EN' ? 'Primary (Neon)' : '主色 (霓虹)',
+    secondary: lang === 'EN' ? 'Secondary (Aux)' : '辅色 (点缀)',
+    appearance: lang === 'EN' ? 'Appearance' : '外观模式',
+    reset: lang === 'EN' ? 'Reset' : '重置'
+});
+
+// 导航菜单结构（模块级工厂，避免组件每次渲染重建大数组字面量）
+const buildMenuItems = (t: (typeof TRANSLATIONS)['EN' | 'ZH'], lang: 'EN' | 'ZH') => [
+    { label: t.HOME, id: 'home', path: '/' },
+    { label: t.ARCHIVES, id: 'archives', path: '/archives' }, 
+    { 
+        label: t.LINKS, 
+        id: 'links', 
+        hasDropdown: true,
+        dropdownItems: [
+            { label: 'GitHub', icon: Github, link: 'https://github.com' },
+            { label: 'Bilibili', icon: Video, link: 'https://bilibili.com' }
+        ]
+    },
+    { 
+        label: t.MINE, 
+        id: 'mine', 
+        hasDropdown: true,
+        dropdownItems: [
+            { label: t.POSTS, icon: BookOpen, path: '/posts' },
+            { label: lang === 'EN' ? 'Anime' : '追番', icon: Heart, path: '/anime' },
+            { label: lang === 'EN' ? 'Games' : '游戏', icon: Gamepad2, path: '/games' },
+            { label: lang === 'EN' ? 'Diary' : '日记', icon: Book, path: '/diary' },
+            { label: lang === 'EN' ? 'Gallery' : '相册', icon: Camera, path: '/gallery' },
+            { label: lang === 'EN' ? 'Music' : '音乐馆', icon: Music2, path: '/music' },
+            { label: lang === 'EN' ? 'Divination' : '占卜屋', icon: Sparkles, path: '/divination' }
+        ]
+    },
+    { 
+        label: t.ABOUT, 
+        id: 'about', 
+        hasDropdown: true,
+        dropdownItems: [
+            { label: lang === 'EN' ? 'System' : '系统', icon: UserCheck, path: '/about' },
+            { label: lang === 'EN' ? 'Network' : '关系', icon: Network, path: '/network' }
+        ]
+    },
+    { label: t.DASHBOARD, id: 'dashboard', path: '/dashboard' },
+    { 
+        label: t.OTHERS, 
+        id: 'other', 
+        hasDropdown: true,
+        dropdownItems: [
+            { label: lang === 'EN' ? 'Skills' : '技能', icon: Code, path: '/skills' },
+            { label: lang === 'EN' ? 'Projects' : '项目', icon: Code, path: '/projects' },
+            { label: lang === 'EN' ? 'Timeline' : '时间', icon: Clock, path: '/timeline' }
+        ]
+    },
+];
+
 const Navigation: React.FC<NavigationProps> = ({ 
     toggleRightSidebar, isRightSidebarOpen,
     blogName = 'INK.SPIRIT',
@@ -109,61 +167,8 @@ const Navigation: React.FC<NavigationProps> = ({
 
   const activeItem = getActiveItem();
 
-  const uiText = {
-      themeColor: lang === 'EN' ? 'Theme Colors' : '主题色调',
-      primary: lang === 'EN' ? 'Primary (Neon)' : '主色 (霓虹)',
-      secondary: lang === 'EN' ? 'Secondary (Aux)' : '辅色 (点缀)',
-      appearance: lang === 'EN' ? 'Appearance' : '外观模式',
-      reset: lang === 'EN' ? 'Reset' : '重置'
-  };
-
-  const menuItems = [
-    { label: t.HOME, id: 'home', path: '/' },
-    { label: t.ARCHIVES, id: 'archives', path: '/archives' }, 
-    { 
-        label: t.LINKS, 
-        id: 'links', 
-        hasDropdown: true,
-        dropdownItems: [
-            { label: 'GitHub', icon: Github, link: 'https://github.com' },
-            { label: 'Bilibili', icon: Video, link: 'https://bilibili.com' }
-        ]
-    },
-    { 
-        label: t.MINE, 
-        id: 'mine', 
-        hasDropdown: true,
-        dropdownItems: [
-            { label: t.POSTS, icon: BookOpen, path: '/posts' },
-            { label: lang === 'EN' ? 'Anime' : '追番', icon: Heart, path: '/anime' },
-            { label: lang === 'EN' ? 'Games' : '游戏', icon: Gamepad2, path: '/games' },
-            { label: lang === 'EN' ? 'Diary' : '日记', icon: Book, path: '/diary' },
-            { label: lang === 'EN' ? 'Gallery' : '相册', icon: Camera, path: '/gallery' },
-            { label: lang === 'EN' ? 'Music' : '音乐馆', icon: Music2, path: '/music' },
-            { label: lang === 'EN' ? 'Divination' : '占卜屋', icon: Sparkles, path: '/divination' }
-        ]
-    },
-    { 
-        label: t.ABOUT, 
-        id: 'about', 
-        hasDropdown: true,
-        dropdownItems: [
-            { label: lang === 'EN' ? 'System' : '系统', icon: UserCheck, path: '/about' },
-            { label: lang === 'EN' ? 'Network' : '关系', icon: Network, path: '/network' }
-        ]
-    },
-    { label: t.DASHBOARD, id: 'dashboard', path: '/dashboard' },
-    { 
-        label: t.OTHERS, 
-        id: 'other', 
-        hasDropdown: true,
-        dropdownItems: [
-            { label: lang === 'EN' ? 'Skills' : '技能', icon: Code, path: '/skills' },
-            { label: lang === 'EN' ? 'Projects' : '项目', icon: Code, path: '/projects' },
-            { label: lang === 'EN' ? 'Timeline' : '时间', icon: Clock, path: '/timeline' }
-        ]
-    },
-  ];
+  const uiText = buildUiText(lang);
+  const menuItems = buildMenuItems(t, lang);
 
   // Logic to move the "Energy Bar"
   useEffect(() => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Info, AlertTriangle, CheckCircle, AlertCircle, Calendar, Loader2 } from 'lucide-react';
+import { Info, AlertTriangle, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
+import { PageLoader, ErrorBanner } from '../components/DataState';
 import type { Announcement } from '../lib/api';
 import { useAnnouncements } from '../hooks/queries/announcements';
 
@@ -41,19 +42,9 @@ const AnnouncementPage: React.FC = () => {
 
   return (
     <section className="py-12 w-full relative">
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="py-20" />}
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
-          <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-            ERROR: {error}
-          </p>
-        </div>
-      )}
+      {error && <ErrorBanner error={error} className="mb-6" />}
 
       {!loading && !error && (
         <>

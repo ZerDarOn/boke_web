@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PlayCircle, CheckCircle, PauseCircle, XCircle, Heart, HeartOff, Loader2 } from 'lucide-react';
+import { PlayCircle, CheckCircle, PauseCircle, XCircle, Heart, HeartOff } from 'lucide-react';
+import { PageLoader, ErrorBanner } from './DataState';
 import { useAnimeList } from '../hooks/queries/anime';
 
 const MineAnime: React.FC = () => {
@@ -50,19 +51,9 @@ const MineAnime: React.FC = () => {
 
   return (
     <div className="w-full bg-white dark:bg-[#0a0a0a] p-6 md:p-8 rounded-lg min-h-[600px] transition-colors">
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="py-20" />}
       
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-            ERROR: {error}
-          </p>
-        </div>
-      )}
+      {error && <ErrorBanner error={error} />}
       
       {!loading && !error && (
         <>

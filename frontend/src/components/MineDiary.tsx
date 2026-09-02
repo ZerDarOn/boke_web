@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, CloudRain, ArrowRight, Loader2 } from 'lucide-react';
+import { Sun, CloudRain, ArrowRight } from 'lucide-react';
+import { PageLoader, ErrorBanner } from './DataState';
 import { useDiaryList } from '../hooks/queries/diary';
 import { usePageCopy } from '../hooks/useSiteConfig';
 
@@ -19,21 +20,9 @@ const MineDiary: React.FC = () => {
   
   return (
     <div className="w-full bg-white dark:bg-[#050505] relative overflow-hidden flex flex-col min-h-screen">
-      {loading && (
-        <div className="flex items-center justify-center min-h-[600px]">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="min-h-[600px]" />}
       
-      {error && (
-        <div className="p-8">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-            <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-              ERROR: {error}
-            </p>
-          </div>
-        </div>
-      )}
+      {error && <ErrorBanner error={error} className="m-8" />}
       
       {!loading && !error && (
         <>

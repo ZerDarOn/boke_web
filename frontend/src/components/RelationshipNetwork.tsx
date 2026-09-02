@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, X, Share2, Loader2 } from 'lucide-react';
+import { User, X, Share2 } from 'lucide-react';
+import { PageLoader, ErrorBanner } from './DataState';
 import { useNetworkNodes } from '../hooks/queries/network';
 
 const RelationshipNetwork: React.FC = () => {
@@ -20,19 +21,11 @@ const RelationshipNetwork: React.FC = () => {
 
   return (
     <div className="w-full h-[600px] bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 shadow-sm rounded-lg overflow-hidden relative flex transition-colors">
-      {loading && (
-        <div className="flex items-center justify-center w-full h-full">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="w-full h-full" />}
       
       {error && (
         <div className="flex items-center justify-center w-full h-full">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-            <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-              ERROR: {error}
-            </p>
-          </div>
+          <ErrorBanner error={error} />
         </div>
       )}
       

@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import type { Post } from '../lib/api';
 import { usePostsList } from '../hooks/queries/posts';
-import { ArrowRight, List, GitCommit, Folder, Loader2, Lock } from 'lucide-react';
+import { ArrowRight, List, GitCommit, Folder, Lock } from 'lucide-react';
+import { PageLoader } from './DataState';
 
 // Visual helper for category colors (moved outside component)
 const getCategoryColor = (cat: string) => {
@@ -65,11 +66,7 @@ const TimelineArchives: React.FC = () => {
       </div>
 
       {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center py-40">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="py-40" />}
 
       {/* Empty State */}
       {!loading && posts.length === 0 && (

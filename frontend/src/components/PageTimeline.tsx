@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Disc, Radio, MapPin, Briefcase, Trophy, Flag, GitCommit, LayoutList, FileText, Loader2, Code, Star, Globe, Zap, Heart } from 'lucide-react';
+import { Disc, Radio, MapPin, Briefcase, Trophy, Flag, GitCommit, LayoutList, FileText, Code, Star, Globe, Zap, Heart } from 'lucide-react';
+import { PageLoader, ErrorBanner } from './DataState';
 import type { TimelineEvent, CurrentStatus, HistoryItem } from '../lib/api';
 import { useTimelineList } from '../hooks/queries/timeline';
 import { useActiveCurrentStatus } from '../hooks/queries/current-status';
@@ -29,21 +30,9 @@ const PageTimeline: React.FC = () => {
 
   return (
     <div className="w-full bg-white dark:bg-ink p-6 md:p-12 min-h-[800px] flex flex-col items-center relative">
-      {loading && (
-        <div className="flex items-center justify-center w-full min-h-[600px]">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="w-full min-h-[600px]" />}
       
-      {error && (
-        <div className="w-full max-w-3xl">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-            <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-              ERROR: {error}
-            </p>
-          </div>
-        </div>
-      )}
+      {error && <ErrorBanner error={error} className="w-full max-w-3xl" />}
       
       {!loading && !error && (
         <>

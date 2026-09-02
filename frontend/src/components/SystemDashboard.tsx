@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, BookOpen, Gamepad2, Loader2, Sparkles, Tv } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Gamepad2, Sparkles, Tv } from 'lucide-react';
+import { PageLoader } from './DataState';
 import { useDashboardContentDistribution, useDashboardPopular, useDashboardStats } from '../hooks/queries/dashboard';
 
 const labels: Record<string, string> = { Articles: '文章', Diary: '日记', Photos: '照片', Anime: '追番', Games: '游戏' };
@@ -9,7 +10,7 @@ const SystemDashboard: React.FC = () => {
   const { data: stats, isLoading: statsLoading, error } = useDashboardStats();
   const { data: popular, isLoading: popularLoading } = useDashboardPopular();
   const { data: distribution, isLoading: distributionLoading } = useDashboardContentDistribution();
-  if (statsLoading || popularLoading || distributionLoading) return <div className="flex min-h-[360px] items-center justify-center"><Loader2 className="animate-spin text-neon" size={32} /></div>;
+  if (statsLoading || popularLoading || distributionLoading) return <PageLoader className="min-h-[360px]" />;
   if (error || !stats) return <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">内容脉搏暂时无法加载，请稍后再试。</div>;
   const trend = stats.trafficTrend ?? [];
   const maxTraffic = Math.max(...trend.map(item => item.pageViews), 1);

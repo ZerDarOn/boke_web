@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TRANSLATIONS } from '../constants';
-import { Zap, Database, Cpu, ExternalLink, X, Code, Server, PenTool, Loader2 } from 'lucide-react';
+import { Zap, Database, Cpu, ExternalLink, X, Code, Server, PenTool } from 'lucide-react';
+import { PageLoader, ErrorBanner } from './DataState';
 import type { Skill, Project } from '../lib/api';
 import { useSkillGroups } from '../hooks/queries/skills';
 import { useProjectsList } from '../hooks/queries/projects';
@@ -69,19 +70,9 @@ const PageSkills: React.FC<PageSkillsProps> = () => {
 
   return (
     <div className="w-full bg-white dark:bg-ink p-6 md:p-12 min-h-[800px] relative flex flex-col gap-12">
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="py-20" />}
       
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-            ERROR: {error}
-          </p>
-        </div>
-      )}
+      {error && <ErrorBanner error={error} />}
       
       {!loading && !error && (
         <>

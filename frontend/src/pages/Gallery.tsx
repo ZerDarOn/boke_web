@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Calendar, MapPin, Image as ImageIcon } from 'lucide-react';
+import { PageLoader, ErrorBanner } from '../components/DataState';
 import { useGalleryAlbums } from '../hooks/queries/gallery';
 
 const Gallery: React.FC = () => {
@@ -15,21 +16,9 @@ const Gallery: React.FC = () => {
   return (
     <div className="animate-in fade-in duration-500">
       <div className="w-full bg-white dark:bg-[#0a0a0a] p-6 min-h-[600px] transition-colors">
-      {loading && (
-        <div className="flex items-center justify-center min-h-[600px]">
-          <Loader2 className="animate-spin text-neon" size={32} />
-        </div>
-      )}
+      {loading && <PageLoader className="min-h-[600px]" />}
       
-      {error && (
-        <div className="p-8">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-            <p className="text-red-600 dark:text-red-300 font-mono text-sm">
-              ERROR: {error}
-            </p>
-          </div>
-        </div>
-      )}
+      {error && <ErrorBanner error={error} className="m-8" />}
       
       {!loading && !error && (
         <>
