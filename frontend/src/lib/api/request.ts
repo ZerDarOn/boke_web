@@ -92,9 +92,18 @@ export async function apiRequest<T>(
     const data = await response.json();
 
     if (!response.ok) {
+      // 后端存在两种错误体：路由手写 { error: "msg" } 与全局 errorHandler
+      // 的结构化 { success: false, error: { code, message, ... } }，此处统一解包为字符串
+      const errPayload = data.message ?? data.error;
+      const errorMessage =
+        typeof errPayload === 'string'
+          ? errPayload
+          : errPayload && typeof errPayload === 'object' && 'message' in errPayload
+            ? String((errPayload as { message: unknown }).message)
+            : `HTTP ${response.status}: ${response.statusText}`;
       return {
         success: false,
-        error: data.message || data.error || `HTTP ${response.status}: ${response.statusText}`,
+        error: errorMessage,
       };
     }
 
