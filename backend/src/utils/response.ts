@@ -57,3 +57,7 @@ export const notFound = (res: Response, message = 'Not found'): void => {
 export const conflict = (res: Response, message: string): void => {
   error(res, message, 409);
 };
+
+/** Prisma P2025：目标记录不存在。路由 catch 中用于转成 404，避免原始错误（含服务器路径）泄露给客户端 */
+export const isPrismaNotFound = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2025';

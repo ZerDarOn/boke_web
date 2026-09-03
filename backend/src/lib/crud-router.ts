@@ -136,6 +136,9 @@ export function registerCrudRoutes<TEntity>(
         const item = await service.update(req.params.id, req.body);
         response.success(res, item);
       } catch (error: any) {
+        if (response.isPrismaNotFound(error)) {
+          return response.notFound(res, messages.notFound);
+        }
         response.badRequest(res, error.message);
       }
     }
@@ -152,6 +155,9 @@ export function registerCrudRoutes<TEntity>(
         await service.delete(req.params.id);
         response.noContent(res);
       } catch (error: any) {
+        if (response.isPrismaNotFound(error)) {
+          return response.notFound(res, messages.notFound);
+        }
         response.error(res, error.message || messages.deleteFailed);
       }
     }

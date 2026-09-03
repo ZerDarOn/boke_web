@@ -135,6 +135,9 @@ export class PostController {
       await PostService.incrementView(id);
       response.success(res, { success: true });
     } catch (error: any) {
+      if (response.isPrismaNotFound(error)) {
+        return response.notFound(res, 'Post not found');
+      }
       response.error(res, error.message || 'Failed to increment view');
     }
   }
@@ -146,6 +149,9 @@ export class PostController {
       await PostService.incrementLike(id);
       response.success(res, { success: true });
     } catch (error: any) {
+      if (response.isPrismaNotFound(error)) {
+        return response.notFound(res, 'Post not found');
+      }
       response.error(res, error.message || 'Failed to like post');
     }
   }
@@ -167,6 +173,9 @@ export class PostController {
       const post = await PostService.update(id, req.body);
       response.success(res, post, 'Post updated successfully');
     } catch (error: any) {
+      if (response.isPrismaNotFound(error)) {
+        return response.notFound(res, 'Post not found');
+      }
       response.badRequest(res, error.message);
     }
   }
@@ -178,6 +187,9 @@ export class PostController {
       await PostService.delete(id);
       response.noContent(res);
     } catch (error: any) {
+      if (response.isPrismaNotFound(error)) {
+        return response.notFound(res, 'Post not found');
+      }
       response.error(res, error.message || 'Failed to delete post');
     }
   }

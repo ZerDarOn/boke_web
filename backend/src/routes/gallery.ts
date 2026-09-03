@@ -52,6 +52,9 @@ router.put('/albums/:id', authenticate, requireAdmin, invalidateCache('gallery:*
     const album = await GalleryService.updateAlbum(req.params.id, req.body);
     response.success(res, album);
   } catch (error: any) {
+    if (response.isPrismaNotFound(error)) {
+      return response.notFound(res, 'Album not found');
+    }
     response.badRequest(res, error.message);
   }
 });
@@ -61,6 +64,9 @@ router.delete('/albums/:id', authenticate, requireAdmin, invalidateCache('galler
     await GalleryService.deleteAlbum(req.params.id);
     response.noContent(res);
   } catch (error: any) {
+    if (response.isPrismaNotFound(error)) {
+      return response.notFound(res, 'Album not found');
+    }
     response.error(res, error.message || 'Failed to delete album');
   }
 });
