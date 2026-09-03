@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { cache, generateCacheKey, getTTL } from '../lib/cache';
+import { cache, generateCacheKey } from '../lib/cache';
 
 const CACHEABLE_METHODS = ['GET'];
 const SKIP_CACHE_HEADER = 'x-skip-cache';
@@ -69,7 +69,7 @@ export function cacheMiddleware(options: CacheMiddlewareOptions = {}) {
 
     try {
       const cached = await cache.get<any>(cacheKey);
-      
+
       if (cached !== null) {
         res.set('x-cache-status', 'HIT');
         res.json(cached);
@@ -92,7 +92,7 @@ export function cacheMiddleware(options: CacheMiddlewareOptions = {}) {
       inFlightResponses.set(cacheKey, deferredResponse.promise);
 
       const originalJson: JsonResponseBody = res.json.bind(res);
-      
+
       (res as any).json = (data: any) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           cache.set(cacheKey, data, ttl)
@@ -123,7 +123,7 @@ export function cacheMiddleware(options: CacheMiddlewareOptions = {}) {
 export function invalidateCache(pattern: string) {
   return async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     const originalJson: JsonResponseBody = res.json.bind(res);
-    
+
     (res as any).json = (data: any) => {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         cache.delPattern(pattern).catch(() => {});
@@ -135,21 +135,13 @@ export function invalidateCache(pattern: string) {
   };
 }
 
-export function withCache<T>(
+export async function withCache<T>(
   key: string,
   fetcher: () => Promise<T>,
   ttl: number = 300
 ): Promise<T> {
-  return withCacheFn(key, fetcher, ttl);
-}
-
-async function withCacheFn<T>(
-  key: string,
-  fetcher: () => Promise<T>,
-  ttl: number
-): Promise<T> {
   const cached = await cache.get<T>(key);
-  
+
   if (cached !== null) {
     return cached;
   }
@@ -173,17 +165,3 @@ async function withCacheFn<T>(
     inFlightCacheRequests.delete(key);
   }
 }
-
-export const cacheTTL = {
-  posts: getTTL('posts'),
-  post: getTTL('post'),
-  projects: getTTL('projects'),
-  project: getTTL('project'),
-  dashboard: getTTL('dashboard'),
-  search: getTTL('search'),
-  gallery: getTTL('gallery'),
-  anime: getTTL('anime'),
-  skills: getTTL('skills'),
-  timeline: getTTL('timeline'),
-  settings: getTTL('settings'),
-};
