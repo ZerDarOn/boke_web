@@ -3,6 +3,15 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { Request } from 'express';
+import { apiLog } from '../lib/logger';
+import {
+  cleanupExpiredTemporaryUploads,
+  TemporaryUploadCleanupResult,
+} from '../lib/temporary-upload-cleanup';
+import { resolveBackendRoot, resolveBackendRuntimePath } from '../config/backend-env-path';
+
+const PUBLIC_UPLOAD_DIR = resolveBackendRuntimePath(process.env.UPLOAD_DIR, 'uploads');
+const TEMPORARY_UPLOAD_DIR = path.join(resolveBackendRoot(), 'temp', 'uploads');
 
 /**
  * 危险的文件扩展名（防止上传可执行文件）
@@ -111,11 +120,9 @@ function checkFileMagicBytes(filePath: string): Promise<string | null> {
  * 配置存储
  */
 const storage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb) => {
-    const type = req.params.type || 'general';
-    const uploadPath = path.join(process.cwd(), 'uploads', type);
-    ensureDir(uploadPath);
-    cb(null, uploadPath);
+  destination: (_req: Request, _file: Express.Multer.File, cb) => {
+    ensureDir(TEMPORARY_UPLOAD_DIR);
+    cb(null, TEMPORARY_UPLOAD_DIR);
   },
   filename: (req: Request, file: Express.Multer.File, cb) => {
     const sanitized = sanitizeFilename(file.originalname);
@@ -126,7 +133,7 @@ const storage = multer.diskStorage({
 
 const cursorStorage = multer.diskStorage({
   destination: (_req: Request, _file: Express.Multer.File, cb) => {
-    const uploadPath = path.join(process.cwd(), 'uploads', 'cursors');
+    const uploadPath = path.join(PUBLIC_UPLOAD_DIR, 'cursors');
     ensureDir(uploadPath);
     cb(null, uploadPath);
   },
@@ -414,19 +421,26 @@ export async function validateUploadedFile(filePath: string, expectedMime?: stri
     }
 
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
 
 /**
- * 删除上传的文件
+ * 删除上传的文件，并把失败交给需要统计补偿结果的调用方。
+ */
+export function deleteUploadedFileOrThrow(filePath: string): void {
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+}
+
+/**
+ * 尽力删除单个上传文件；适合无需返回补偿结果的请求收尾。
  */
 export function deleteUploadedFile(filePath: string): void {
   try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+    deleteUploadedFileOrThrow(filePath);
   } catch (error) {
     console.error('Failed to delete uploaded file:', error);
   }
@@ -435,32 +449,20 @@ export function deleteUploadedFile(filePath: string): void {
 /**
  * 清理临时文件（定期运行）
  */
-export function cleanupTempFiles(maxAge: number = 24 * 60 * 60 * 1000): void {
-  const now = Date.now();
-  const uploadsDir = path.join(process.cwd(), 'uploads');
+export function cleanupTempFiles(
+  maxAge: number = 24 * 60 * 60 * 1000
+): TemporaryUploadCleanupResult {
+  const result = cleanupExpiredTemporaryUploads(TEMPORARY_UPLOAD_DIR, maxAge);
 
-  const cleanDirectory = (dir: string) => {
-    if (!fs.existsSync(dir)) return;
-    // 后台光标属于持久化站点资源，不应被临时文件任务回收。
-    if (path.resolve(dir) === path.resolve(uploadsDir, 'cursors')) return;
+  if (result.removedFiles > 0 || result.failedEntries > 0) {
+    apiLog.info('Temporary upload cleanup completed', result);
+  }
 
-    const files = fs.readdirSync(dir);
-    for (const file of files) {
-      const filePath = path.join(dir, file);
-      const stats = fs.statSync(filePath);
-
-      if (stats.isDirectory()) {
-        cleanDirectory(filePath);
-      } else if (stats.isFile() && stats.mtimeMs < now - maxAge) {
-        fs.unlinkSync(filePath);
-      }
-    }
-  };
-
-  cleanDirectory(uploadsDir);
+  return result;
 }
 
 // 每天清理一次临时文件
-setInterval(() => {
+const temporaryUploadCleanupTimer = setInterval(() => {
   cleanupTempFiles();
 }, 24 * 60 * 60 * 1000);
+temporaryUploadCleanupTimer.unref();

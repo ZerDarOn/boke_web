@@ -1,19 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, Activity, Rss, ArrowRight, Copy, CheckCircle2, Clock, TrendingUp, ExternalLink, Music2 } from 'lucide-react';
+import { Bell, Activity, Rss, ArrowRight, Copy, CheckCircle2, Clock, Music2 } from 'lucide-react';
 import { usePageCopy } from '../hooks/useSiteConfig';
 import { useActivities } from '../hooks/useActivities';
-import MusicPlayer from './MusicPlayer';
+
+const MusicPlayer = React.lazy(() => import('./MusicPlayer'));
 
 const RightSidebar: React.FC = () => {
   const [rssCopied, setRssCopied] = useState(false);
   const [rssUrl, setRssUrl] = useState('');
+  const [shouldLoadMusic, setShouldLoadMusic] = useState(false);
+  const musicSectionRef = useRef<HTMLDivElement>(null);
   const { activities, loading } = useActivities({ limit: 5 });
   const pageCopy = usePageCopy();
 
   useEffect(() => {
     setRssUrl(`${window.location.origin}/rss.xml`);
   }, []);
+
+  useEffect(() => {
+    if (shouldLoadMusic || !musicSectionRef.current || !('IntersectionObserver' in window)) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoadMusic(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '160px' },
+    );
+    observer.observe(musicSectionRef.current);
+    return () => observer.disconnect();
+  }, [shouldLoadMusic]);
 
   const copyRss = () => {
     navigator.clipboard.writeText(rssUrl);
@@ -22,7 +43,7 @@ const RightSidebar: React.FC = () => {
   };
 
   return (
-    <aside className="hidden xl:flex flex-col gap-6 w-72 flex-shrink-0 sticky top-24 h-fit z-20">
+    <aside className="flex flex-col gap-6 w-72 flex-shrink-0 sticky top-24 h-fit z-20">
       
       {/* 1. 公告卡片 */}
       <div className="relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-50 dark:from-[#1a1a1a] dark:via-[#1a1a1a] dark:to-[#0d0d0d] border border-gray-200 dark:border-white/10 rounded-lg shadow-lg shadow-gray-200/50 dark:shadow-black/30 transition-all duration-300 hover:shadow-neon/10 hover:-translate-y-1">
@@ -71,7 +92,7 @@ const RightSidebar: React.FC = () => {
           {/* 内容显示 */}
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Clock className="w-4 h-4 animate-spin text-neon" />
+              <Clock className="w-4 h-4 animate-spin text-neon motion-reduce:animate-none" aria-hidden="true" />
               <span className="text-xs text-gray-400 ml-2">加载中...</span>
             </div>
           ) : activities.length > 0 ? (
@@ -163,6 +184,7 @@ const RightSidebar: React.FC = () => {
                 type="text" 
                 value={rssUrl}
                 readOnly
+                aria-label="RSS 订阅地址"
                 className="bg-transparent text-[10px] text-gray-600 dark:text-gray-300 w-full outline-none font-mono truncate"
               />
               <button 
@@ -173,6 +195,7 @@ const RightSidebar: React.FC = () => {
                     : 'bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400'
                 }`}
                 title={rssCopied ? "已复制" : "复制链接"}
+                aria-label={rssCopied ? 'RSS 链接已复制' : '复制 RSS 链接'}
               >
                 {rssCopied ? (
                   <CheckCircle2 size={14} className="animate-pulse" />
@@ -200,9 +223,10 @@ const RightSidebar: React.FC = () => {
             ].map((reader) => (
               <button
                 key={reader.name}
-                onClick={() => window.open(reader.url, '_blank')}
+                onClick={() => window.open(reader.url, '_blank', 'noopener,noreferrer')}
                 className="p-1.5 bg-gray-100 dark:bg-white/10 hover:bg-neon/10 dark:hover:bg-neon/10 rounded transition-all duration-300 hover:scale-110 group"
                 title={reader.name}
+                aria-label={`打开 ${reader.name}`}
               >
                 <span className="text-sm">{reader.icon}</span>
               </button>
@@ -217,7 +241,7 @@ const RightSidebar: React.FC = () => {
       </div>
 
       {/* 4. 音乐馆 - 迷你播放器 */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-50 dark:from-[#1a1a1a] dark:via-[#1a1a1a] dark:to-[#0d0d0d] border border-gray-200 dark:border-white/10 rounded-lg shadow-lg shadow-gray-200/50 dark:shadow-black/30 transition-all duration-300 hover:shadow-neon/10 hover:-translate-y-1">
+      <div ref={musicSectionRef} className="relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-50 dark:from-[#1a1a1a] dark:via-[#1a1a1a] dark:to-[#0d0d0d] border border-gray-200 dark:border-white/10 rounded-lg shadow-lg shadow-gray-200/50 dark:shadow-black/30 transition-all duration-300 hover:shadow-neon/10 hover:-translate-y-1 motion-reduce:transform-none">
         {/* 装饰元素 */}
         <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-neon via-neon-dark to-neon"></div>
         <div className="absolute top-0 right-0 w-16 h-16 bg-secondary/10 rounded-bl-full"></div>
@@ -241,7 +265,26 @@ const RightSidebar: React.FC = () => {
             </Link>
           </div>
 
-          <MusicPlayer compact />
+          {shouldLoadMusic ? (
+            <React.Suspense
+              fallback={(
+                <div className="py-8 text-center text-xs font-mono text-gray-400" role="status">
+                  LOADING.PLAYER...
+                </div>
+              )}
+            >
+              <MusicPlayer compact />
+            </React.Suspense>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShouldLoadMusic(true)}
+              className="w-full rounded-lg border border-secondary/20 bg-secondary/5 px-3 py-5 text-xs font-mono text-gray-500 transition-colors hover:border-secondary/40 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60"
+              aria-label="加载迷你音乐播放器"
+            >
+              点击加载迷你播放器
+            </button>
+          )}
         </div>
       </div>
 

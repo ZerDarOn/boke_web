@@ -7,6 +7,7 @@ INK.SPIRIT Blog 一键启动脚本
     python start.py dev          # 开发模式（前后端热更新）
     python start.py preview      # 预览模式（先构建再启动）
     python start.py docker       # Docker Compose 全量启动
+    python start.py doctor       # 只读检查启动环境和隧道网络
     python start.py stop         # 停止所有服务
     python start.py init         # 仅初始化环境（安装依赖 + 数据库）
 """
@@ -14,6 +15,7 @@ INK.SPIRIT Blog 一键启动脚本
 import os
 import re
 import sys
+import json
 import shutil
 import socket
 import signal
@@ -22,36 +24,77 @@ import time
 import argparse
 from pathlib import Path
 from urllib.request import urlopen
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 # ── 路径 ───────────────────────────────────────────────────
 ROOT_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
 BACKEND_DIR = ROOT_DIR / "backend"
 AI_SERVICE_DIR = ROOT_DIR / "ai-service"
+PORT_CONFIG_PATH = ROOT_DIR / ".port-config.json"
+DEFAULT_FRONTEND_PORT = 5173
+DEFAULT_BACKEND_PORT = 3001
+MAX_PORT_SEARCH_ATTEMPTS = 20
+DEFAULT_SERVICE_START_TIMEOUT_SECONDS = 30
+DEFAULT_TUNNEL_READY_TIMEOUT_SECONDS = 30
+DEFAULT_TUNNEL_PROTOCOL = "http2"
+SUPPORTED_TUNNEL_PROTOCOLS = {"auto", "quic", "http2"}
+QUICK_TUNNEL_CREATED_MARKER = "Your quick Tunnel has been created!"
+TUNNEL_CONNECTED_MARKER = "Registered tunnel connection"
 
-# ── 从 .env 读取端口 ──────────────────────────────────────
+def read_positive_int_env(name, default):
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+def resolve_tunnel_protocol(env=os.environ):
+    requested = env.get("CLOUDFLARED_PROTOCOL", "").strip().lower()
+    return requested if requested in SUPPORTED_TUNNEL_PROTOCOLS else DEFAULT_TUNNEL_PROTOCOL
+
+SERVICE_START_TIMEOUT_SECONDS = read_positive_int_env(
+    "STARTUP_TIMEOUT_SECONDS",
+    DEFAULT_SERVICE_START_TIMEOUT_SECONDS,
+)
+TUNNEL_READY_TIMEOUT_SECONDS = read_positive_int_env(
+    "CLOUDFLARED_READY_TIMEOUT_SECONDS",
+    DEFAULT_TUNNEL_READY_TIMEOUT_SECONDS,
+)
+TUNNEL_PROTOCOL = resolve_tunnel_protocol()
+
+def is_valid_port(value):
+    return isinstance(value, int) and not isinstance(value, bool) and 0 < value <= 65535
+
+def read_saved_ports():
+    try:
+        config = json.loads(PORT_CONFIG_PATH.read_text(encoding="utf-8"))
+        return config if isinstance(config, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+# ── 从保存配置和 .env 读取端口 ────────────────────────────
 def read_backend_port():
-    """从 backend/.env 读取 PORT，默认 3001"""
+    """优先读取已选端口，再回退 backend/.env 和默认值。"""
+    saved_port = read_saved_ports().get("backendPort")
+    if is_valid_port(saved_port):
+        return saved_port
+
     env_path = BACKEND_DIR / ".env"
     if env_path.exists():
         for line in env_path.read_text(encoding='utf-8').splitlines():
             m = re.match(r'^PORT\s*=\s*(\d+)', line.strip())
-            if m:
+            if m and is_valid_port(int(m.group(1))):
                 return int(m.group(1))
-    return 3001
+    return DEFAULT_BACKEND_PORT
 
 def read_frontend_port():
-    """从 .port-config.json 读取 frontendPort，默认 3000"""
-    import json
-    config_path = ROOT_DIR / ".port-config.json"
-    if config_path.exists():
-        try:
-            cfg = json.loads(config_path.read_text(encoding='utf-8'))
-            return cfg.get("frontendPort", 3000)
-        except Exception:
-            pass
-    return 3000
+    """从 .port-config.json 读取 frontendPort，默认 5173"""
+    saved_port = read_saved_ports().get("frontendPort")
+    return saved_port if is_valid_port(saved_port) else DEFAULT_FRONTEND_PORT
 
 BACKEND_PORT = read_backend_port()
 FRONTEND_PORT = read_frontend_port()
@@ -139,11 +182,146 @@ def command_exists(cmd):
     """检查命令是否存在"""
     return shutil.which(cmd) is not None
 
+def resolve_cloudflared_command():
+    """按 Node 隧道启动器相同的优先级查找 cloudflared。"""
+    configured_path = os.environ.get("CLOUDFLARED_PATH")
+    if configured_path:
+        return configured_path
+
+    executable_name = "cloudflared.exe" if sys.platform == "win32" else "cloudflared"
+    user_profile = os.environ.get("USERPROFILE")
+    candidates = [
+        Path(user_profile) / executable_name if user_profile else None,
+        ROOT_DIR / executable_name,
+    ]
+    for candidate in candidates:
+        if candidate and candidate.is_file():
+            return str(candidate)
+    return shutil.which("cloudflared")
+
+def terminate_started_processes(
+    processes,
+    platform=sys.platform,
+    taskkill_runner=subprocess.run,
+):
+    """尽力终止本次启动模式创建的子进程。"""
+    active_processes = [
+        process for process in processes
+        if process is not None and process.poll() is None
+    ]
+    for process in active_processes:
+        tree_terminated = False
+        if platform == "win32" and isinstance(process.pid, int) and process.pid > 0:
+            try:
+                result = taskkill_runner(
+                    [
+                        "taskkill.exe",
+                        "/PID", str(process.pid),
+                        "/T",
+                        "/F",
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+                tree_terminated = result.returncode == 0
+            except OSError:
+                tree_terminated = False
+        if not tree_terminated:
+            try:
+                process.terminate()
+            except OSError:
+                pass
+    for process in active_processes:
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            try:
+                process.kill()
+            except OSError:
+                pass
+
+def install_process_cleanup_handlers(processes):
+    """为前台启动模式安装信号处理，并返回幂等的最终清理函数。"""
+    previous_sigint_handler = signal.getsignal(signal.SIGINT)
+    previous_sigterm_handler = signal.getsignal(signal.SIGTERM)
+    cleaned = False
+
+    def cleanup():
+        nonlocal cleaned
+        if cleaned:
+            return
+        cleaned = True
+        terminate_started_processes(processes)
+
+    def handle_stop(_signum, _frame):
+        cleanup()
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGINT, handle_stop)
+    signal.signal(signal.SIGTERM, handle_stop)
+
+    def finish_cleanup():
+        signal.signal(signal.SIGINT, previous_sigint_handler)
+        signal.signal(signal.SIGTERM, previous_sigterm_handler)
+        cleanup()
+
+    return finish_cleanup
+
 def port_in_use(port):
     """检查端口是否被监听"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.settimeout(1)
         return s.connect_ex(("127.0.0.1", port)) == 0
+
+def port_available(port):
+    """通过独占绑定检查启动器能否安全使用该端口。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        try:
+            probe.bind(("0.0.0.0", port))
+            return True
+        except OSError:
+            return False
+
+def select_available_ports(
+    frontend_port,
+    backend_port,
+    is_available=port_available,
+    max_attempts=MAX_PORT_SEARCH_ATTEMPTS,
+):
+    """选择互不冲突的前后端端口，不终止任何既有进程。"""
+    def choose(start_port, excluded):
+        for offset in range(max_attempts + 1):
+            candidate = start_port + offset
+            if is_valid_port(candidate) and candidate not in excluded and is_available(candidate):
+                return candidate
+        return None
+
+    selected_frontend = choose(frontend_port, set())
+    if selected_frontend is None:
+        raise RuntimeError(f"前端在 {frontend_port} 之后没有可用端口")
+    selected_backend = choose(backend_port, {selected_frontend})
+    if selected_backend is None:
+        raise RuntimeError(f"后端在 {backend_port} 之后没有可用端口")
+    return selected_frontend, selected_backend
+
+def persist_selected_ports(frontend_port, backend_port, config_path=PORT_CONFIG_PATH):
+    payload = {
+        "frontendPort": frontend_port,
+        "backendPort": backend_port,
+    }
+    temp_path = config_path.with_name(f"{config_path.name}.{os.getpid()}.tmp")
+    try:
+        temp_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        temp_path.replace(config_path)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
 def kill_port(port):
     """杀掉占用端口的进程"""
@@ -186,6 +364,25 @@ def wait_for_port(port, timeout=20):
             return True
         time.sleep(1)
     return False
+
+def probe_http_endpoint(url, timeout=5, opener=urlopen):
+    """只读探测 HTTP 端点；HTTP 错误码也表示网络链路可达。"""
+    try:
+        with opener(url, timeout=timeout) as response:
+            return True, f"HTTP {response.status}"
+    except HTTPError as error:
+        return True, f"HTTP {error.code}"
+    except (URLError, OSError) as error:
+        return False, str(error.reason if isinstance(error, URLError) else error)
+
+def probe_tcp_endpoint(host, port, timeout=3, connector=socket.create_connection):
+    """只读探测 TCP 端点。"""
+    try:
+        connection = connector((host, port), timeout=timeout)
+        connection.close()
+        return True, f"TCP {port} 可达"
+    except OSError as error:
+        return False, str(error)
 
 # ── 环境检查 ───────────────────────────────────────────────
 def check_prerequisites():
@@ -292,23 +489,34 @@ def install_dependencies():
 
 # ── 端口检查 ───────────────────────────────────────────────
 def init_ports():
+    global FRONTEND_PORT, BACKEND_PORT
     log_title("端口检查")
 
-    for port in (FRONTEND_PORT, BACKEND_PORT):
-        log_step(f"端口 {port} ")
-        if port_in_use(port):
-            log_warn(f"端口 {port} 被占用，正在释放...")
-            kill_port(port)
-            if port_in_use(port):
-                log_err(f"无法释放端口 {port}，请手动处理")
-                sys.exit(1)
-            log_ok(f"端口 {port} 已释放")
+    requested_frontend = FRONTEND_PORT
+    requested_backend = BACKEND_PORT
+    try:
+        FRONTEND_PORT, BACKEND_PORT = select_available_ports(
+            requested_frontend,
+            requested_backend,
+        )
+        persist_selected_ports(FRONTEND_PORT, BACKEND_PORT)
+    except (OSError, RuntimeError) as error:
+        log_err(str(error))
+        sys.exit(1)
+
+    for name, requested, selected in (
+        ("前端", requested_frontend, FRONTEND_PORT),
+        ("后端", requested_backend, BACKEND_PORT),
+    ):
+        if selected == requested:
+            log_ok(f"{name}端口 {selected} 可用")
         else:
-            log_step_ok(f"端口 {port} 可用")
+            log_warn(f"{name}端口 {requested} 已占用，改用 {selected}")
 
 # ── 停止服务 ───────────────────────────────────────────────
 def stop_services():
     log_title("停止服务")
+    log_warn("此命令会按配置端口停止进程；正常退出请优先在启动窗口按 Ctrl+C")
 
     services = [(FRONTEND_PORT, "前端"), (BACKEND_PORT, "后端"), (8000, "AI 服务")]
     for port, name in services:
@@ -375,7 +583,7 @@ def show_status(mode):
   管理:   http://localhost:{FRONTEND_PORT}/admin/login{C_RESET}
 
   {C_GRAY}══════════════════════════════════════════════
-    停止服务: python start.py stop
+    停止服务: 当前窗口按 Ctrl+C
   ════════════════════════════════════════════{C_RESET}
 """)
 
@@ -386,71 +594,85 @@ def start_dev():
     install_dependencies()
     init_ports()
 
-    log_title("启动服务")
-
-    # 后端（开发模式开启 SQL 日志方便调试）
-    log_step("启动后端 ")
-    backend_proc = run_bg("npm run dev", cwd=str(BACKEND_DIR), env_extra={"PRISMA_LOG_SQL": "true"})
-    log_step_ok(f"后端启动中 (PID {backend_proc.pid})")
-
-    log_info("等待后端就绪...")
-    if wait_for_url(f"http://localhost:{BACKEND_PORT}/api/health", timeout=30):
-        log_ok("后端已就绪")
-    else:
-        log_warn("后端未响应，可能还在启动中")
-
-    # AI 服务（可选，未配置 API Key 时占位回复）
-    log_step("启动 AI 服务 ")   # ← start_dev 独有的上下文
-    ai_service_dir = ROOT_DIR / "ai-service"
-    ai_proc = None
-    if ai_service_dir.exists() and (ai_service_dir / "main.py").exists():
-        # 优先用 venv，否则用系统 Python
-        venv_python = ai_service_dir / ".venv" / "Scripts" / "python.exe"
-        py_cmd = str(venv_python) if venv_python.exists() else "python"
-        try:
-            ai_proc = run_bg(f"{py_cmd} main.py", cwd=str(ai_service_dir))
-            log_step_ok(f"AI 服务启动中 (PID {ai_proc.pid})")
-            if not port_in_use(8000):
-                time.sleep(1)
-        except Exception as e:
-            log_warn(f"AI 服务启动失败: {e}")
-    else:
-        log_warn("AI 服务未找到，跳过（AiCompanion 仍可显示占位回复）")
-
-    # 前端
-    log_step("启动前端 ")
-    frontend_proc = run_bg("npm run dev", cwd=str(FRONTEND_DIR))
-    log_step_ok(f"前端启动中 (PID {frontend_proc.pid})")
-
-    log_info("等待前端就绪...")
-    if wait_for_url(f"http://localhost:{FRONTEND_PORT}", timeout=20):
-        log_ok("前端已就绪")
-    else:
-        log_warn("前端未响应，可能还在启动中")
-
-    show_status("dev")
-
-    # 保持脚本运行，等待子进程退出
+    started_processes = []
+    finish_cleanup = install_process_cleanup_handlers(started_processes)
+    exit_code = 0
     try:
+        log_title("启动服务")
+
+        log_step("启动后端 ")
+        backend_proc = run_bg(
+            "npm run dev",
+            cwd=str(BACKEND_DIR),
+            env_extra={
+                "PORT": str(BACKEND_PORT),
+                "PRISMA_LOG_SQL": "true",
+            },
+        )
+        started_processes.append(backend_proc)
+        log_step_ok(f"后端启动中 (PID {backend_proc.pid})")
+        log_info("等待后端就绪...")
+        if not wait_for_url(
+            f"http://127.0.0.1:{BACKEND_PORT}/api/health",
+            timeout=SERVICE_START_TIMEOUT_SECONDS,
+        ):
+            raise RuntimeError("后端启动超时")
+        log_ok("后端已就绪")
+
+        log_step("启动 AI 服务 ")
+        ai_proc = None
+        if AI_SERVICE_DIR.exists() and (AI_SERVICE_DIR / "main.py").exists():
+            venv_python = AI_SERVICE_DIR / ".venv" / "Scripts" / "python.exe"
+            py_cmd = str(venv_python) if venv_python.exists() else "python"
+            try:
+                ai_proc = run_bg(f"{py_cmd} main.py", cwd=str(AI_SERVICE_DIR))
+                started_processes.append(ai_proc)
+                log_step_ok(f"AI 服务启动中 (PID {ai_proc.pid})")
+            except OSError as error:
+                log_warn(f"AI 服务启动失败: {error}")
+        else:
+            log_warn("AI 服务未找到，跳过（AiCompanion 仍可显示占位回复）")
+
+        log_step("启动前端 ")
+        frontend_proc = run_bg(
+            "npm run dev",
+            cwd=str(FRONTEND_DIR),
+            env_extra={"PORT": str(FRONTEND_PORT)},
+        )
+        started_processes.append(frontend_proc)
+        log_step_ok(f"前端启动中 (PID {frontend_proc.pid})")
+        log_info("等待前端就绪...")
+        if not wait_for_url(
+            f"http://127.0.0.1:{FRONTEND_PORT}",
+            timeout=SERVICE_START_TIMEOUT_SECONDS,
+        ):
+            raise RuntimeError("前端启动超时")
+        log_ok("前端已就绪")
+
+        show_status("dev")
         while True:
-            # 检查子进程是否还活着
             if backend_proc.poll() is not None:
                 log_err(f"后端进程已退出 (退出码 {backend_proc.returncode})")
+                exit_code = backend_proc.returncode or 1
                 break
             if frontend_proc.poll() is not None:
                 log_err(f"前端进程已退出 (退出码 {frontend_proc.returncode})")
+                exit_code = frontend_proc.returncode or 1
                 break
             if ai_proc and ai_proc.poll() is not None:
                 log_warn(f"AI 服务已退出 (退出码 {ai_proc.returncode})")
-                ai_proc = None  # AI 服务退出不终止整个启动脚本
+                ai_proc = None
             time.sleep(2)
     except KeyboardInterrupt:
-        log_info("\n收到 Ctrl+C，正在停止服务...")
-        backend_proc.terminate()
-        frontend_proc.terminate()
-        if ai_proc:
-            ai_proc.terminate()
+        log_info("\n收到停止信号，正在停止服务...")
+    except (OSError, RuntimeError) as error:
+        log_err(str(error))
+        exit_code = 1
+    finally:
+        finish_cleanup()
         log_ok("服务已停止")
+    if exit_code:
+        sys.exit(exit_code)
 
 # ── 预览模式 ───────────────────────────────────────────────
 def start_preview():
@@ -460,41 +682,71 @@ def start_preview():
     init_ports()
 
     log_title("构建前端")
-    r = run("npm run build", cwd=str(FRONTEND_DIR))
-    if (FRONTEND_DIR / "dist").exists():
+    build_result = run("npm run build", cwd=str(FRONTEND_DIR))
+    if build_result.returncode == 0 and (FRONTEND_DIR / "dist").exists():
         log_ok("前端构建完成")
     else:
         log_err("前端构建失败")
         sys.exit(1)
 
-    log_title("启动服务")
-
-    log_step("启动后端 ")
-    backend_proc = run_bg("npm run dev", cwd=str(BACKEND_DIR))
-    log_step_ok(f"后端启动中 (PID {backend_proc.pid})")
-
-    time.sleep(3)
-
-    log_step("启动前端预览 ")
-    frontend_proc = run_bg("npm run preview", cwd=str(FRONTEND_DIR))
-    log_step_ok(f"前端预览启动中 (PID {frontend_proc.pid})")
-
-    show_status("preview")
-
+    started_processes = []
+    finish_cleanup = install_process_cleanup_handlers(started_processes)
+    exit_code = 0
     try:
+        log_title("启动服务")
+        log_step("启动后端 ")
+        backend_proc = run_bg(
+            "npm run dev",
+            cwd=str(BACKEND_DIR),
+            env_extra={"PORT": str(BACKEND_PORT)},
+        )
+        started_processes.append(backend_proc)
+        log_step_ok(f"后端启动中 (PID {backend_proc.pid})")
+        log_info("等待后端就绪...")
+        if not wait_for_url(
+            f"http://127.0.0.1:{BACKEND_PORT}/api/health",
+            timeout=SERVICE_START_TIMEOUT_SECONDS,
+        ):
+            raise RuntimeError("后端启动超时")
+        log_ok("后端已就绪")
+
+        log_step("启动前端预览 ")
+        frontend_proc = run_bg(
+            "npm run preview",
+            cwd=str(FRONTEND_DIR),
+            env_extra={"PORT": str(FRONTEND_PORT)},
+        )
+        started_processes.append(frontend_proc)
+        log_step_ok(f"前端预览启动中 (PID {frontend_proc.pid})")
+        log_info("等待前端就绪...")
+        if not wait_for_url(
+            f"http://127.0.0.1:{FRONTEND_PORT}",
+            timeout=SERVICE_START_TIMEOUT_SECONDS,
+        ):
+            raise RuntimeError("前端预览启动超时")
+        log_ok("前端预览已就绪")
+
+        show_status("preview")
         while True:
             if backend_proc.poll() is not None:
                 log_err(f"后端进程已退出 (退出码 {backend_proc.returncode})")
+                exit_code = backend_proc.returncode or 1
                 break
             if frontend_proc.poll() is not None:
                 log_err(f"前端进程已退出 (退出码 {frontend_proc.returncode})")
+                exit_code = frontend_proc.returncode or 1
                 break
             time.sleep(2)
     except KeyboardInterrupt:
-        log_info("\n收到 Ctrl+C，正在停止服务...")
-        backend_proc.terminate()
-        frontend_proc.terminate()
+        log_info("\n收到停止信号，正在停止服务...")
+    except (OSError, RuntimeError) as error:
+        log_err(str(error))
+        exit_code = 1
+    finally:
+        finish_cleanup()
         log_ok("服务已停止")
+    if exit_code:
+        sys.exit(exit_code)
 
 # ── 内网穿透分享模式 ───────────────────────────────────────
 def start_share():
@@ -504,18 +756,31 @@ def start_share():
     install_dependencies()
     init_ports()
 
+    started_processes = []
+    finish_cleanup = install_process_cleanup_handlers(started_processes)
+
     log_title("启动服务")
 
     # 后端
     log_step("启动后端 ")
-    backend_proc = run_bg("npm run dev", cwd=str(BACKEND_DIR))
+    backend_proc = run_bg(
+        "npm run dev",
+        cwd=str(BACKEND_DIR),
+        env_extra={"PORT": str(BACKEND_PORT)},
+    )
+    started_processes.append(backend_proc)
     log_step_ok(f"后端启动中 (PID {backend_proc.pid})")
 
     log_info("等待后端就绪...")
-    if wait_for_url(f"http://localhost:{BACKEND_PORT}/api/health", timeout=30):
+    if wait_for_url(
+        f"http://127.0.0.1:{BACKEND_PORT}/api/health",
+        timeout=SERVICE_START_TIMEOUT_SECONDS,
+    ):
         log_ok("后端已就绪")
     else:
-        log_warn("后端未响应，可能还在启动中")
+        log_err("后端启动超时，已取消分享模式")
+        finish_cleanup()
+        sys.exit(1)
 
     # AI 服务（可选，未配置 API Key 时占位回复）
     log_step("启动 AI 服务 ")
@@ -526,6 +791,7 @@ def start_share():
         py_cmd = str(venv_python) if venv_python.exists() else "python"
         try:
             ai_proc = run_bg(f"{py_cmd} main.py", cwd=str(ai_service_dir))
+            started_processes.append(ai_proc)
             log_step_ok(f"AI 服务启动中 (PID {ai_proc.pid})")
             if not port_in_use(8000):
                 time.sleep(1)
@@ -536,17 +802,22 @@ def start_share():
 
     # 前端
     log_step("启动前端 ")
-    frontend_proc = run_bg("npm run dev", cwd=str(FRONTEND_DIR))
+    frontend_proc = run_bg(
+        "npm run dev",
+        cwd=str(FRONTEND_DIR),
+        env_extra={"PORT": str(FRONTEND_PORT)},
+    )
+    started_processes.append(frontend_proc)
     log_step_ok(f"前端启动中 (PID {frontend_proc.pid})")
 
     log_info("等待前端就绪...")
-    if not wait_for_url(f"http://localhost:{FRONTEND_PORT}", timeout=30):
+    if not wait_for_url(
+        f"http://127.0.0.1:{FRONTEND_PORT}",
+        timeout=SERVICE_START_TIMEOUT_SECONDS,
+    ):
         log_err(f"前端启动超时，请检查端口 {FRONTEND_PORT} 或前端日志")
         log_info("提示：运行 python start.py stop 清理残留进程后重试")
-        frontend_proc.terminate()
-        backend_proc.terminate()
-        if ai_proc:
-            ai_proc.terminate()
+        finish_cleanup()
         sys.exit(1)
     log_ok("前端已就绪")
 
@@ -555,49 +826,82 @@ def start_share():
     tunnel_url = None
     tunnel_proc = None
 
-    # 找 cloudflared：先 PATH，再用户目录，再项目目录
-    cloudflared_cmd = None
-    for candidate in [
-        "cloudflared",
-        shutil.which("cloudflared"),
-        os.path.expandvars(r"%USERPROFILE%\cloudflared.exe"),
-        str(ROOT_DIR / "cloudflared.exe"),
-    ]:
-        if candidate and (shutil.which(candidate) or os.path.exists(candidate)):
-            cloudflared_cmd = candidate
-            break
-
+    # 与 Node 隧道启动器保持一致：显式路径 > 用户目录 > 项目目录 > PATH。
+    cloudflared_cmd = resolve_cloudflared_command()
     if cloudflared_cmd:
-        tunnel_proc = subprocess.Popen(
-            [cloudflared_cmd, "tunnel", "--url", f"http://localhost:{FRONTEND_PORT}"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            encoding="utf-8",
-            errors="replace",
-        )
-        # 等 cloudflared 打印出 trycloudflare.com URL
+        try:
+            tunnel_proc = subprocess.Popen(
+                [
+                    cloudflared_cmd,
+                    "tunnel",
+                    "--url", f"http://127.0.0.1:{FRONTEND_PORT}",
+                    "--protocol", TUNNEL_PROTOCOL,
+                    "--no-autoupdate",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                encoding="utf-8",
+                errors="replace",
+            )
+            started_processes.append(tunnel_proc)
+        except OSError as error:
+            log_err(f"cloudflared 启动失败: {error}")
+            finish_cleanup()
+            sys.exit(1)
+
+        # 地址由 API 分配后，还要等连接器注册到边缘网络，才能对外提供服务。
         import threading
         tunnel_ready = threading.Event()
+        tunnel_connected = threading.Event()
 
         def _read_tunnel():
             nonlocal tunnel_url
+            quick_tunnel_created = False
             for line in tunnel_proc.stdout:
-                print(f"  {C_GRAY}{line.rstrip()}{C_RESET}", flush=True)
-                m = re.search(r"https://[a-zA-Z0-9.-]+\.trycloudflare\.com", line)
-                if m and not tunnel_ready.is_set():
-                    tunnel_url = m.group(0)
+                output_line = line.rstrip()
+                print(f"  {C_GRAY}{output_line}{C_RESET}", flush=True)
+                if QUICK_TUNNEL_CREATED_MARKER in output_line:
+                    quick_tunnel_created = True
+                if quick_tunnel_created and tunnel_url is None:
+                    match = re.search(
+                        r"https://[a-zA-Z0-9.-]+\.trycloudflare\.com",
+                        output_line,
+                    )
+                    if match:
+                        tunnel_url = match.group(0)
+                if TUNNEL_CONNECTED_MARKER in output_line:
+                    tunnel_connected.set()
+                if tunnel_url and tunnel_connected.is_set():
                     tunnel_ready.set()
 
         threading.Thread(target=_read_tunnel, daemon=True).start()
 
-        tunnel_ready.wait(timeout=30)
-        if tunnel_url:
-            log_step_ok(f"隧道已建立")
+        log_info(
+            f"隧道协议: {TUNNEL_PROTOCOL}; 就绪超时: {TUNNEL_READY_TIMEOUT_SECONDS}s"
+        )
+        tunnel_deadline = time.monotonic() + TUNNEL_READY_TIMEOUT_SECONDS
+        while (
+            not tunnel_ready.is_set()
+            and tunnel_proc.poll() is None
+            and time.monotonic() < tunnel_deadline
+        ):
+            tunnel_ready.wait(timeout=0.25)
+
+        tunnel_exit_code = tunnel_proc.poll()
+        if tunnel_url and tunnel_connected.is_set() and tunnel_exit_code is None:
+            log_step_ok("隧道已建立")
         else:
-            log_warn("隧道建立超时，请检查网络或手动启动 cloudflared")
+            if tunnel_exit_code is None:
+                log_err("隧道连接 Cloudflare 边缘超时，请检查网络或代理后重试")
+            else:
+                log_err(f"cloudflared 提前退出 (退出码 {tunnel_exit_code})")
+            finish_cleanup()
+            sys.exit(tunnel_exit_code or 1)
     else:
-        log_warn("cloudflared 未安装，跳过隧道")
-        log_info("安装: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/")
+        log_err("cloudflared 未安装，无法启动分享模式")
+        log_info("可设置 CLOUDFLARED_PATH，或运行: winget install Cloudflare.cloudflared")
+        finish_cleanup()
+        sys.exit(1)
 
     # 显示状态
     print(f"""
@@ -613,34 +917,141 @@ def start_share():
   {C_WHITE}  {tunnel_url}{C_RESET}""")
     print(f"""
   {C_GRAY}══════════════════════════════════════════════
-    停止服务: python start.py stop
+    停止服务: 当前窗口按 Ctrl+C
   ════════════════════════════════════════════{C_RESET}
 """)
 
-    # 监控所有进程
+    # 监控所有进程；分享链任一必需进程退出都停止整组服务。
+    exit_code = 0
     try:
         while True:
             if backend_proc.poll() is not None:
                 log_err(f"后端进程已退出 (退出码 {backend_proc.returncode})")
+                exit_code = backend_proc.returncode or 1
                 break
             if frontend_proc.poll() is not None:
                 log_err(f"前端进程已退出 (退出码 {frontend_proc.returncode})")
+                exit_code = frontend_proc.returncode or 1
+                break
+            if tunnel_proc.poll() is not None:
+                log_err(f"Cloudflare 隧道已退出 (退出码 {tunnel_proc.returncode})")
+                exit_code = tunnel_proc.returncode or 1
                 break
             if ai_proc and ai_proc.poll() is not None:
                 log_warn(f"AI 服务已退出 (退出码 {ai_proc.returncode})")
                 ai_proc = None
             time.sleep(2)
     except KeyboardInterrupt:
-        log_info("\n收到 Ctrl+C，正在停止服务...")
-        backend_proc.terminate()
-        frontend_proc.terminate()
-        if ai_proc:
-            ai_proc.terminate()
-        try:
-            tunnel_proc.terminate()
-        except Exception:
-            pass
+        log_info("\n收到停止信号，正在停止服务...")
+    finally:
+        finish_cleanup()
         log_ok("服务已停止")
+    if exit_code:
+        sys.exit(exit_code)
+
+
+# ── 启动诊断 ───────────────────────────────────────────────
+def start_doctor():
+    """只读检查本地依赖、端口和 Cloudflare 网络，不启动任何服务。"""
+    log_title("启动诊断（只读）")
+    required_failures = 0
+    warnings = 0
+
+    def report(name, ok, detail, required=False):
+        nonlocal required_failures, warnings
+        if ok:
+            log_ok(f"{name}: {detail}")
+        else:
+            log_warn(f"{name}: {detail}")
+            if required:
+                required_failures += 1
+            else:
+                warnings += 1
+
+    for command_name in ("node", "npm"):
+        command_path = shutil.which(command_name)
+        report(
+            command_name,
+            command_path is not None,
+            command_path or "未安装或不在 PATH",
+            required=True,
+        )
+
+    postgres_ready = port_in_use(5432)
+    report(
+        "PostgreSQL",
+        postgres_ready,
+        "端口 5432 已监听" if postgres_ready else "端口 5432 未监听",
+    )
+    backend_env_exists = (BACKEND_DIR / ".env").is_file()
+    report(
+        "后端环境文件",
+        backend_env_exists,
+        "backend/.env 已存在" if backend_env_exists else "缺少 backend/.env",
+    )
+    missing_modules = [
+        name
+        for directory, name in (
+            (ROOT_DIR, "root"),
+            (FRONTEND_DIR, "frontend"),
+            (BACKEND_DIR, "backend"),
+        )
+        if not (directory / "node_modules").is_dir()
+    ]
+    report(
+        "Node 依赖",
+        not missing_modules,
+        "已安装" if not missing_modules else "缺少: " + ", ".join(missing_modules),
+    )
+
+    cloudflared_command = resolve_cloudflared_command()
+    if cloudflared_command:
+        try:
+            version_result = run(
+                [cloudflared_command, "--version"],
+                capture=True,
+            )
+            version_output = (version_result.stdout or version_result.stderr).strip()
+            report(
+                "cloudflared",
+                version_result.returncode == 0,
+                version_output or cloudflared_command,
+            )
+        except (OSError, subprocess.SubprocessError) as error:
+            report("cloudflared", False, str(error))
+    else:
+        report("cloudflared", False, "未安装，分享模式不可用")
+
+    for name, port in (("前端端口", FRONTEND_PORT), ("后端端口", BACKEND_PORT)):
+        available = port_available(port)
+        detail = f"{port} 可用" if available else f"{port} 已占用，启动时会自动避让"
+        report(name, available, detail)
+
+    api_ok, api_detail = probe_http_endpoint("https://api.trycloudflare.com")
+    report("Cloudflare Quick Tunnel API", api_ok, api_detail)
+    if not api_ok:
+        log_info("使用代理时，请确认 Python/cloudflared 可通过 TUN，或配置 HTTPS_PROXY")
+    edge_ok, edge_detail = probe_tcp_endpoint("region1.v2.argotunnel.com", 7844)
+    report("Cloudflare Tunnel Edge", edge_ok, edge_detail)
+    requested_protocol = os.environ.get("CLOUDFLARED_PROTOCOL")
+    if requested_protocol and requested_protocol.strip().lower() not in SUPPORTED_TUNNEL_PROTOCOLS:
+        report(
+            "CLOUDFLARED_PROTOCOL",
+            False,
+            f"{requested_protocol!r} 无效，已安全回退到 {TUNNEL_PROTOCOL}",
+        )
+    log_info(
+        f"隧道协议: {TUNNEL_PROTOCOL}; 服务超时: {SERVICE_START_TIMEOUT_SECONDS}s; "
+        f"隧道超时: {TUNNEL_READY_TIMEOUT_SECONDS}s"
+    )
+
+    if required_failures:
+        log_err(f"诊断完成：{required_failures} 个必需依赖不可用")
+        sys.exit(1)
+    if warnings:
+        log_warn(f"诊断完成：本地开发可启动，但有 {warnings} 项需要留意")
+    else:
+        log_ok("诊断完成：本地开发和分享条件均可用")
 
 
 # ── 仅初始化 ───────────────────────────────────────────────
@@ -668,16 +1079,7 @@ def show_menu():
     show_banner()
 
     # 检测 cloudflared 是否可用
-    cf_candidates = [
-        "cloudflared",
-        shutil.which("cloudflared"),
-        os.path.expandvars(r"%USERPROFILE%\cloudflared.exe"),
-        str(ROOT_DIR / "cloudflared.exe"),
-    ]
-    has_cf = any(
-        c and (shutil.which(c) or os.path.exists(c))
-        for c in cf_candidates if c
-    )
+    has_cf = resolve_cloudflared_command() is not None
 
     tunnel_label = "开发 + 隧道（⚠ cloudflared 未安装）" if not has_cf else "开发 + Cloudflare 隧道（生成公网链接发给朋友）"
 
@@ -687,6 +1089,7 @@ def show_menu():
         ("preview", "预览模式（先构建再启动，模拟生产）"),
         ("init",    "初始化（安装依赖 + 数据库迁移 + 种子数据）"),
         ("stop",    "停止所有运行中的服务"),
+        ("doctor",  "启动诊断（只读，不启动服务）"),
     ]
 
     print(f"  {C_CYAN}请选择启动模式:{C_RESET}")
@@ -722,11 +1125,17 @@ def main():
   python start.py preview      # 预览模式（先构建再启动）
   python start.py stop         # 停止所有服务
   python start.py init         # 仅初始化环境（安装依赖 + 数据库）
+  python start.py doctor       # 只读检查依赖、端口和隧道网络
+
+可选环境变量:
+  CLOUDFLARED_PROTOCOL=auto|quic|http2
+  STARTUP_TIMEOUT_SECONDS=30
+  CLOUDFLARED_READY_TIMEOUT_SECONDS=30
 """
     )
     parser.add_argument(
         "mode", nargs="?", default=None,
-        choices=["dev", "preview", "docker", "stop", "init", "share"],
+        choices=["dev", "preview", "docker", "stop", "init", "share", "doctor"],
         help="启动模式 (不传则显示交互式菜单)"
     )
     args = parser.parse_args()
@@ -743,6 +1152,7 @@ def main():
         "stop":    stop_services,
         "init":    start_init,
         "share":   start_share,
+        "doctor":  start_doctor,
     }
     actions[args.mode]()
 

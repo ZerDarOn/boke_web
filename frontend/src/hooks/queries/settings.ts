@@ -13,6 +13,13 @@ export function useSiteSettings() {
   });
 }
 
+export function usePublicSiteSettings() {
+  return useQuery({
+    queryKey: queryKeys.settings.publicSite(),
+    queryFn: () => unwrapApi(settingsApi.getPublic()),
+  });
+}
+
 export function useSettingsByKey<T = unknown>(key: string) {
   return useQuery({
     queryKey: queryKeys.settings.key(key),

@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { getAuthToken, setAuthToken } from '../lib/api/request';
+import { queryKeys } from '../hooks/api/query-keys';
+import { clearSiteConfigCache } from '../lib/siteConfigStorage';
 
 interface User {
   id: string;
@@ -34,6 +37,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const queryClient = useQueryClient();
   // 优先从 localStorage 恢复用户数据，避免闪烁
   const getStoredUser = (): User | null => {
     try {
@@ -51,7 +55,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // 如果有token但还没验证完，显示验证中而不是完全未登录
   const hasToken = !!getAuthToken();
   const [loading, setLoading] = useState(hasToken); // 有token时才需要loading
-  const [isChecking, setIsChecking] = useState(false);
+  const clearSession = () => {
+    setAuthToken(null);
+    localStorage.removeItem('auth_user');
+    clearSiteConfigCache();
+    queryClient.clear();
+    setUser(null);
+  };
 
   useEffect(() => {
     // 有token才需要验证
@@ -65,24 +75,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      setIsChecking(true);
-      
       const result = await api.auth.me();
 
       if (result.success && result.data) {
         localStorage.setItem('auth_user', JSON.stringify(result.data));
         setUser(result.data);
       } else {
-        setAuthToken(null);
-        localStorage.removeItem('auth_user');
-        setUser(null);
+        clearSession();
       }
     } catch (error) {
       console.error('❌ checkAuth failed:', error);
-      setAuthToken(null);
-      setUser(null);
+      clearSession();
     } finally {
-      setIsChecking(false);
       setLoading(false);
     }
   };
@@ -95,11 +99,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (result.success && result.data && result.data.token) {
         setAuthToken(result.data.token);
         localStorage.setItem('auth_user', JSON.stringify(result.data.user));
+        queryClient.removeQueries({ queryKey: queryKeys.settings.all });
         setUser(result.data.user);
       } else {
         throw new Error(result.error || 'Login failed');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Login error:', error);
       throw error;
     } finally {
@@ -110,14 +115,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     try {
       await api.auth.logout();
-      setAuthToken(null);
-      localStorage.removeItem('auth_user');
-      setUser(null);
     } catch (error) {
       console.error('❌ Logout failed:', error);
-      setAuthToken(null);
-      localStorage.removeItem('auth_user');
-      setUser(null);
+    } finally {
+      clearSession();
     }
   };
 

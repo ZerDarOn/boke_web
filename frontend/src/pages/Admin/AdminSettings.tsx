@@ -5,6 +5,7 @@ import {
   Loader2, X, Check, MousePointer2,
 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { writePublicSiteConfig } from '../../lib/siteConfigStorage';
 import { defaultSiteConfig, type SiteConfig } from './settings/siteConfig';
 
 const GeneralSettingsTab = lazy(() => import('./settings/GeneralSettingsTab'));
@@ -24,14 +25,13 @@ const AdminSettings: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [editingHero, setEditingHero] = useState<string | null>(null);
 
-  const { data: serverConfig, isLoading: loadingQuery, refetch } = useSiteSettings();
+  const { data: serverConfig, isLoading: loadingQuery } = useSiteSettings();
   const saveSiteConfig = useSaveSiteConfig();
 
   useEffect(() => {
     if (serverConfig) {
       setConfig({ ...defaultSiteConfig, ...serverConfig });
-      localStorage.setItem('site_config', JSON.stringify(serverConfig));
-      localStorage.setItem('site_config_ts', String(Date.now()));
+      writePublicSiteConfig(serverConfig);
     }
   }, [serverConfig]);
 
@@ -41,8 +41,7 @@ const AdminSettings: React.FC = () => {
   const saveConfig = async () => {
     try {
       await saveSiteConfig.mutateAsync(config);
-      localStorage.setItem('site_config', JSON.stringify(config));
-      localStorage.setItem('site_config_ts', String(Date.now()));
+      writePublicSiteConfig(config);
       setMessage({ type: 'success', text: '设置已保存到服务器！所有设备将同步更新' });
       setTimeout(() => setMessage(null), 5000);
     } catch (err) {

@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../middleware/error.middleware';
-import { errorTrackerLog } from '../lib/logger';
-import { readLogs } from '../lib/logger';
+import { log, readLogs, errorTrackerLog } from '../lib/logger';
+import { sanitizeClientErrorReport } from '../lib/client-error-report';
 
 export function getErrorLogs(req: Request, res: Response) {
   try {
@@ -48,17 +47,28 @@ export function clearErrorLogs(req: Request, res: Response) {
 
 export async function logClientError(req: Request, res: Response) {
   try {
-    const errorData = req.body;
+    const result = sanitizeClientErrorReport(req.body);
+    if (result.valid === false) {
+      const statusCode = result.reason === 'payload_too_large' ? 413 : 400;
+      return res.status(statusCode).json({
+        success: false,
+        error: result.reason === 'payload_too_large'
+          ? 'Client error report is too large'
+          : 'Invalid client error report',
+      });
+    }
 
-    errorTrackerLog.error('Client error:', errorData);
+    log('error', 'Error', 'Client error report', result.report);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Error logged successfully',
     });
   } catch (error) {
-    errorTrackerLog.error('Failed to log client error', error as Error);
-    res.status(500).json({
+    log('error', 'Error', 'Failed to process client error report', {
+      errorType: error instanceof Error ? error.name : 'UnknownError',
+    });
+    return res.status(500).json({
       success: false,
       error: 'Failed to log error',
     });

@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
-import path from 'path';
+import { resolveBackendEnvPath } from './backend-env-path';
+import { resolveTrustProxySetting } from './trust-proxy';
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: resolveBackendEnvPath() });
 
 // 必需的环境变量（生产环境强制检查）
 const REQUIRED_ENV_VARS = [
@@ -144,6 +145,7 @@ export const config = {
     RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
     LOGIN_MAX_ATTEMPTS: parseInt(process.env.LOGIN_MAX_ATTEMPTS || '5'),
     LOGIN_LOCK_DURATION: parseInt(process.env.LOGIN_LOCK_DURATION || '900000'),  // 15 minutes
+    TRUST_PROXY: resolveTrustProxySetting(process.env.TRUST_PROXY),
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ? 
       process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) :
       [

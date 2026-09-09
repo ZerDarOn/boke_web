@@ -2,10 +2,11 @@ import React from 'react';
 import { useDiaryList } from '../hooks/queries/diary';
 import { usePageCopy } from '../hooks/useSiteConfig';
 import { PageLoader } from './DataState';
+import SectionHeading from './SectionHeading';
 
 const ShadowFragments: React.FC = () => {
   const pageCopy = usePageCopy();
-  const { data: entries = [], isLoading: loading } = useDiaryList({ limit: 5, type: 'SHORT' });
+  const { data: entries = [], isLoading: loading, error, refetch } = useDiaryList({ limit: 5, type: 'SHORT' });
 
   // 格式化日期显示
   const formatDate = (dateString: string) => {
@@ -21,76 +22,74 @@ const ShadowFragments: React.FC = () => {
   };
 
   return (
-    <section id="thoughts" className="py-24 border-t border-ink/10 dark:border-white/10 relative overflow-hidden w-full">
+    <section id="thoughts" className="relative w-full overflow-hidden py-16 md:py-28">
       
       {/* Background Decor */}
-      <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-         <span className="font-serif text-[10rem] leading-none select-none text-ink dark:text-white">{pageCopy.thoughtsBgText}</span>
+      <div className="pointer-events-none absolute right-0 top-14 opacity-[0.035] dark:opacity-[0.055]">
+         <span className="select-none font-serif text-[9rem] font-black leading-none text-ink dark:text-white md:text-[14rem]">{pageCopy.thoughtsBgText}</span>
       </div>
 
-      <div className="w-full px-8">
-        <div className="flex items-center justify-between mb-12">
-          <h2 className="text-3xl font-sans font-bold text-ink dark:text-white">
-            {pageCopy.thoughtsTitle}
-          </h2>
-          <span className="font-mono text-xs tracking-widest text-gray-500">
-             // {pageCopy.thoughtsLabel}
-          </span>
-        </div>
+      <div className="relative z-10 w-full">
+        <SectionHeading
+          index="02"
+          eyebrow={`${pageCopy.thoughtsLabel} / 碎片`}
+          title={pageCopy.thoughtsTitle}
+          description="不够长到成为文章，却值得在某一天被重新想起。"
+        />
 
         {/* Loading State */}
         {loading && <PageLoader className="py-20" />}
 
+        {!loading && error && (
+          <div className="mt-12 border border-red-900/20 bg-red-950/[0.04] px-6 py-10 text-center dark:border-red-300/15 dark:bg-red-300/[0.04]" role="alert">
+            <p className="font-serif text-lg text-ink dark:text-paper">思绪暂时没有回应。</p>
+            <button type="button" onClick={() => refetch()} className="mt-4 font-mono text-xs uppercase tracking-[0.22em] text-neon-dark underline underline-offset-4 dark:text-neon">重新连接</button>
+          </div>
+        )}
+
         {/* Empty State */}
-        {!loading && entries.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
-            <p className="text-lg font-serif">暂无内容</p>
+        {!loading && !error && entries.length === 0 && (
+          <div className="mt-12 flex flex-col items-center justify-center border-y border-ink/10 py-20 text-stone-400 dark:border-white/10 dark:text-stone-500">
+            <p className="font-serif text-lg">下一枚念头还在路上。</p>
           </div>
         )}
 
         {/* Horizontal Scroll Container for Vertical Cards */}
-        {!loading && entries.length > 0 && (
-          <div className="flex overflow-x-auto pb-12 gap-10 scrollbar-hide snap-x snap-mandatory px-4 py-4">
+        {!loading && !error && entries.length > 0 && (
+          <div className="mt-12 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-8 pr-6 scrollbar-hide md:gap-7">
             {entries.slice(0, 5).map((entry, index) => (
-              <div
+              <article
                 key={entry.id}
                 className={`
-                  flex-shrink-0 snap-center bg-white dark:bg-[#111]
-                  shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-none
-                  w-48 h-[450px] p-6 relative group
-                  transition-all duration-500 ease-out
-                  border border-transparent dark:border-white/5
-                  hover:shadow-[0_20px_40px_rgba(16,185,129,0.15)] dark:hover:border-neon/30
-                  hover:rotate-0 hover:-translate-y-4 hover:z-10 hover:scale-105
-                  ${index % 2 === 0 ? '-rotate-2' : 'rotate-1'}
+                  group relative h-[26rem] w-44 flex-shrink-0 snap-start overflow-hidden border border-ink/10 bg-white/65 p-5
+                  shadow-[0_24px_70px_rgba(33,31,26,0.07)] backdrop-blur-sm transition-all duration-300
+                  hover:-translate-y-2 hover:border-neon/50 dark:border-white/10 dark:bg-white/[0.035] dark:shadow-none md:w-48
                 `}
               >
-                {/* Top Neon Accent Line */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-neon opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                <div className="absolute left-0 top-0 h-full w-px bg-gradient-to-b from-neon via-neon/20 to-transparent opacity-80" />
 
                 {/* Date */}
-                <div className="font-mono text-[10px] text-gray-400 absolute top-6 left-4 border-b border-gray-200 dark:border-white/10 pb-2 w-8 group-hover:text-neon transition-colors">
-                  {formatDate(entry.date)}
+                <div className="absolute left-5 top-5 font-mono text-[0.62rem] tracking-[0.18em] text-stone-500 transition-colors group-hover:text-neon-dark dark:group-hover:text-neon">
+                  {String(index + 1).padStart(2, '0')} · {formatDate(entry.date)}
                 </div>
 
                 {/* Vertical Text Content */}
-                <div className="h-full w-full flex flex-row-reverse justify-center pt-16 pb-24">
+                <div className="flex h-full w-full flex-row-reverse justify-center pb-20 pt-14">
                   <p
-                    className={`vertical-text font-serif text-base text-ink dark:text-gray-300 leading-loose tracking-widest border-l border-gray-100 dark:border-white/10 pl-4 h-full overflow-hidden text-ellipsis transition-all duration-500 ease-out group-hover:text-black dark:group-hover:text-white group-hover:border-neon/30 group-hover:scale-110 group-hover:rotate-0 ${index % 2 === 0 ? '-rotate-6' : 'rotate-6'}`}
+                    className="vertical-text h-full overflow-hidden border-l border-ink/10 pl-4 font-serif text-base leading-loose tracking-widest text-ink transition-colors group-hover:border-neon/30 dark:border-white/10 dark:text-stone-300 dark:group-hover:text-white"
                   >
                     {entry.content}
                   </p>
                 </div>
 
                 {/* CYBER SEAL */}
-                <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+                <div className="absolute bottom-7 left-1/2 -translate-x-1/2">
                   <div className={`
                     relative w-14 h-14 flex items-center justify-center
-                    transition-transform duration-500 ease-spring
-                    rotate-12 group-hover:rotate-0 group-hover:scale-110
+                    rotate-6 transition-transform duration-300 group-hover:rotate-0
                   `}>
                     {/* Outer Box */}
-                    <div className="absolute inset-0 border-2 border-neon opacity-80 group-hover:opacity-100 shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all"></div>
+                    <div className="absolute inset-0 border-2 border-neon opacity-70 transition-all group-hover:opacity-100"></div>
                     
                     {/* Inner Box */}
                     <div className="absolute inset-1 border border-neon opacity-40 group-hover:inset-1.5 group-hover:opacity-100 transition-all duration-500"></div>
@@ -104,7 +103,7 @@ const ShadowFragments: React.FC = () => {
                     <div className="absolute inset-0 bg-neon opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}

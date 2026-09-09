@@ -1,20 +1,28 @@
 import { Router } from 'express';
 import { GameController } from '../controllers/game.controller';
 import { validateBody } from '../middleware/validate.middleware';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { authenticate, optionalAuth, requireAdmin } from '../middleware/auth.middleware';
 import { gameSchema, gameScoreSchema, gameProgressSchema, gameAchievementsSchema } from '../schemas';
 import { cacheMiddleware, invalidateCache } from '../middleware/cache.middleware';
 
 const router = Router();
 
 // GET /api/games - 游戏列表
-router.get('/', cacheMiddleware({ ttl: 300, keyPrefix: 'games' }), GameController.getAll);
+router.get('/', optionalAuth, cacheMiddleware({
+  ttl: 300,
+  keyPrefix: 'games',
+  condition: (req) => req.user?.role !== 'ADMIN',
+}), GameController.getAll);
 
 // POST /api/games/sync-steam - 同步 Steam 游戏库（必须在 /:id 之前）
 router.post('/sync-steam', authenticate, requireAdmin, invalidateCache('games:*'), GameController.syncSteam);
 
 // GET /api/games/:id - 游戏详情
-router.get('/:id', cacheMiddleware({ ttl: 600, keyPrefix: 'game' }), GameController.getById);
+router.get('/:id', optionalAuth, cacheMiddleware({
+  ttl: 600,
+  keyPrefix: 'game',
+  condition: (req) => req.user?.role !== 'ADMIN',
+}), GameController.getById);
 
 // POST /api/games - 创建游戏
 router.post('/', authenticate, requireAdmin, validateBody(gameSchema), invalidateCache('games:*'), GameController.create);

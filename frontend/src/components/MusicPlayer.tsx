@@ -18,6 +18,8 @@ interface MusicPlayerProps {
   trackCategory?: string;
 }
 
+const COMPACT_PLAYLIST_LIMIT = 12;
+
 // 检查并清除旧版本的 APlayer 进度缓存
 const checkAndClearCache = () => {
   const cacheKey = 'ink_aplayer_cache_version';
@@ -45,6 +47,10 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, source, clas
     }
     return undefined; // 歌单清单仍在加载
   }, [source, sourcesQuery.data]);
+  const playerAudios = useMemo(
+    () => (compact ? audios?.slice(0, COMPACT_PLAYLIST_LIMIT) : audios),
+    [audios, compact],
+  );
 
   // 组件挂载时检查缓存版本
   useEffect(() => {
@@ -70,13 +76,13 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, source, clas
 
   // 实例化 APlayer（歌单就绪后）
   useEffect(() => {
-    if (!audios || audios.length === 0 || !containerRef.current) return;
+    if (!playerAudios || playerAudios.length === 0 || !containerRef.current) return;
     const theme =
       getComputedStyle(document.documentElement).getPropertyValue('--color-neon').trim() ||
       '#10b981';
     const ap = new APlayer({
       container: containerRef.current,
-      audio: audios,
+      audio: playerAudios,
       theme,
       mutex: true,
       preload: 'none',
@@ -91,12 +97,12 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, source, clas
       ap.destroy();
       instanceRef.current = null;
     };
-  }, [audios, compact]);
+  }, [playerAudios, compact]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-8 text-gray-400">
-        <Loader2 size={16} className="animate-spin text-neon" />
+      <div className="flex items-center justify-center gap-2 py-8 text-gray-400" role="status">
+        <Loader2 size={16} className="animate-spin text-neon motion-reduce:animate-none" aria-hidden="true" />
         <span className="text-xs font-mono tracking-wider">LOADING.MUSIC...</span>
       </div>
     );
@@ -104,8 +110,8 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ compact = false, source, clas
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 py-6 px-3 text-center">
-        <AlertCircle size={20} className="text-orange-400" />
+      <div className="flex flex-col items-center justify-center gap-2 py-6 px-3 text-center" role="alert">
+        <AlertCircle size={20} className="text-orange-400" aria-hidden="true" />
         <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{error}</p>
         <p className="text-[10px] text-gray-400 dark:text-gray-600 font-mono flex items-center gap-1">
           <Music2 size={10} /> 可在后台「音乐管理」检查歌单 ID

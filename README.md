@@ -28,6 +28,20 @@ cd ..
 npm run dev
 ```
 
+## 构建与本地预览
+
+```bash
+npm run build            # 依次构建后端 TypeScript 与前端生产资源
+npm run start            # 智能选择可用端口并启动开发环境
+npm run start:preview    # 预览前端生产资源并连接本地后端
+```
+
+后端无论从 `src` 运行还是从 `dist` 运行，都读取 `backend/.env`。AI 服务的镜像构建上下文会排除 `.env`、本地知识库、缓存、测试及日志；部署时请通过容器环境变量或密钥管理服务注入配置。
+
+反向代理默认仅信任本机回环地址，适合与后端运行在同一台机器上的 cloudflared。代理位于 Docker/其他主机时，请在 `TRUST_PROXY` 中填写代理的精确 IP（多个用逗号分隔）或窄网段（IPv4 `/24` 以上、IPv6 `/64` 以上），`0` 表示禁用代理信任。不要使用代理跳数、`private`、`true` 或 `*`，并避免让客户端绕过代理直连后端端口。
+
+文件浏览器会把密码保护索引绑定到存储内的随机身份标记；存储目录/MinIO bucket、身份标记和 `FILE_METADATA_PATH` 必须成组备份与迁移。当前索引是本地 JSON，只支持单个后端进程（不要启用 PM2 cluster 或多个副本）。旧版 `backend/file-metadata.json` 的一次性升级、私有 bucket 权限和故障恢复见 [MinIO 集成文档](docs/MINIO_INTEGRATION.md#文件浏览器的权限索引)。
+
 ## 项目结构
 
 ```
@@ -93,7 +107,7 @@ INIT_DB="true"
 ```bash
 npm run dev              # 开发模式
 npm run preview          # 预览构建结果
-npm run build            # 生产构建
+npm run build            # 生产构建（前端 + 后端）
 npm run install:all      # 安装所有依赖
 
 # 数据库相关 (在 backend 目录下)

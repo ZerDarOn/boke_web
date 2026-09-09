@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api, type FileItem } from '../lib/api';
-import { useFilesList, useFileContent } from '../hooks/queries/files';
+import {
+  fileContentQueryOptions,
+  useFilesList,
+  useFileContent,
+} from '../hooks/queries/files';
 import { FileText, Download, Eye, File, Folder, AlertCircle, ChevronRight, Lock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 const AboutFileExplorer: React.FC = () => {
+  const queryClient = useQueryClient();
   const [currentPath, setCurrentPath] = useState<string>('');
-  const { data: files = [], isLoading: loading, error: filesError } = useFilesList(currentPath);
+  const { data: files = [], isLoading: loading, error: filesError, refetch } = useFilesList(currentPath);
 
   const [selectedFilePath, setSelectedFilePath] = useState<string>('');
   const [contentPassword, setContentPassword] = useState<string>('');
   const [passwordRequired, setPasswordRequired] = useState<FileItem | null>(null);
   const [password, setPassword] = useState<string>('');
+  const [passwordIntent, setPasswordIntent] = useState<'preview' | 'download'>('preview');
+  const [passwordError, setPasswordError] = useState<string>('');
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string>('');
 
   const {
     data: fileContent,
@@ -23,41 +33,96 @@ const AboutFileExplorer: React.FC = () => {
     contentPassword || undefined
   );
 
-  const error =
-    filesError?.message ??
-    (selectedFilePath ? contentError?.message ?? '' : '');
+  const listError = filesError?.message || '';
+  const viewerError = (selectedFilePath ? contentError?.message || '' : '') || actionError;
+
+  const openPasswordPrompt = (file: FileItem, intent: 'preview' | 'download') => {
+    setActionError('');
+    setPasswordIntent(intent);
+    setPasswordRequired(file);
+    setPassword('');
+    setPasswordError('');
+  };
 
   const handleFileClick = (file: FileItem) => {
     if (file.protected) {
-      setPasswordRequired(file);
-      setPassword('');
+      openPasswordPrompt(file, 'preview');
     } else {
+      setActionError('');
       setContentPassword('');
       setSelectedFilePath(file.path);
     }
   };
 
-  const handlePasswordSubmit = () => {
-    if (passwordRequired) {
-      setSelectedFilePath(passwordRequired.path);
-      setContentPassword(password);
+  const handlePasswordSubmit = async () => {
+    if (!passwordRequired || !password || passwordSubmitting) return;
+
+    const targetFile = passwordRequired;
+    const suppliedPassword = password;
+    setPasswordError('');
+    setActionError('');
+    setPasswordSubmitting(true);
+
+    try {
+      if (passwordIntent === 'download') {
+        const result = await api.files.download(targetFile.path, suppliedPassword);
+        if (!result.success) {
+          throw new Error(result.error || 'Download failed');
+        }
+      } else {
+        await queryClient.fetchQuery(
+          fileContentQueryOptions(targetFile.path, suppliedPassword)
+        );
+        setSelectedFilePath(targetFile.path);
+        setContentPassword(suppliedPassword);
+      }
+
       setPasswordRequired(null);
+      setPassword('');
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : 'Unable to access this file');
+    } finally {
+      setPasswordSubmitting(false);
     }
   };
 
   const handleDownload = async (file: FileItem) => {
     if (file.protected) {
-      setPasswordRequired(file);
-      setPassword('');
+      openPasswordPrompt(file, 'download');
     } else {
-      await api.files.download(file.path);
+      setActionError('');
+      try {
+        const result = await api.files.download(file.path);
+        if (!result.success) setActionError(result.error || 'Download failed');
+      } catch (error) {
+        setActionError(error instanceof Error ? error.message : 'Download failed');
+      }
+    }
+  };
+
+  const handleContentDownload = async () => {
+    if (!fileContent?.path) return;
+
+    setActionError('');
+    try {
+      const result = await api.files.download(
+        fileContent.path,
+        contentPassword || undefined
+      );
+      if (!result.success) setActionError(result.error || 'Download failed');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Download failed');
     }
   };
 
   const handlePathClick = (path: string) => {
+    setPasswordRequired(null);
+    setPassword('');
+    setPasswordError('');
     setCurrentPath(path);
     setSelectedFilePath('');
     setContentPassword('');
+    setActionError('');
   };
 
   const selectedFile = files.find((f) => f.path === selectedFilePath);
@@ -71,197 +136,33 @@ const AboutFileExplorer: React.FC = () => {
     return 'binary';
   };
 
-  return (
-    <div className="w-full h-[600px] bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 shadow-sm flex rounded-lg overflow-hidden font-mono transition-colors">
-      <div className="w-1/3 border-r border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#111] flex flex-col">
-        <div className="p-3 border-b border-gray-200 dark:border-white/10 bg-white dark:bg-[#0a0a0a] flex items-center gap-2 text-xs">
-          <button
-            onClick={() => handlePathClick('')}
-            className={`hover:text-blue-600 dark:hover:text-blue-400 ${!currentPath ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-600 dark:text-gray-400'}`}
-          >
-            Root
-          </button>
-          {currentPath &&
-            currentPath.split('/').map((part, index, array) => (
-              <React.Fragment key={index}>
-                <ChevronRight size={12} className="text-gray-400" />
-                <button
-                  onClick={() => handlePathClick(array.slice(0, index + 1).join('/'))}
-                  className={`hover:text-blue-600 dark:hover:text-blue-400 ${index === array.length - 1 ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-600 dark:text-gray-400'}`}
-                >
-                  {part}
-                </button>
-              </React.Fragment>
-            ))}
-        </div>
-        <div className="p-4 border-b border-gray-200 dark:border-white/10 bg-white dark:bg-[#0a0a0a]">
-          <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 tracking-widest uppercase flex items-center gap-2">
-            <Folder size={14} /> /CONTENT
-          </h3>
-        </div>
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center text-gray-400">Loading...</div>
-        ) : error ? (
-          <div className="flex-1 flex items-center justify-center text-red-400 p-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle size={16} />
-              <span className="text-sm">{error}</span>
-            </div>
-          </div>
-        ) : files.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-gray-400">No files found</div>
-        ) : (
-          <div className="flex-1 overflow-y-auto">
-            {files.map((file) => {
-              const fileType = getFileType(file);
-              const isSelected = selectedFilePath === file.path;
-              return (
-                <div
-                  key={file.path}
-                  onClick={() =>
-                    file.type === 'directory' ? handlePathClick(file.path) : handleFileClick(file)
-                  }
-                  className={`px-4 py-3 cursor-pointer border-l-2 transition-all duration-200 flex items-center justify-between group ${
-                    isSelected
-                      ? 'bg-white dark:bg-[#0a0a0a] border-neon text-ink dark:text-white shadow-sm'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1a1a1a] hover:text-ink dark:hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {file.type === 'directory' ? (
-                      <Folder size={16} className="text-yellow-500" />
-                    ) : fileType === 'markdown' ? (
-                      <FileText size={16} />
-                    ) : (
-                      <File size={16} />
-                    )}
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold flex items-center gap-1">
-                        {file.name}
-                        {file.protected && <Lock size={12} className="text-red-500" />}
-                      </span>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-600">
-                        {file.size ? `${(file.size / 1024).toFixed(1)}KB` : '0KB'} ·{' '}
-                        {new Date(file.modifiedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    {file.type === 'directory' ? (
-                      <ChevronRight size={14} className="text-gray-400" />
-                    ) : fileType === 'markdown' ? (
-                      <Eye size={14} className="text-neon" />
-                    ) : (
-                      <Download
-                        size={14}
-                        className="text-gray-400 hover:text-ink dark:hover:text-white cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload(file);
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 bg-white dark:bg-[#0a0a0a] overflow-y-auto relative">
-        {passwordRequired && (
-          <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-6 shadow-xl w-96">
-              <div className="flex items-center gap-3 mb-4">
-                <Lock size={24} className="text-neon" />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                  {passwordRequired.type === 'directory'
-                    ? 'Enter Directory Password'
-                    : 'Enter File Password'}
-                </h3>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                This {passwordRequired.type} is password protected. Please enter the password to continue.
-              </p>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-neon mb-4"
-                placeholder="Enter password..."
-                autoFocus
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setPasswordRequired(null)}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-[#2a2a2a] transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handlePasswordSubmit}
-                  disabled={!password}
-                  className="px-4 py-2 bg-neon text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {loadingContent ? (
-          <div className="h-full flex items-center justify-center text-gray-400">Loading...</div>
-        ) : fileContent?.path ? (
-          (() => {
-            const fileType = getFileType({
-              ...fileContent,
-              path: fileContent.path,
-              type: 'file',
-              name: selectedFile?.name ?? '',
-              size: fileContent.size ?? 0,
-              modifiedAt: fileContent.modifiedAt ?? '',
-            } as FileItem);
-            if (fileType === 'markdown') {
-              return (
-                <div className="p-8 max-w-2xl mx-auto overflow-auto">
-                  <div className="prose prose-sm prose-slate dark:prose-invert font-serif max-w-none text-ink dark:text-gray-300">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{fileContent.content || ''}</ReactMarkdown>
-                  </div>
-                </div>
-              );
-            }
-            if (fileType === 'text') {
-              return (
-                <div className="p-8 max-w-2xl mx-auto overflow-auto">
-                  <pre className="font-mono text-sm text-gray-800 dark:text-gray-300 whitespace-pre-wrap break-words">
-                    {fileContent.content || ''}
-                  </pre>
-                </div>
-              );
-            }
-            return (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                <File size={48} className="mb-4 opacity-20" />
-                <p className="font-mono text-sm">BINARY FILE PREVIEW NOT AVAILABLE</p>
-                <button
-                  onClick={() => api.files.download(fileContent.path)}
-                  className="mt-4 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded hover:border-neon hover:text-neon transition-colors text-xs font-mono flex items-center gap-2"
-                >
-                  <Download size={14} /> DOWNLOAD FILE
-                </button>
-              </div>
-            );
-          })()
-        ) : (
-          <div className="h-full flex items-center justify-center text-gray-300 dark:text-gray-700">
-            SELECT A FILE
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <div className="about-library">
+    <nav className="about-file-path" aria-label="文件路径"><button type="button" onClick={() => handlePathClick('')}>全部文件</button>{currentPath && currentPath.split('/').map((part, index, parts) => <React.Fragment key={index}><ChevronRight size={13} /><button type="button" onClick={() => handlePathClick(parts.slice(0, index + 1).join('/'))}>{part}</button></React.Fragment>)}</nav>
+    {listError && <div className="about-file-error" role="alert"><AlertCircle size={16} /><span>{files.length ? '刷新失败，暂时显示上次加载的文件。' : '文件暂时无法加载。'}</span><button type="button" onClick={() => refetch()}>重试</button></div>}
+    {loading && !files.length ? <p className="about-file-empty" role="status">正在整理文件列表…</p> : !listError && !files.length ? <div className="about-file-empty"><Folder size={30} /><p>这里暂时还没有文件。</p><small>有新文档时，会陆续放在这里。</small></div> : <div className="about-file-grid">
+      {files.map(file => <article className={'about-file-card' + (file.path === selectedFilePath ? ' is-selected' : '')} key={file.path}>
+        <span className="about-file-icon">{file.type === 'directory' ? <Folder size={23} /> : getFileType(file) === 'markdown' ? <FileText size={23} /> : <File size={23} />}</span>
+        <div className="about-file-copy"><h3>{file.name}{file.protected && <Lock size={12} aria-label="需要密码" />}</h3><small>{file.type === 'directory' ? '文件夹' : ((file.size ?? 0) / 1024).toFixed(1) + ' KB'}</small></div>
+        <div className="about-file-actions"><button type="button" disabled={passwordSubmitting} onClick={() => file.type === 'directory' ? handlePathClick(file.path) : handleFileClick(file)} aria-label={(file.type === 'directory' ? '打开 ' : '阅读 ') + file.name}>{file.type === 'directory' ? <ChevronRight size={15} /> : <Eye size={15} />}{file.type === 'directory' ? '打开' : '查看'}</button>{file.type === 'file' && <button type="button" disabled={passwordSubmitting} onClick={() => void handleDownload(file)} aria-label={'下载 ' + file.name}><Download size={15} />下载</button>}</div>
+      </article>)}
+    </div>}
+    {viewerError && <div className="about-file-error" role="alert"><AlertCircle size={16} /><span>{viewerError}</span></div>}
+    {passwordRequired && <form className="about-file-password" onSubmit={event => { event.preventDefault(); void handlePasswordSubmit(); }} aria-label="文件访问密码">
+      <h3><Lock size={18} />访问加锁文件</h3><p>{passwordRequired.name} 需要密码才能{passwordIntent === 'download' ? '下载' : '阅读'}。</p>
+      <label htmlFor="about-file-password">访问密码</label><input id="about-file-password" type="password" value={password} onChange={event => { setPassword(event.target.value); setPasswordError(''); }} disabled={passwordSubmitting} autoFocus autoComplete="off" aria-invalid={Boolean(passwordError)} aria-describedby={passwordError ? 'about-password-error' : undefined} />
+      {passwordError && <p id="about-password-error" role="alert">{passwordError}</p>}
+      <div><button type="button" disabled={passwordSubmitting} onClick={() => { setPasswordRequired(null); setPassword(''); setPasswordError(''); }}>取消</button><button type="submit" disabled={!password || passwordSubmitting}>{passwordSubmitting ? '正在验证…' : '验证并继续'}</button></div>
+    </form>}
+    {selectedFilePath && <section className="about-file-reader" aria-label="文件阅读区">
+      <header><h3>{selectedFile?.name || selectedFilePath.split('/').pop()}</h3><button type="button" onClick={() => { setSelectedFilePath(''); setContentPassword(''); setActionError(''); }}>收起阅读</button><button type="button" onClick={() => void handleContentDownload()} disabled={!fileContent?.path}><Download size={14} />下载</button></header>
+      {loadingContent ? <p role="status">正在读取…</p> : fileContent?.path ? (() => {
+        const fileType = getFileType({ path: fileContent.path } as FileItem);
+        if (fileType === 'markdown') return <div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]}>{fileContent.content || ''}</ReactMarkdown></div>;
+        if (fileType === 'text') return <pre>{fileContent.content || ''}</pre>;
+        return <div className="about-file-empty"><File size={30} /><p>这类附件暂不支持在线预览，请下载后查看。</p></div>;
+      })() : null}
+    </section>}
+  </div>;
 };
 
 export default AboutFileExplorer;

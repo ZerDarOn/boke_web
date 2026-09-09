@@ -8,9 +8,21 @@ import { success, error } from '../utils/response';
 import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.middleware';
 import { validateBody } from '../middleware/validate.middleware';
 import { fileSchema } from '../schemas';
-import fileService from '../services/file.service';
+import fileService, {
+  FileContentTooLargeError,
+  FileListTooLargeError,
+  FileMetadataTrustError,
+} from '../services/file.service';
 import { AuthPayload } from '../types';
-import { resolveStoragePath } from '../lib/storage-path-security';
+import { resolveStoragePath, StoragePathError } from '../lib/storage-path-security';
+import { authorizeStoredFileAccess } from '../lib/file-access-policy';
+import { apiLog } from '../lib/logger';
+import {
+  FILE_ACCESS_PASSWORD_HEADER,
+  resolveFileAccessPassword,
+} from '../lib/file-access-password';
+import { pipeReadableToResponse } from '../lib/pipe-readable-to-response';
+import { assertZipEntryIsNotSymlink } from '../lib/zip-entry-security';
 
 declare module 'express' {
   interface Request {
@@ -20,6 +32,100 @@ declare module 'express' {
 }
 
 const router = Router();
+
+async function getAuthorizedFileKey(
+  req: Request,
+  res: Response,
+  storageKey: string,
+  endpoint: 'content' | 'download'
+): Promise<string | null> {
+  const password = resolveFileAccessPassword(req.get(FILE_ACCESS_PASSWORD_HEADER));
+  const access = await authorizeStoredFileAccess({
+    storageKey,
+    password,
+    userRole: req.user?.role,
+    isProtected: (canonicalKey) => fileService.isPasswordProtected(canonicalKey),
+    verifyPassword: (canonicalKey, candidate) =>
+      fileService.verifyPassword(canonicalKey, candidate),
+  });
+
+  if (access.allowed === true) return access.storageKey;
+
+  apiLog.warn('Protected file access denied', {
+    endpoint,
+    reason: access.reason,
+    authenticated: Boolean(req.user),
+  });
+  res.setHeader('Cache-Control', 'private, no-store');
+  if (access.reason === 'password_required') {
+    error(res, '该文件需要密码访问', 403);
+  } else {
+    error(res, '密码错误', 401);
+  }
+  return null;
+}
+
+function applyFileCachePolicy(res: Response, storageKey: string): void {
+  if (fileService.isPasswordProtected(storageKey)) {
+    res.setHeader('Cache-Control', 'private, no-store');
+  } else {
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+  }
+}
+
+function isMissingStoredFileError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const candidate = err as { code?: string; statusCode?: number };
+  return (
+    candidate.statusCode === 404 ||
+    candidate.code === 'ENOENT' ||
+    candidate.code === 'NoSuchKey' ||
+    candidate.code === 'NotFound'
+  );
+}
+
+function sendPublicFileError(
+  res: Response,
+  err: unknown,
+  operation: 'list' | 'content' | 'download'
+): Response | void {
+  apiLog.error(
+    `Public file ${operation} failed`,
+    err instanceof Error ? err : String(err),
+    {
+      operation,
+      code: err && typeof err === 'object' && 'code' in err
+        ? String((err as { code?: unknown }).code)
+        : undefined,
+    }
+  );
+
+  if (res.headersSent || res.destroyed) {
+    if (!res.destroyed) res.destroy();
+    return;
+  }
+  for (const header of ['Content-Disposition', 'Content-Length', 'Content-Type', 'ETag']) {
+    res.removeHeader(header);
+  }
+  res.setHeader('Cache-Control', 'private, no-store');
+  if (err instanceof StoragePathError) {
+    return error(res, '文件路径无效', 400);
+  }
+  if (err instanceof FileMetadataTrustError) {
+    return error(res, '文件服务暂不可用', 503);
+  }
+  if (err instanceof FileContentTooLargeError) {
+    return error(res, '文件内容过大，请下载后查看', 413);
+  }
+  if (err instanceof FileListTooLargeError) {
+    return error(res, '目录项目过多，请缩小查询范围', 413);
+  }
+  if (isMissingStoredFileError(err)) {
+    return error(res, '文件不存在', 404);
+  }
+  const message = operation === 'list' ? '获取文件列表失败' : '读取文件失败';
+  return error(res, message, 500);
+}
 
 // 配置 multer 用于 ZIP 文件导入
 const uploadZip = multer({
@@ -59,112 +165,64 @@ router.get('/', async (req, res) => {
     const files = await fileService.listFiles(dirPath as string);
     return success(res, files);
   } catch (err: any) {
-    console.error('获取文件列表失败:', err);
-    return error(res, err.message, 500);
+    return sendPublicFileError(res, err, 'list');
   }
 });
 
 // 获取文件内容（公开访问，但受密码保护的文件需要密码，管理员免密码）
 router.get('/content', optionalAuth, async (req, res) => {
   try {
-    const { path: filePath, password } = req.query;
+    const { path: filePath } = req.query;
 
     if (!filePath || typeof filePath !== 'string') {
       return error(res, '文件路径不能为空', 400);
     }
 
-    // 检查文件是否受密码保护
-    const meta = fileService['metadata'].get(filePath);
-    if (meta?.protected) {
-      // 管理员免密码访问
-      if (req.user?.role === 'ADMIN') {
-        // 管理员直接通过
-      } else {
-        // 普通用户需要密码
-        if (!password || typeof password !== 'string') {
-          return error(res, '该文件需要密码访问', 403);
-        }
-        
-        const isValid = await fileService.verifyPassword(filePath, password);
-        if (!isValid) {
-          return error(res, '密码错误', 401);
-        }
-      }
-    }
+    const authorizedKey = await getAuthorizedFileKey(req, res, filePath, 'content');
+    if (!authorizedKey) return;
 
-    const content = await fileService.getFileContent(filePath);
+    applyFileCachePolicy(res, authorizedKey);
+
+    const meta = fileService.getMetadata(authorizedKey);
+    const content = await fileService.getFileContent(authorizedKey);
 
     return success(res, {
-      path: filePath,
-      name: filePath.split('/').pop() || '',
+      path: authorizedKey,
+      name: authorizedKey.split('/').pop() || '',
       content,
       size: Buffer.byteLength(content),
       modifiedAt: meta?.modifiedAt || new Date().toISOString(),
-      extension: filePath.split('.').pop() || '',
+      extension: authorizedKey.split('.').pop() || '',
     });
   } catch (err: any) {
-    console.error('读取文件失败:', err);
-    return error(res, err.message, 500);
+    return sendPublicFileError(res, err, 'content');
   }
 });
 
 // 下载文件（公开访问，但受密码保护的文件需要密码，管理员免密码）
 router.get('/download', optionalAuth, async (req, res) => {
   try {
-    const { path: filePath, password } = req.query;
+    const { path: filePath } = req.query;
 
     if (!filePath || typeof filePath !== 'string') {
       return error(res, '文件路径不能为空', 400);
     }
 
-    // 检查文件是否受密码保护
-    const meta = fileService['metadata'].get(filePath);
-    if (meta?.protected) {
-      // 管理员免密码下载
-      if (req.user?.role === 'ADMIN') {
-        // 管理员直接通过
-      } else {
-        // 普通用户需要密码
-        if (!password || typeof password !== 'string') {
-          return error(res, '该文件需要密码访问', 403);
-        }
+    const authorizedKey = await getAuthorizedFileKey(req, res, filePath, 'download');
+    if (!authorizedKey) return;
 
-        const isValid = await fileService.verifyPassword(filePath, password);
-        if (!isValid) {
-          return error(res, '密码错误', 401);
-        }
-      }
-    }
+    applyFileCachePolicy(res, authorizedKey);
 
-    // 检查是否使用 MinIO
-    const useMinIO = !!process.env.MINIO_ENDPOINT;
-
-    if (useMinIO) {
-      // 获取预签名URL
-      const url = await fileService.getPresignedUrl(filePath);
-      return res.redirect(url);
-    } else {
-      // 使用本地文件系统
-      const localPath = resolveStoragePath(
-        path.join(process.cwd(), 'content-files'),
-        filePath
-      );
-
-      if (!fs.existsSync(localPath)) {
-        return error(res, '文件不存在', 404);
-      }
-
-      // 设置下载头
-      const filename = path.basename(filePath);
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Type', 'application/octet-stream');
-
-      // 发送文件
-      res.sendFile(localPath);
-    }
+    // Keep every download on this origin and use one error-aware stream path
+    // for both local and MinIO storage. Password changes therefore take effect
+    // immediately and large files are never buffered in process memory.
+    const fileStream = await fileService.getFileStream(authorizedKey);
+    res.attachment(path.basename(authorizedKey));
+    res.type('application/octet-stream');
+    await pipeReadableToResponse(fileStream, res);
+    return;
   } catch (err: any) {
-    console.error('下载文件失败:', err);
-    return error(res, err.message, 500);
+    return sendPublicFileError(res, err, 'download');
   }
 });
 
@@ -185,23 +243,18 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
     if (fs.existsSync(localPath)) {
       return error(res, '文件或目录已存在', 409);
     }
-    // 同时清理可能残留的元数据
-    if (fileService['metadata'].has(filePath)) {
-      fileService['metadata'].delete(filePath);
-    }
-
     if (type === 'directory') {
       await fileService.createDirectory(filePath, { name: filePath.split('/').pop() });
       return success(res, { path: filePath, type: 'directory' }, '目录创建成功', undefined, 201);
     }
 
-    // 创建文件
-    await fileService.uploadFile(filePath, content, { name: filePath.split('/').pop() });
-
-    // 如果有密码，设置密码保护
-    if (password) {
-      await fileService.setPassword(filePath, password);
-    }
+    // 带密码时先原子持久化保护元数据，再写入内容，避免失败后留下公开文件。
+    await fileService.uploadFile(
+      filePath,
+      content,
+      { name: filePath.split('/').pop() },
+      password
+    );
 
     return success(res, {
       path: filePath,
@@ -219,12 +272,7 @@ router.put('/content', authenticate, requireAdmin, validateBody(fileSchema), asy
   try {
     const { path: filePath, content, password } = req.body;
 
-    await fileService.uploadFile(filePath, content);
-
-    // 如果有密码，更新密码保护
-    if (password) {
-      await fileService.setPassword(filePath, password);
-    }
+    await fileService.uploadFile(filePath, content, undefined, password);
 
     return success(res, {
       path: filePath,
@@ -368,7 +416,10 @@ router.post('/export', authenticate, requireAdmin, async (req, res) => {
           for (const item of items) {
             const fullPath = path.join(dir, item);
             const relativePath = `${basePath}/${item}`;
-            const itemStats = fs.statSync(fullPath);
+            const itemStats = fs.lstatSync(fullPath);
+            if (itemStats.isSymbolicLink()) {
+              throw new StoragePathError();
+            }
 
             if (itemStats.isDirectory()) {
               addDirectory(fullPath, relativePath);
@@ -418,7 +469,10 @@ router.post('/import', authenticate, requireAdmin, uploadZip.single('file'), asy
     }
 
     // 解压到目标目录
-    await extract(tempZipPath, { dir: targetDir });
+    await extract(tempZipPath, {
+      dir: targetDir,
+      onEntry: assertZipEntryIsNotSymlink,
+    });
 
     // 清理临时文件
     if (tempZipPath && fs.existsSync(tempZipPath)) {
@@ -432,7 +486,10 @@ router.post('/import', authenticate, requireAdmin, uploadZip.single('file'), asy
       const items = fs.readdirSync(dir);
       for (const item of items) {
         const fullPath = path.join(dir, item);
-        const stats = fs.statSync(fullPath);
+        const stats = fs.lstatSync(fullPath);
+        if (stats.isSymbolicLink()) {
+          throw new StoragePathError();
+        }
         if (stats.isDirectory()) {
           count += countFiles(fullPath);
         } else {

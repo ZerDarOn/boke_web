@@ -181,8 +181,8 @@ export const defaultSiteConfig: SiteConfig = {
   },
 
   defaultTheme: 'dark',
-  primaryColor: '#10b981',
-  secondaryColor: '#8b5cf6',
+  primaryColor: '#00cc73',
+  secondaryColor: '#f2675a',
   cursorConfig: defaultCursorConfig,
   
   siteDescription: 'INK.SPIRIT - 一个赛博风格的个人博客',

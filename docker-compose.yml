@@ -77,7 +77,11 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: ${MINIO_BUCKET:-ink-spirit-blog}
-      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+      MINIO_REQUEST_TIMEOUT_MS: ${MINIO_REQUEST_TIMEOUT_MS:-15000}
+      FILE_STORAGE_DIR: /app/content-files
+      FILE_METADATA_PATH: /app/storage-metadata/file-metadata.json
+      FILE_METADATA_ALLOW_EMPTY_INITIALIZATION: ${FILE_METADATA_ALLOW_EMPTY_INITIALIZATION:-false}
+      FILE_METADATA_ALLOW_UNBOUND_MIGRATION: ${FILE_METADATA_ALLOW_UNBOUND_MIGRATION:-false}
     depends_on:
       - db
       - redis
@@ -85,6 +89,8 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/content:/app/content
+      - ./backend/content-files:/app/content-files
+      - ./backend/storage-metadata:/app/storage-metadata
     command: npm run dev
 
   # Python AI Service

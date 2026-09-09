@@ -9,6 +9,7 @@ import fs from 'fs';
 import { success, error } from '../utils/response';
 import { aiClient, type CompanionPageContext } from '../services/ai.client';
 import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth.middleware';
+import { publicAiGenerationRateLimit } from '../middleware/rate-limit.middleware';
 import { apiLog } from '../lib/logger';
 
 const router: Router = Router();
@@ -115,7 +116,7 @@ router.post('/sentiment', authenticate, requireAdmin, async (req, res) => {
 });
 
 // POST /api/ai/chat - 博客 AI 助手对话（公开，但限流+optionalAuth 记录上下文）
-router.post('/chat', optionalAuth, async (req, res) => {
+router.post('/chat', publicAiGenerationRateLimit, optionalAuth, async (req, res) => {
   try {
     const { message, history = [], context } = req.body;
     if (!message || typeof message !== 'string' || message.length > MAX_CHAT_MESSAGE_LENGTH) {
@@ -155,7 +156,7 @@ router.post('/chat', optionalAuth, async (req, res) => {
 });
 
 // POST /api/ai/divination - 占卜馆 AI 深度解读 / 追问（公开，但限流）
-router.post('/divination', optionalAuth, async (req, res) => {
+router.post('/divination', publicAiGenerationRateLimit, optionalAuth, async (req, res) => {
   try {
     const { kind, spread, question = '', followup = '', previous_reading = '' } = req.body;
 
@@ -196,7 +197,7 @@ router.post('/divination', optionalAuth, async (req, res) => {
 });
 
 // POST /api/ai/chat/stream - 博客 AI 助手对话 — SSE 流式输出（公开）
-router.post('/chat/stream', optionalAuth, async (req, res) => {
+router.post('/chat/stream', publicAiGenerationRateLimit, optionalAuth, async (req, res) => {
   try {
     const { message, history = [], context } = req.body;
     if (!message || typeof message !== 'string' || message.length > MAX_CHAT_MESSAGE_LENGTH) {

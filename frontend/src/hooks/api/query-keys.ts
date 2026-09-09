@@ -61,6 +61,7 @@ export const queryKeys = {
   },
   settings: {
     all: ['settings'] as const,
+    publicSite: () => [...queryKeys.settings.all, 'public-site'] as const,
     site: () => [...queryKeys.settings.all, 'site'] as const,
     key: (key: string) => [...queryKeys.settings.all, 'key', key] as const,
   },

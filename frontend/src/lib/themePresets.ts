@@ -10,7 +10,7 @@ export interface ThemePreset {
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
-  { id: 'jade', name: '墨翠', primaryHue: 150, secondaryHue: 260 },
+  { id: 'jade', name: '墨翠朱砂', primaryHue: 154, secondaryHue: 8 },
   { id: 'cyan', name: '霓青', primaryHue: 182, secondaryHue: 210 },
   { id: 'azure', name: '苍蓝', primaryHue: 212, secondaryHue: 280 },
   { id: 'violet', name: '暮紫', primaryHue: 275, secondaryHue: 322 },

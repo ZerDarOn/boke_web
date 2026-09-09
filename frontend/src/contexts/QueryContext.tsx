@@ -12,7 +12,7 @@ const queryClient = new QueryClient({
       refetchOnReconnect: false,
     },
     mutations: {
-      retry: 1,
+      retry: 0,
     },
   },
 });

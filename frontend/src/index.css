@@ -5,12 +5,20 @@
 @layer base {
   :root {
     /* HSL 通道（供 Tailwind 颜色 + 透明度使用），由主题栏动态修改 */
-    --color-neon-hsl: 150 100% 40%;
-    --color-neon-dark-hsl: 150 100% 30%;
-    --color-secondary-hsl: 260 90% 65%;
+    --color-neon-hsl: 154 68% 31%;
+    --color-neon-dark-hsl: 154 72% 24%;
+    --color-secondary-hsl: 8 66% 48%;
     /* 完整颜色（供内联 var(--color-neon)、canvas、光标等直接使用） */
-    --color-neon: hsl(150 100% 40%);
-    --color-secondary: hsl(260 90% 65%);
+    --color-neon: hsl(154 68% 31%);
+    --color-secondary: hsl(8 66% 48%);
+
+    /* 公共页面基础材质：暖纸、冷墨、玉色与朱砂。 */
+    --surface-paper: #f3f0e8;
+    --surface-paper-raised: #fbf8f0;
+    --surface-ink: #10120f;
+    --surface-ink-raised: #171a16;
+    --text-ink: #171914;
+    --text-muted: #686960;
 
     /* 墨璃的临时墨印核心，未来替换为立绘时仍保留为加载底座。 */
     --companion-surface-hsl: 165 24% 6%;
@@ -41,16 +49,38 @@
   }
 }
 
-/* ============================================================================
- * 应用化交互（防误选高亮）
- * 默认禁止选中文本，避免点按 UI 时出现高亮选择框；
- * 正文(.prose)、输入框、代码块恢复可选，仍可拖选+Ctrl+C 复制。
- * 右键菜单的屏蔽在 components/InteractionGuard.tsx 里处理。
- * ============================================================================ */
+/* 博客内容默认可选择、复制并使用浏览器原生上下文菜单。 */
 body {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  user-select: none;
+  min-width: 320px;
+  background-color: var(--surface-paper);
+  background-image:
+    radial-gradient(circle at 12% 5%, hsl(var(--color-neon-hsl) / 0.06), transparent 28rem),
+    linear-gradient(90deg, rgba(39, 42, 35, 0.018) 1px, transparent 1px);
+  background-size: auto, 24px 24px;
+  color: var(--text-ink);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+.dark body {
+  background-color: #070907;
+  background-image:
+    radial-gradient(circle at 82% 8%, hsl(var(--color-neon-hsl) / 0.075), transparent 30rem),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+  color: #e8e6de;
+}
+
+::selection {
+  background: hsl(var(--color-neon-hsl) / 0.24);
+  color: inherit;
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--color-neon-hsl) / 0.9);
+  outline-offset: 3px;
 }
 
 /* 后台可管理的桌面端鼠标皮肤；每个声明都保留系统光标作为加载失败兜底。 */
@@ -549,6 +579,19 @@ html {
   .companion-orb-ambient,
   .companion-orb-orbit {
     animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

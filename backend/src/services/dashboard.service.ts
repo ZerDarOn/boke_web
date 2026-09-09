@@ -2,6 +2,7 @@ import prisma from '../lib/prisma';
 import { DashboardStats } from '../types';
 import crypto from 'crypto';
 import { cache } from '../lib/cache';
+import { isMinioEnabled } from '../config/minio';
 import { aiClient } from './ai.client';
 import { apiLog } from '../lib/logger';
 import { PostService } from './post.service';
@@ -59,12 +60,11 @@ export class DashboardService {
     let isNewVisitor = false;
 
     await prisma.$transaction(async (tx) => {
-      try {
-        await tx.dailyVisit.create({ data: { date, visitorHash } });
-        isNewVisitor = true;
-      } catch (error: any) {
-        if (error?.code !== 'P2002') throw error;
-      }
+      const dailyVisitResult = await tx.dailyVisit.createMany({
+        data: { date, visitorHash },
+        skipDuplicates: true,
+      });
+      isNewVisitor = dailyVisitResult.count > 0;
 
       await tx.siteStats.upsert({
         where: { date },
@@ -144,7 +144,7 @@ export class DashboardService {
       { key: 'database', label: '数据库', status: databaseHealthy ? 'healthy' : 'unhealthy', detail: databaseHealthy ? `${databaseLatencyMs}ms` : '连接超时或不可用' },
       { key: 'cache', label: '缓存', status: 'healthy', detail: `${cacheStats.backend} · 命中率 ${cacheStats.hitRate}` },
       { key: 'ai', label: 'AI 服务', status: aiHealthy ? 'healthy' : 'degraded', detail: aiHealthy ? '可用' : '未响应或未启动' },
-      { key: 'storage', label: '文件存储', status: process.env.MINIO_ENDPOINT ? 'configured' : 'local', detail: process.env.MINIO_ENDPOINT ? 'MinIO 已配置' : '本地存储模式' },
+      { key: 'storage', label: '文件存储', status: isMinioEnabled() ? 'configured' : 'local', detail: isMinioEnabled() ? 'MinIO 已配置' : '本地存储模式' },
     ];
 
     apiLog.info('Admin dashboard overview generated', { durationMs: Date.now() - startedAt, databaseHealthy: Boolean(databaseHealthy), aiHealthy });

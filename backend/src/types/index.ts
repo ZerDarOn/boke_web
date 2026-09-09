@@ -50,9 +50,10 @@ export interface FilterParams {
 
 // 认证相关
 export interface AuthPayload {
-  id: string;
   userId: string;
   role: 'USER' | 'ADMIN' | 'EDITOR';
+  tokenVersion: number;
+  type: 'access' | 'refresh';
 }
 
 export interface LoginInput {

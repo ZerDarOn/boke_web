@@ -8,11 +8,9 @@ import { queryKeys } from '../hooks/api/query-keys';
 import { setPostAccessToken } from '../lib/api';
 import {
   ArrowLeft,
-  ArrowRight,
   Calendar,
   Clock,
   FileText,
-  Home,
   Share2,
   Link2,
   Lock,
@@ -28,6 +26,17 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import { postMarkdownComponents } from '../components/markdown/contentMarkdownComponents';
 
 const DETAIL_REHYPE_PLUGINS: [] = [];
+
+const formatPostDate = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+};
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -268,8 +277,8 @@ const PostDetail: React.FC = () => {
             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
             <span className="group-hover:underline decoration-neon/50">返回文章列表</span>
           </Link>
-          <div className="font-mono text-xs text-neon border border-neon px-3 py-1.5 bg-neon/5 hover:bg-neon/10 transition-colors">
-            📄 POST #{post.id}
+          <div className="flex items-center gap-2 border border-neon/30 bg-neon/5 px-3 py-1.5 font-mono text-xs text-neon">
+            <FileText size={13} aria-hidden="true" /> POST #{post.id}
           </div>
         </div>
 
@@ -300,7 +309,7 @@ const PostDetail: React.FC = () => {
         <div className="flex flex-wrap items-center gap-6 text-sm">
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 font-mono hover:text-neon transition-colors cursor-default">
             <Calendar size={16} className="text-neon" />
-            <span>{post.date}</span>
+            <time dateTime={post.date}>{formatPostDate(post.date)}</time>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-neon border border-neon px-3 py-1.5 bg-neon/5 hover:bg-neon/10 transition-colors">

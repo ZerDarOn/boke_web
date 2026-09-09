@@ -1,10 +1,11 @@
-import express from 'express';
+import express, { type ErrorRequestHandler, type RequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'path';
 import fs from 'fs';
 import { config } from './config/env';
+import { resolveBackendRoot, resolveBackendRuntimePath } from './config/backend-env-path';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logger.middleware';
 import {
@@ -14,7 +15,12 @@ import {
   formRateLimit,
 } from './middleware/rate-limit.middleware';
 import { sanitizeInput, addXSSProtectionHeaders } from './lib/sanitizer';
-import { initializeCache, cache } from './lib/cache';
+import { cache } from './lib/cache';
+import { CLIENT_ERROR_REPORT_MAX_BYTES } from './lib/client-error-report';
+import {
+  FILE_ACCESS_PASSWORD_HEADER,
+  redactFileAccessPasswordFromUrl,
+} from './lib/file-access-password';
 
 // Import routes — single barrel entry point
 import {
@@ -47,18 +53,39 @@ import {
   gameRoutes,
   divinationRoutes,
 } from './routes';
-import fileService from './services/file.service';
 
 const app = express();
 
-// Initialize services
-fileService.initialize().catch(err => {
-  console.error('Failed to initialize file service:', err);
-});
+// Trust only explicitly configured proxy boundaries before any IP-based middleware.
+// The default covers a cloudflared process on this host without trusting remote XFF.
+app.set('trust proxy', config.TRUST_PROXY);
 
-initializeCache().catch(err => {
-  console.error('Failed to initialize cache:', err);
-});
+const requireClientErrorJson: RequestHandler = (req, res, next) => {
+  if (!req.is('application/json')) {
+    return res.status(415).json({
+      success: false,
+      error: 'Content-Type must be application/json',
+    });
+  }
+  return next();
+};
+
+const clientErrorBodyErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
+  const parserError = err as Error & { type?: string; status?: number };
+  if (parserError.type === 'entity.too.large' || parserError.status === 413) {
+    return res.status(413).json({
+      success: false,
+      error: 'Client error report is too large',
+    });
+  }
+  if (parserError instanceof SyntaxError) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid JSON',
+    });
+  }
+  return next(err);
+};
 
 // Security middleware - 加强的安全头配置
 app.use(helmet({
@@ -73,7 +100,8 @@ app.use(helmet({
       fontSrc: ["'self'", "data:", "https:"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'", "data:", "https:"],
-      frameSrc: ["'none'"],
+      // Giscus renders its discussion UI in an iframe. Keep the allow-list exact.
+      frameSrc: ["'self'", 'https://giscus.app'],
       frameAncestors: ["'none'"],
       formAction: ["'self'"],
       baseUri: ["'self'"],
@@ -150,18 +178,37 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-maintenance-token', 'x-post-access-token'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'x-maintenance-token',
+    'x-post-access-token',
+    FILE_ACCESS_PASSWORD_HEADER,
+  ],
 }));
 
 // Rate limiting - 通用速率限制
 app.use(generalRateLimit);
 
 // Body parsing
+app.use('/api/error/log',
+  formRateLimit,
+  requireClientErrorJson,
+  express.json({ limit: CLIENT_ERROR_REPORT_MAX_BYTES }),
+  clientErrorBodyErrorHandler
+);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Logging
-app.use(morgan('dev'));
+morgan.token('safe-url', (req) => {
+  const requestUrl =
+    'originalUrl' in req && typeof req.originalUrl === 'string'
+      ? req.originalUrl
+      : req.url || '';
+  return redactFileAccessPasswordFromUrl(requestUrl);
+});
+app.use(morgan(':method :safe-url :status :response-time ms - :res[content-length]'));
 app.use(requestLogger);
 
 // Input sanitization and XSS protection
@@ -179,8 +226,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+const backendRoot = resolveBackendRoot();
+const publicUploadRoot = resolveBackendRuntimePath(config.UPLOAD_DIR, 'uploads');
+
 // Static files (uploads)
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+app.use('/uploads', express.static(publicUploadRoot, {
   setHeaders: (res, filePath) => {
     if (path.extname(filePath).toLowerCase() === '.cur') {
       res.setHeader('Content-Type', 'image/x-icon');
@@ -222,7 +272,7 @@ app.use('/rss.xml', rssRoutes);
 // 托管打包好的前端（单端口部署）：存在 frontend/dist 时，
 // 非 /api、/uploads、/rss 的 GET 请求一律返回 index.html，交给前端路由处理。
 // 这样直接访问/刷新 /admin/... 等前端路由不会 404。
-const frontendDist = path.join(process.cwd(), '..', 'frontend', 'dist');
+const frontendDist = path.resolve(backendRoot, '..', 'frontend', 'dist');
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
   app.get('*', (req, res, next) => {

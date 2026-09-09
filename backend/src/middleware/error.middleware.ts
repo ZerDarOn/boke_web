@@ -5,6 +5,10 @@ import { config } from '../config/env';
 import { AppError, NotFoundError, ValidationError } from '../errors/AppError';
 import { ErrorCode, ErrorMessage, HttpStatusCode } from '../errors/codes';
 import { errorLogger } from '../lib/logger';
+import {
+  redactFileAccessPasswordFromUrl,
+  redactSensitiveRequestData,
+} from '../lib/file-access-password';
 
 interface ErrorResponse {
   success: false;
@@ -32,9 +36,10 @@ export const errorHandler = (
     name: err.name,
     stack: err.stack,
     path: req.path,
+    url: redactFileAccessPasswordFromUrl(req.originalUrl || req.url || req.path),
     method: req.method,
-    body: req.body,
-    query: req.query,
+    body: redactSensitiveRequestData(req.body),
+    query: redactSensitiveRequestData(req.query),
     headers: {
       'user-agent': req.headers['user-agent'],
       'content-type': req.headers['content-type'],

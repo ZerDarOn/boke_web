@@ -1,17 +1,19 @@
 import React from 'react';
 import PageProjects from '../components/PageProjects';
-import { TRANSLATIONS } from '../constants';
+import { SEO } from '../components/SEO';
+import SectionHeading from '../components/SectionHeading';
 
 const Projects: React.FC = () => {
-  const lang: 'EN' | 'ZH' = 'ZH';
-  const t = TRANSLATIONS[lang];
-
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
-      <h2 className="text-3xl font-sans font-black text-ink dark:text-paper flex items-center gap-4">
-        / {t.PROJECT_ARSENAL}
-        <div className="h-[2px] flex-1 bg-ink/10 dark:bg-paper/20"></div>
-      </h2>
+    <div className="animate-in fade-in duration-500">
+      <SEO title="项目" description="正在维护、已经交付和留在归档里的作品" type="website" />
+      <SectionHeading
+        index="P.02"
+        eyebrow="Project index / 项目档案"
+        level="h1"
+        title="把想法做成可运行的东西"
+        description="这里记录作品的现状，也保留它们一路留下的技术选择与取舍。"
+      />
       <PageProjects />
     </div>
   );

@@ -5,6 +5,7 @@ import {
   uploadSingleCursor,
   handleUploadError,
   deleteUploadedFile,
+  deleteUploadedFileOrThrow,
 } from '../middleware/upload.middleware';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { success, error } from '../utils/response';
@@ -13,8 +14,10 @@ import fs from 'fs';
 import path from 'path';
 import { apiLog } from '../lib/logger';
 import { hasValidCursorSignature } from '../lib/cursor-file';
+import { resolveBackendRuntimePath } from '../config/backend-env-path';
 
 const router = Router();
+const PUBLIC_UPLOAD_DIR = resolveBackendRuntimePath(process.env.UPLOAD_DIR, 'uploads');
 
 // 网站鼠标皮肤上传：只接受浏览器可用的 CUR/PNG，并在落盘后校验文件头。
 router.post(
@@ -88,16 +91,38 @@ router.post(
       }
 
       const { type = 'gallery' } = req.params;
-      const results = await Promise.all(
-        req.files.map((file) =>
-          uploadService.processImageUpload(file, {
-            type,
+      const batchResult = await uploadService.coordinateBatchImageUploads(
+        req.files,
+        type,
+        {
+          processUpload: (file, batchType) => uploadService.processImageUpload(file, {
+            type: batchType,
             generateThumbnail: true,
-          })
-        )
+          }),
+          rollbackUpload: (filename, batchType, storage) =>
+            uploadService.deleteFile(filename, batchType, storage),
+          cleanupStagedUpload: deleteUploadedFileOrThrow,
+        }
       );
 
-      return success(res, results, `成功上传 ${results.length} 张图片`);
+      if (!batchResult.ok) {
+        apiLog.warn('Batch image upload failed; cleanup was attempted', {
+          attempted: batchResult.attempted,
+          processed: batchResult.uploads.length,
+          failedUploads: batchResult.failedUploads,
+          rollbackFailures: batchResult.rollbackFailures,
+          stagingCleanupFailures: batchResult.stagingCleanupFailures,
+          failureCategories: batchResult.failureCategories,
+          userId: req.user?.userId,
+        });
+        return error(res, batchResult.errorMessage!, 500);
+      }
+
+      return success(
+        res,
+        batchResult.uploads,
+        `成功上传 ${batchResult.uploads.length} 张图片`
+      );
     } catch (err: any) {
       return error(res, err.message, 500);
     }
@@ -124,7 +149,7 @@ router.delete('/:type/:filename', authenticate, requireAdmin, async (req, res) =
 router.get('/:type/:filename/info', async (req, res) => {
   try {
     const { type, filename } = req.params;
-    const info = uploadService.getFileInfo(filename, type);
+    const info = await uploadService.getFileInfo(filename, type);
 
     if (!info.exists) {
       return error(res, '文件不存在', 404);
@@ -132,14 +157,23 @@ router.get('/:type/:filename/info', async (req, res) => {
 
     return success(res, info);
   } catch (err: any) {
-    return error(res, err.message, 500);
+    apiLog.error(
+      'Failed to inspect uploaded file',
+      'uploaded_file_info_failed',
+      {
+        type: req.params.type,
+        filename: req.params.filename,
+        errorName: err instanceof Error ? err.name : 'UnknownError',
+      }
+    );
+    return error(res, '获取文件信息失败', 500);
   }
 });
 
 // 获取已上传文件列表（需管理员权限）
 router.get('/', authenticate, requireAdmin, async (req, res) => {
   try {
-    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const uploadsDir = PUBLIC_UPLOAD_DIR;
     
     if (!fs.existsSync(uploadsDir)) {
       return success(res, { data: [] });

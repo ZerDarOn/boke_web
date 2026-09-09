@@ -3,9 +3,14 @@ import React, { useEffect, useRef } from 'react';
 /**
  * Hero 内置动态背景（替代旧的网格/星云/刀光三套程序生成特效）。
  * 深墨底 + 缓慢漂移的墨晕 + 霓虹星座节点连线 + 暗角。
- * 颜色跟随 --color-neon（主题色），无外链资源，触屏自动降密度。
+ * 颜色跟随 --color-neon（主题色），无外链资源，触屏自动降密度；
+ * 系统要求减少动态时仍绘制静态星图，保留 Hero 的视觉识别。
  */
-const HeroCanvas: React.FC = () => {
+export interface HeroCanvasProps {
+  reducedMotion?: boolean;
+}
+
+const HeroCanvas: React.FC<HeroCanvasProps> = ({ reducedMotion = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -14,7 +19,7 @@ const HeroCanvas: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = 1;
     let W = 0;
     let H = 0;
 
@@ -53,19 +58,6 @@ const HeroCanvas: React.FC = () => {
       }));
     };
 
-    const resize = () => {
-      W = window.innerWidth;
-      H = window.innerHeight;
-      canvas.width = W * dpr;
-      canvas.height = H * dpr;
-      canvas.style.width = `${W}px`;
-      canvas.style.height = `${H}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      rebuild();
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
     // 鼠标交互：牵出星线 + 拖出星纹
     interface Spark { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; }
     const sparks: Spark[] = [];
@@ -96,33 +88,31 @@ const HeroCanvas: React.FC = () => {
       }
     };
     const onOut = () => { mouse.active = false; };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseout', onOut);
-
     let raf = 0;
     let color = resolveNeon();
     let frameCount = 0;
     const render = () => {
-      raf = requestAnimationFrame(render);
-      if (document.visibilityState === 'hidden') return;
+      if (!reducedMotion) raf = requestAnimationFrame(render);
+      if (!reducedMotion && document.visibilityState === 'hidden') return;
       // Hero 滚出视口后停止绘制：被下方内容盖住时仍全速 O(n²) 重绘是滚动卡顿的主因之一
-      if (window.scrollY >= window.innerHeight) return;
+      if (!reducedMotion && window.scrollY >= window.innerHeight) return;
 
       // 主题色每 ~30 帧刷新一次即可，避免每帧 getComputedStyle 触发强制样式计算
       if ((frameCount++ % 30) === 0) color = resolveNeon();
 
-      // 墨底
-      ctx.fillStyle = '#05060a';
-      ctx.fillRect(0, 0, W, H);
+      // 画布保持透明，让后台配置的 Hero 图片与星空同时存在。
+      ctx.clearRect(0, 0, W, H);
 
       // 漂移的墨晕（柔光）
       for (const b of blobs) {
-        b.x += b.vx;
-        b.y += b.vy;
-        if (b.x < -b.r) b.x = W + b.r;
-        if (b.x > W + b.r) b.x = -b.r;
-        if (b.y < -b.r) b.y = H + b.r;
-        if (b.y > H + b.r) b.y = -b.r;
+        if (!reducedMotion) {
+          b.x += b.vx;
+          b.y += b.vy;
+          if (b.x < -b.r) b.x = W + b.r;
+          if (b.x > W + b.r) b.x = -b.r;
+          if (b.y < -b.r) b.y = H + b.r;
+          if (b.y > H + b.r) b.y = -b.r;
+        }
         const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
         ctx.globalAlpha = 0.06;
         g.addColorStop(0, color);
@@ -136,10 +126,12 @@ const HeroCanvas: React.FC = () => {
 
       // 节点位移
       for (const n of nodes) {
-        n.x += n.vx;
-        n.y += n.vy;
-        if (n.x < 0 || n.x > W) n.vx *= -1;
-        if (n.y < 0 || n.y > H) n.vy *= -1;
+        if (!reducedMotion) {
+          n.x += n.vx;
+          n.y += n.vy;
+          if (n.x < 0 || n.x > W) n.vx *= -1;
+          if (n.y < 0 || n.y > H) n.vy *= -1;
+        }
       }
 
       // 连线（星座/神经网络）
@@ -165,17 +157,20 @@ const HeroCanvas: React.FC = () => {
 
       // 节点
       ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 7;
       for (const n of nodes) {
-        ctx.globalAlpha = 0.65;
+        ctx.globalAlpha = 0.82;
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
 
       // 鼠标牵出星线（仅 Hero 可见时）
       const heroVisible = window.scrollY < window.innerHeight;
-      if (heroVisible && mouse.active) {
+      if (!reducedMotion && heroVisible && mouse.active) {
         const LR = 210;
         const lr2 = LR * LR;
         ctx.strokeStyle = color;
@@ -221,7 +216,31 @@ const HeroCanvas: React.FC = () => {
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
     };
-    raf = requestAnimationFrame(render);
+
+    const resize = () => {
+      W = window.innerWidth;
+      H = window.innerHeight;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = `${W}px`;
+      canvas.style.height = `${H}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      rebuild();
+
+      if (reducedMotion) {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(render);
+      }
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+    if (!reducedMotion) {
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseout', onOut);
+      raf = requestAnimationFrame(render);
+    }
 
     return () => {
       cancelAnimationFrame(raf);
@@ -229,9 +248,9 @@ const HeroCanvas: React.FC = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseout', onOut);
     };
-  }, []);
+  }, [reducedMotion]);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" aria-hidden />;
+  return <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-[1] h-full w-full" aria-hidden />;
 };
 
 export default HeroCanvas;

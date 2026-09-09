@@ -1,21 +1,14 @@
 import React, { useState, useEffect, useMemo, memo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { TRANSLATIONS } from '../constants';
-import { ArrowRight, LayoutList, LayoutGrid, Filter, X, Loader2 } from 'lucide-react';
+import { ArrowUpRight, LayoutList, LayoutGrid, Filter, X, Loader2 } from 'lucide-react';
 import { SEO } from '../components/SEO';
+import SectionHeading from '../components/SectionHeading';
 import type { Post as ApiPost } from '../lib/api';
 import { usePostsList, usePostCategories, usePostTags } from '../hooks/queries/posts';
 import { PostListSkeleton } from '../components/Skeleton';
 
-// 分类类型定义
-interface Category {
-  name: string;
-  count: number;
-}
-
 // 文章卡片数据类型
 interface PostCardProps {
-  id: string;
   slug: string;
   title: string;
   date: string;
@@ -40,18 +33,18 @@ const mapPostType = (post: ApiPost) => ({
 });
 
 // 使用 React.memo 优化文章卡片组件
-const PostCard = memo(({ id, slug, title, date, category, excerpt, coverImage, viewMode }: PostCardProps) => {
+const PostCard = memo(({ slug, title, date, category, excerpt, coverImage, viewMode }: PostCardProps) => {
   return (
     <Link
       to={`/posts/${slug}`}
       className={`
-        group relative transition-all duration-500 hover:-translate-y-2 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-sm hover:shadow-xl border border-transparent hover:border-ink/10 dark:border-white/5 dark:hover:border-neon/50
-        ${viewMode === 'list' ? 'flex flex-col md:flex-row gap-6 items-start p-6' : 'flex flex-col p-6 h-full'}
+        group relative transition-colors duration-300 bg-white/65 dark:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon
+        ${viewMode === 'list' ? 'flex flex-col border-b border-ink/10 py-7 dark:border-white/10 md:flex-row md:items-start md:gap-7 md:px-4 hover:bg-white dark:hover:bg-white/[0.05]' : 'flex min-h-72 flex-col p-7 hover:bg-white dark:hover:bg-white/[0.05]'}
       `}
     >
       {/* Cover Image */}
       {coverImage && (
-        <div className={`flex-shrink-0 overflow-hidden rounded-xl ${viewMode === 'list' ? 'md:w-48 w-full h-48 md:h-32' : 'w-full h-48 mb-4'}`}>
+        <div className={`flex-shrink-0 overflow-hidden ${viewMode === 'list' ? 'h-48 w-full md:h-32 md:w-48' : 'mb-5 h-48 w-full'}`}>
           <img
             src={coverImage}
             alt={title}
@@ -63,27 +56,25 @@ const PostCard = memo(({ id, slug, title, date, category, excerpt, coverImage, v
 
       {/* Date Badge */}
       <div className={`flex-shrink-0 ${viewMode === 'list' ? 'md:w-28 pt-1' : coverImage ? '' : 'mb-4'}`}>
-        <span className="font-mono text-sm text-gray-400 block mb-1">{date}</span>
-        <span className="font-mono text-xs text-neon border border-neon rounded px-2 py-0.5 inline-block bg-neon/5">
+        <time className="mb-2 block font-mono text-[0.68rem] tracking-[0.16em] text-stone-500 tabular-nums" dateTime={date}>{date}</time>
+        <span className="inline-block border-l-2 border-neon pl-2 font-mono text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-neon-dark dark:text-neon">
           {category}
         </span>
       </div>
 
       {/* Content Card */}
       <div className="flex-1 flex flex-col h-full">
-        <h3 className="text-2xl font-bold font-sans text-ink dark:text-white group-hover:text-neon-dark dark:group-hover:text-neon transition-colors mb-3">
+        <h3 className="mb-3 font-serif text-2xl font-bold leading-tight tracking-[-0.025em] text-ink transition-colors group-hover:text-neon-dark dark:text-white dark:group-hover:text-neon md:text-3xl">
           {title}
         </h3>
-        <p className="font-serif text-gray-600 dark:text-gray-300 text-base leading-relaxed mb-4 flex-1">
+        <p className="mb-5 max-w-[62ch] flex-1 font-serif text-sm leading-7 text-stone-600 text-pretty dark:text-stone-400">
           {excerpt}
         </p>
-        <button className="flex items-center gap-2 font-mono text-xs font-bold text-ink dark:text-gray-200 group-hover:text-neon transition-colors tracking-widest uppercase mt-auto">
-          Read <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform" />
-        </button>
+        <span className="mt-auto flex items-center gap-2 font-mono text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-ink transition-colors group-hover:text-neon-dark dark:text-stone-300 dark:group-hover:text-neon">
+          阅读全文 <ArrowUpRight size={14} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+        </span>
       </div>
 
-      {/* Decorative Ink Splat / Glow in Dark Mode */}
-      <div className="absolute top-0 right-0 w-12 h-12 bg-gray-50 dark:bg-white/5 opacity-0 group-hover:opacity-100 rounded-bl-3xl transition-opacity -z-10"></div>
     </Link>
   );
 });
@@ -136,48 +127,45 @@ export default function Posts() {
     });
   }, [posts, selectedCategory, selectedTag]);
 
-  const lang: 'EN' | 'ZH' = 'ZH';
-  const t = TRANSLATIONS[lang];
-
   return (
-    <section className="py-12 w-full relative">
+    <section className="relative w-full py-10 md:py-16">
       <SEO
         title="文章"
         description="技术笔记、项目复盘、思考随笔"
         type="website"
       />
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 border-b-2 border-ink dark:border-white pb-4 gap-4 md:gap-0">
-        <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
-          <h2 className="text-4xl md:text-6xl font-serif font-black text-ink dark:text-white tracking-tight leading-none">
-            我
-          </h2>
-          <h2 className="text-4xl md:text-6xl font-serif font-black text-neon tracking-tight leading-none">
-            的文章
-          </h2>
-          <span className="font-mono text-neon font-bold text-lg">
-            / POSTS
-          </span>
-        </div>
-        
-        {/* View Toggle */}
-        <div className="flex gap-2">
+      <SectionHeading
+        index="P.01"
+        eyebrow="Writing archive / 文章"
+        level="h1"
+        title="思想留下的路径"
+        description="技术笔记、项目复盘，以及一些无法归入代码的观察。"
+        action={(
+          <div className="inline-flex border border-ink/15 bg-white/55 p-1 dark:border-white/15 dark:bg-white/[0.03]" aria-label="文章布局">
           <button 
+            type="button"
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded transition-colors ${viewMode === 'list' ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'bg-gray-100 text-gray-400 hover:text-ink dark:bg-white/10 dark:hover:text-white'}`}
+            aria-label="列表视图"
+            aria-pressed={viewMode === 'list'}
+            className={`grid size-10 place-items-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon ${viewMode === 'list' ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'text-stone-500 hover:bg-ink/5 hover:text-ink dark:hover:bg-white/10 dark:hover:text-white'}`}
           >
             <LayoutList size={18} />
           </button>
           <button 
+            type="button"
             onClick={() => setViewMode('grid')}
-            className={`p-2 rounded transition-colors ${viewMode === 'grid' ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'bg-gray-100 text-gray-400 hover:text-ink dark:bg-white/10 dark:hover:text-white'}`}
+            aria-label="网格视图"
+            aria-pressed={viewMode === 'grid'}
+            className={`grid size-10 place-items-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon ${viewMode === 'grid' ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'text-stone-500 hover:bg-ink/5 hover:text-ink dark:hover:bg-white/10 dark:hover:text-white'}`}
           >
             <LayoutGrid size={18} />
           </button>
-        </div>
-      </div>
+          </div>
+        )}
+      />
 
       {/* Filters */}
-       <div className="mb-8">
+       <div className="my-12 border-y border-ink/10 py-6 dark:border-white/10">
          {/* Loading State */}
          {loading && (
            <PostListSkeleton count={5} viewMode={viewMode} />
@@ -304,11 +292,10 @@ export default function Posts() {
         )}
       </div>
 
-      <div className={viewMode === 'list' ? "grid grid-cols-1 gap-12" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
+      <div className={viewMode === 'list' ? "grid grid-cols-1 border-t border-ink/10 dark:border-white/10" : "grid grid-cols-1 gap-px bg-ink/10 dark:bg-white/10 md:grid-cols-2"}>
         {filteredPosts.map((post) => (
           <PostCard
             key={post.id}
-            id={post.id}
             slug={post.slug}
             title={post.title}
             date={post.date}
@@ -321,8 +308,8 @@ export default function Posts() {
       </div>
       
       {filteredPosts.length === 0 && (
-        <div className="text-center py-20 text-gray-500 dark:text-gray-400">
-          <p className="font-mono text-lg">NO POSTS FOUND</p>
+        <div className="border-y border-ink/10 py-20 text-center text-stone-500 dark:border-white/10 dark:text-stone-400">
+          <p className="font-serif text-lg">这个筛选下还没有文章。</p>
         </div>
       )}
     </section>

@@ -1,11 +1,16 @@
 import { useMemo, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSiteSettings } from './queries/settings';
+import { usePublicSiteSettings } from './queries/settings';
 import { queryKeys } from './api/query-keys';
-import type { SiteConfig as ApiSiteConfig } from '../lib/api';
 import { defaultCursorConfig } from '../config/cursor-config';
+import {
+  readPublicSiteConfig,
+  toPublicSiteConfig,
+  writePublicSiteConfig,
+  type PublicSiteConfig,
+} from '../lib/siteConfigStorage';
 
-export type SiteConfig = ApiSiteConfig;
+export type SiteConfig = PublicSiteConfig;
 
 const defaultConfig: SiteConfig = {
   blogName: 'INK.SPIRIT',
@@ -19,8 +24,8 @@ const defaultConfig: SiteConfig = {
   twitter: 'twitter.com/cyber_ronin',
   bilibili: 'bilibili.com/user/123456',
   wechat: '',
-  primaryColor: '#10b981',
-  secondaryColor: '#8b5cf6',
+  primaryColor: '#00cc73',
+  secondaryColor: '#f2675a',
   defaultTheme: 'dark',
   cursorConfig: defaultCursorConfig,
   siteDescription: '个人博客 — 记录、创作、分享。',
@@ -48,35 +53,8 @@ const defaultConfig: SiteConfig = {
     aboutContactTitle: '联系方式',
     aboutContactCopyTip: '点击卡片复制链接或访问',
   },
-  aiConfig: {
-    provider: 'openai',
-    apiKey: '',
-    model: 'gpt-4o-mini',
-    baseUrl: '',
-    maxTokens: 2048,
-    temperature: 0.7,
-  },
   heroBackgrounds: [],
 };
-
-function readLocalConfig(): Partial<SiteConfig> {
-  try {
-    const ts = localStorage.getItem('site_config_ts');
-    if (ts) {
-      const age = Date.now() - Number(ts);
-      // 缓存超过 1 小时自动失效，防止旧配置盖住 API 数据
-      if (age > 3600000) {
-        localStorage.removeItem('site_config');
-        localStorage.removeItem('site_config_ts');
-        return {};
-      }
-    }
-    const saved = localStorage.getItem('site_config');
-    return saved ? JSON.parse(saved) : {};
-  } catch {
-    return {};
-  }
-}
 
 function mergeConfigs(
   apiConfig?: Partial<SiteConfig> | null,
@@ -99,10 +77,6 @@ function mergeConfigs(
       apiConfig?.fontSettings ??
       localConfig?.fontSettings ??
       defaultConfig.fontSettings,
-    aiConfig:
-      apiConfig?.aiConfig ??
-      localConfig?.aiConfig ??
-      defaultConfig.aiConfig,
     cursorConfig: {
       ...defaultCursorConfig,
       ...localConfig?.cursorConfig,
@@ -113,19 +87,18 @@ function mergeConfigs(
 
 export function useSiteConfig(): SiteConfig {
   const queryClient = useQueryClient();
-  const { data: apiData } = useSiteSettings();
+  const { data: apiData } = usePublicSiteSettings();
 
   useEffect(() => {
     if (apiData) {
-      localStorage.setItem('site_config', JSON.stringify(apiData));
-      localStorage.setItem('site_config_ts', String(Date.now()));
+      writePublicSiteConfig(apiData);
     }
   }, [apiData]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'site_config') {
-        queryClient.invalidateQueries({ queryKey: queryKeys.settings.site() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.settings.publicSite() });
       }
     };
     window.addEventListener('storage', onStorage);
@@ -133,7 +106,7 @@ export function useSiteConfig(): SiteConfig {
   }, [queryClient]);
 
   return useMemo(
-    () => mergeConfigs(apiData, readLocalConfig()),
+    () => mergeConfigs(toPublicSiteConfig(apiData ?? {}), readPublicSiteConfig()),
     [apiData]
   );
 }

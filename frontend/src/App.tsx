@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useNavigationType, Link } from 'react-router-dom';
 import Layout from './components/Layout';
 import { LangProvider } from './contexts/LangContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -10,7 +10,6 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
 import { LoadingProgress } from './components/LoadingProgress';
 import SiteCursor from './components/SiteCursor';
-import InteractionGuard from './components/InteractionGuard';
 import VisitTracker from './components/VisitTracker';
 
 // Lazy load pages
@@ -36,6 +35,7 @@ const DiaryDetail = lazy(() => import('./pages/DiaryDetail'));
 const Gallery = lazy(() => import('./pages/Gallery'));
 const GalleryDetail = lazy(() => import('./pages/GalleryDetail'));
 const Music = lazy(() => import('./pages/Music'));
+const UiReviewPreview = lazy(() => import('./pages/UiReviewPreview'));
 
 // Divination Pages
 const Divination = lazy(() => import('./pages/Divination'));
@@ -76,10 +76,21 @@ const MaintenancePanel = lazy(() => import('./components/MaintenancePanel'));
 // 路由切换滚动逻辑
 const ScrollToTop: React.FC = () => {
   const location = useLocation();
+  const navigationType = useNavigationType();
+
+  React.useEffect(() => {
+    const previousBehavior = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'auto';
+    return () => {
+      window.history.scrollRestoration = previousBehavior;
+    };
+  }, []);
   
   React.useLayoutEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  }, [location.pathname]);
+    if (navigationType !== 'POP') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+  }, [location.key, navigationType]);
   
   return null;
 };
@@ -140,7 +151,6 @@ const NotFound: React.FC = () => (
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <InteractionGuard />
       <QueryClientProvider>
         <SiteCursor />
         <LangProvider>
@@ -182,6 +192,9 @@ const App: React.FC = () => {
             <Route path="divination/iching" element={<IChingDivination />} />
             <Route path="divination/astrology" element={<AstrologyChart />} />
           </Route>
+
+           {/* Isolated hardcoded UI review page */}
+           <Route path="/ui-review-preview" element={<UiReviewPreview />} />
 
            {/* Maintenance */}
            <Route path="/maintenance" element={<MaintenancePanel />} />

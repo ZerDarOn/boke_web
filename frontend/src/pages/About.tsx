@@ -1,104 +1,51 @@
 import React, { useState } from 'react';
+import { Mail, Github, Video, MessageCircle, UserRound, FileText, ArrowUpRight } from 'lucide-react';
 import AboutFileExplorer from '../components/AboutFileExplorer';
-import { TRANSLATIONS } from '../constants';
-import { Mail, Github, Video, MessageCircle, Copy, Check } from 'lucide-react';
-import { usePageCopy } from '../hooks/useSiteConfig';
+import { useSiteConfig } from '../hooks/useSiteConfig';
+import { normalizeExternalUrl } from '../lib/externalUrl';
+import './About.css';
 
 const About: React.FC = () => {
-  const lang = 'ZH' as 'EN' | 'ZH';
-  const t = TRANSLATIONS[lang];
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
-  const pageCopy = usePageCopy();
+  const config = useSiteConfig();
+  const [copyStatus, setCopyStatus] = useState('');
+  const [copying, setCopying] = useState(false);
+  const copyContact = async (value: string, label: string) => {
+    setCopying(true);
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyStatus(label + '已复制。');
+    } catch {
+      setCopyStatus('复制未成功，请手动选择并复制：' + value);
+    } finally { setCopying(false); }
+  };
+  const socials = [
+    { name: 'GitHub', value: config.github, icon: Github },
+    { name: '哔哩哔哩', value: config.bilibili, icon: Video },
+    { name: 'Twitter / X', value: config.twitter, icon: ArrowUpRight },
+  ].map(item => ({ ...item, url: normalizeExternalUrl(item.value) })).filter(item => item.url);
 
-  const contactInfo = [
-    {
-      type: 'email',
-      label: lang === 'EN' ? 'Email' : '邮箱',
-      value: '1500507371@qq.com',
-      icon: Mail,
-      action: () => {
-        navigator.clipboard.writeText('1500507371@qq.com');
-        setCopyStatus('copied');
-        setTimeout(() => setCopyStatus('idle'), 2000);
-      }
-    },
-    {
-      type: 'github',
-      label: 'GitHub',
-      value: 'github.com/ZerDarOn',
-      icon: Github,
-      action: () => window.open('https://github.com/ZerDarOn', '_blank')
-    },
-    {
-      type: 'bilibili',
-      label: lang === 'EN' ? 'Bilibili' : 'B站',
-      value: 'bilibili.com/user/104973922',
-      icon: Video,
-      action: () => window.open('https://space.bilibili.com/104973922', '_blank')
-    },
-    {
-      type: 'wechat',
-      label: 'WeChat',
-      value: lang === 'EN' ? 'Scan QR Code' : '扫描二维码',
-      icon: MessageCircle,
-      action: () => {
-      }
-    }
-  ];
-
-  return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
-      <h2 className="text-3xl font-sans font-black text-ink dark:text-paper flex items-center gap-4">
-        / {t.ABOUT}.SYSTEM
-        <div className="h-[2px] flex-1 bg-ink/10 dark:bg-paper/20"></div>
-      </h2>
+  return <div className="about-journal">
+    <section className="about-welcome about-panel">
+      <span className="about-eyebrow"><UserRound size={18} /> 欢迎来访</span>
+      <h1>你好，我是 <mark>{config.authorName}</mark>。</h1>
+      <p className="about-intro">{config.authorBio || config.siteDescription}</p>
+      <div className="about-hand-note">这里是 {config.blogName}，欢迎慢慢逛。</div>
+    </section>
+    <section className="about-files about-panel" aria-labelledby="about-files-heading">
+      <header className="about-section-heading"><FileText size={20} /><h2 id="about-files-heading">相关文件</h2></header>
+      <p className="about-section-copy">分享在这里的文档与附件，可以在线阅读或下载。加锁文件需要访问密码。</p>
       <AboutFileExplorer />
-
-      {/* 联系方式 */}
-      <div className="mt-4">
-        <h3 className="text-xl font-serif font-bold text-ink dark:text-white mb-6 flex items-center gap-3 pb-2 border-b border-gray-200 dark:border-white/10">
-          <span className="w-8 h-8 bg-neon/10 rounded-lg flex items-center justify-center">
-            <Mail size={18} className="text-neon" />
-          </span>
-          {pageCopy.aboutContactTitle}
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {contactInfo.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={index}
-                onClick={item.action}
-                disabled={item.type === 'wechat'}
-                className={`group relative p-6 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-xl hover:border-neon hover:shadow-lg hover:shadow-neon/10 transition-all duration-300 ${
-                  item.type === 'wechat' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
-                }`}
-              >
-                {item.type === 'email' && copyStatus === 'copied' && (
-                  <div className="absolute top-2 right-2 text-neon">
-                    <Check size={16} />
-                  </div>
-                )}
-                <Icon size={24} className="text-neon mb-4 group-hover:scale-110 transition-transform" />
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mb-2">{item.label}</p>
-                <p className="text-sm text-ink dark:text-white font-medium truncate">{item.value}</p>
-                {item.type === 'email' && copyStatus === 'idle' && (
-                  <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Copy size={14} className="text-gray-400" />
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <p className="mt-4 text-xs text-gray-500 dark:text-gray-400 font-mono text-center">
-          {pageCopy.aboutContactCopyTip}
-        </p>
+    </section>
+    <section className="about-contact about-panel" aria-labelledby="about-contact-heading">
+      <header className="about-section-heading"><Mail size={20} /><h2 id="about-contact-heading">{config.pageCopy.aboutContactTitle}</h2></header>
+      <div className="about-contact-grid">
+        {config.email && <button type="button" disabled={copying} onClick={() => void copyContact(config.email, '邮箱')}><Mail size={21} /><span><small>邮箱 · 点击复制</small><strong>{config.email}</strong></span></button>}
+        {socials.map(({ name, value, url, icon: Icon }) => <a href={url!} key={name} target="_blank" rel="noopener noreferrer"><Icon size={21} /><span><small>{name}</small><strong>{value}</strong></span><ArrowUpRight size={15} /></a>)}
+        {config.wechat && <button type="button" disabled={copying} onClick={() => void copyContact(config.wechat, '微信号')}><MessageCircle size={21} /><span><small>微信 · 点击复制</small><strong>{config.wechat}</strong></span></button>}
       </div>
-    </div>
-  );
+      <p className="about-contact-status" role="status">{copyStatus || config.pageCopy.aboutContactCopyTip}</p>
+    </section>
+  </div>;
 };
 
 export default About;

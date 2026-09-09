@@ -1,0 +1,29 @@
+# Secrets are injected by the container runtime.
+.env
+.env.*
+!.env.example
+
+# Local virtual environments and Python caches.
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime data must be mounted or regenerated, never baked into the image.
+chroma_data/
+kb_data/
+cache/
+logs/
+*.log
+
+# Test and development-only files.
+tests/
+evals/
+.coverage
+htmlcov/
+.git/
+.gitignore

@@ -8,6 +8,10 @@ interface SEOProps {
   image?: string;
 }
 
+const BASE_TITLE = 'INK.SPIRIT';
+const DEFAULT_TITLE = `${BASE_TITLE} | Cyber-Ink Evolution`;
+const DEFAULT_DESCRIPTION = 'INK.SPIRIT - 一个融合水墨美学与赛博朋克风格的个人博客，记录技术、作品与生活。';
+
 /**
  * SEO 组件 - 动态更新页面 meta 信息
  * 使用原生 document API，无需额外依赖
@@ -20,43 +24,32 @@ export const SEO: React.FC<SEOProps> = ({
   image,
 }) => {
   useEffect(() => {
-    const baseTitle = 'INK.SPIRIT';
-    const fullTitle = title ? `${title} | ${baseTitle}` : `${baseTitle} | Cyber-Ink Evolution`;
+    const fullTitle = title ? `${title} | ${BASE_TITLE}` : DEFAULT_TITLE;
+    const resolvedDescription = description || DEFAULT_DESCRIPTION;
+    const canonicalUrl = `${window.location.origin}${window.location.pathname}`;
+    const absoluteImage = resolveAbsoluteUrl(image);
     
     // 更新标题
     document.title = fullTitle;
     
     // 更新或创建 meta description
-    updateMetaTag('description', description || 'INK.SPIRIT - 一个融合水墨美学与赛博朋克风格的个人博客，分享技术文章、项目经历、追番记录和生活点滴。');
+    updateMetaTag('description', resolvedDescription);
     
     // 更新或创建 meta keywords
-    if (keywords) {
-      updateMetaTag('keywords', keywords);
-    }
+    updateOptionalMetaTag('keywords', keywords);
     
     // 更新 Open Graph 标签
     updateMetaTag('og:title', fullTitle, true);
     updateMetaTag('og:type', type, true);
-    if (description) {
-      updateMetaTag('og:description', description, true);
-    }
-    if (image) {
-      updateMetaTag('og:image', image, true);
-    }
+    updateMetaTag('og:description', resolvedDescription, true);
+    updateMetaTag('og:url', canonicalUrl, true);
+    updateOptionalMetaTag('og:image', absoluteImage, true);
     
     // 更新 Twitter Card 标签
     updateMetaTag('twitter:title', fullTitle);
-    if (description) {
-      updateMetaTag('twitter:description', description);
-    }
-    if (image) {
-      updateMetaTag('twitter:image', image);
-    }
-    
-    // 清理函数 - 恢复默认标题
-    return () => {
-      document.title = 'INK.SPIRIT | Cyber-Ink Evolution';
-    };
+    updateMetaTag('twitter:description', resolvedDescription);
+    updateOptionalMetaTag('twitter:image', absoluteImage);
+    updateCanonicalLink(canonicalUrl);
   }, [title, description, keywords, type, image]);
   
   return null;
@@ -83,6 +76,40 @@ function updateMetaTag(name: string, content: string, isProperty: boolean = fals
   }
   
   meta.setAttribute('content', content);
+}
+
+function updateOptionalMetaTag(name: string, content?: string, isProperty = false): void {
+  const attribute = isProperty ? 'property' : 'name';
+  const selector = `meta[${attribute}="${name}"]`;
+
+  if (!content) {
+    document.querySelector(selector)?.remove();
+    return;
+  }
+
+  updateMetaTag(name, content, isProperty);
+}
+
+function updateCanonicalLink(href: string): void {
+  let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    document.head.appendChild(canonical);
+  }
+
+  canonical.href = href;
+}
+
+function resolveAbsoluteUrl(value?: string): string | undefined {
+  if (!value) return undefined;
+
+  try {
+    return new URL(value, window.location.origin).href;
+  } catch {
+    return undefined;
+  }
 }
 
 export default SEO;

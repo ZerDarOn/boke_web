@@ -1,6 +1,20 @@
 import { API_BASE_URL } from '../apiConfig';
 import { apiRequest, getAuthHeaders, getAuthToken, type ApiResponse } from './request';
 
+const FILE_ACCESS_PASSWORD_HEADER = 'X-File-Password';
+
+async function getDownloadErrorMessage(response: Response): Promise<string> {
+  const fallbackMessage = `HTTP ${response.status}: ${response.statusText}`;
+
+  try {
+    const payload = await response.json() as { error?: unknown; message?: unknown };
+    const message = payload.message ?? payload.error;
+    return typeof message === 'string' ? message : fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
+}
+
 export interface FileItem {
   name: string;
   path: string;
@@ -42,39 +56,47 @@ export const filesApi = {
   getContent: async (path: string, password?: string) => {
     const queryParams = new URLSearchParams();
     queryParams.append('path', path);
-    if (password) queryParams.append('password', password);
+    const headers: Record<string, string> = {};
+    if (password) headers[FILE_ACCESS_PASSWORD_HEADER] = password;
 
-    return apiRequest<FileContent>(`/api/files/content?${queryParams}`);
+    return apiRequest<FileContent>(`/api/files/content?${queryParams}`, { headers });
   },
 
   // GET /api/files/download - 下载文件
   download: async (path: string, password?: string) => {
     const queryParams = new URLSearchParams();
     queryParams.append('path', path);
-    if (password) queryParams.append('password', password);
 
     const url = `${API_BASE_URL}/api/files/download?${queryParams}`;
     const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (password) headers[FILE_ACCESS_PASSWORD_HEADER] = password;
 
-    const response = await fetch(url, {
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-    });
+    try {
+      const response = await fetch(url, { headers });
 
-    if (!response.ok) {
-      return { success: false, error: 'Download failed' };
+      if (!response.ok) {
+        return { success: false, error: await getDownloadErrorMessage(response) };
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = path.split('/').pop() || 'file';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Download failed',
+      };
     }
-
-    const blob = await response.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = path.split('/').pop() || 'file';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(downloadUrl);
-
-    return { success: true };
   },
 
   // POST /api/files - 创建文件/目录（需要认证）
@@ -154,7 +176,12 @@ export const filesApi = {
       };
     }
 
-    return data as ApiResponse<any[]>;
+    return data as ApiResponse<Array<{
+      name: string;
+      path: string;
+      type: string;
+      size: number;
+    }>>;
   },
 
   // POST /api/files/export - 批量导出文件（需要认证）

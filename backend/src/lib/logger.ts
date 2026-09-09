@@ -3,6 +3,7 @@ import path from 'path';
 
 const LOG_DIR = path.join(process.cwd(), 'logs');
 const LOG_RETENTION_DAYS = 7;
+const LOG_MAX_BYTES = 5 * 1024 * 1024;
 
 // Ensure log directory exists
 if (!fs.existsSync(LOG_DIR)) {
@@ -27,13 +28,29 @@ function writeLog(filename: string, entry: LogEntry, sync: boolean = false): voi
   const logFile = path.join(LOG_DIR, filename);
   const logLine = JSON.stringify(entry) + '\n';
 
+  const rotateIfNeeded = () => {
+    if (!fs.existsSync(logFile)) return;
+    if (fs.statSync(logFile).size + Buffer.byteLength(logLine) <= LOG_MAX_BYTES) return;
+
+    const backupFile = `${logFile}.1`;
+    if (fs.existsSync(backupFile)) fs.unlinkSync(backupFile);
+    fs.renameSync(logFile, backupFile);
+  };
+
   if (sync) {
     try {
+      rotateIfNeeded();
       fs.appendFileSync(logFile, logLine);
     } catch (err) {
       console.error('Failed to write log (sync):', err);
     }
   } else {
+    try {
+      rotateIfNeeded();
+    } catch (err) {
+      console.error('Failed to rotate log:', err);
+      return;
+    }
     fs.appendFile(logFile, logLine, (err) => {
       if (err) {
         console.error('Failed to write log:', err);
@@ -68,7 +85,9 @@ export function log(level: LogLevel, category: string, message: string, data?: a
   
   // Write to file
   const filename = `${category.toLowerCase()}.log`;
-  writeLog(filename, entry);
+  // Error events can originate from a public endpoint. Keeping their bounded
+  // write synchronous prevents bursts from scheduling past the rotation cap.
+  writeLog(filename, entry, level === 'error');
 }
 
 /**

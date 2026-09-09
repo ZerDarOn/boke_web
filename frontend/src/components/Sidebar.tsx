@@ -4,6 +4,7 @@ import { User, Github, Twitter, Hash, Loader2 } from 'lucide-react';
 import { usePostCategories, usePostTags } from '../hooks/queries/posts';
 import { useSiteConfig } from '../hooks/useSiteConfig';
 import { resolveImageSrc } from '../lib/image';
+import { normalizeExternalUrl } from '../lib/externalUrl';
 
 // 分类和标签的类型定义
 interface Category {
@@ -47,6 +48,9 @@ const Sidebar: React.FC = () => {
   const categoryParam = new URLSearchParams(location.search).get('category');
   const tagParam = new URLSearchParams(location.search).get('tag');
   const config = useSiteConfig();
+  const githubUrl = normalizeExternalUrl(config.github);
+  const twitterUrl = normalizeExternalUrl(config.twitter);
+  const bilibiliUrl = normalizeExternalUrl(config.bilibili);
 
   const {
     data: categoriesRaw,
@@ -93,20 +97,26 @@ const Sidebar: React.FC = () => {
                   <User className="text-gray-500 w-10 h-10" />
                 )}
             </div>
-            <div className="absolute bottom-0 right-0 w-4 h-4 bg-neon rounded-full border-2 border-white dark:border-black animate-pulse"></div>
+            <div className="absolute bottom-0 right-0 w-4 h-4 bg-neon rounded-full border-2 border-white dark:border-black animate-pulse motion-reduce:animate-none"></div>
         </div>
         <h3 className="font-sans font-bold text-lg text-ink dark:text-white transition-colors">{config.authorName}</h3>
         <p className="font-mono text-[10px] text-gray-500 dark:text-gray-400 mb-4 tracking-widest uppercase">{config.authorTitle}</p>
         <div className="flex gap-4 text-ink dark:text-gray-300">
-            <a href={config.github} target="_blank" rel="noopener noreferrer" className="hover:text-neon cursor-pointer transition-colors">
-              <Github size={16} />
-            </a>
-            <a href={config.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-neon cursor-pointer transition-colors">
-              <Twitter size={16} />
-            </a>
-            <a href={config.bilibili} target="_blank" rel="noopener noreferrer" className="hover:text-neon cursor-pointer transition-colors">
-              <BilibiliIcon />
-            </a>
+            {githubUrl && (
+              <a href={githubUrl} target="_blank" rel="noopener noreferrer" aria-label="访问 GitHub" className="hover:text-neon cursor-pointer transition-colors">
+                <Github size={16} aria-hidden="true" />
+              </a>
+            )}
+            {twitterUrl && (
+              <a href={twitterUrl} target="_blank" rel="noopener noreferrer" aria-label="访问 Twitter" className="hover:text-neon cursor-pointer transition-colors">
+                <Twitter size={16} aria-hidden="true" />
+              </a>
+            )}
+            {bilibiliUrl && (
+              <a href={bilibiliUrl} target="_blank" rel="noopener noreferrer" aria-label="访问哔哩哔哩" className="hover:text-neon cursor-pointer transition-colors">
+                <BilibiliIcon />
+              </a>
+            )}
         </div>
       </div>
 
@@ -119,7 +129,7 @@ const Sidebar: React.FC = () => {
 
         {loading ? (
           <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             <span className="text-xs">加载中...</span>
           </div>
         ) : error ? (
@@ -152,7 +162,7 @@ const Sidebar: React.FC = () => {
 
         {loading ? (
           <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             <span className="text-xs">加载中...</span>
           </div>
         ) : error ? (

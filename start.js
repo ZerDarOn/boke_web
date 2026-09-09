@@ -4,16 +4,29 @@
  * 自动检测端口占用并提供解决方案
  */
 
-const { spawn, exec } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 let portManager;
 
-const MODE = process.argv[2] || 'dev';
 const ROOT_DIR = __dirname;
 const FRONTEND_DIR = path.join(ROOT_DIR, 'frontend');
 const BACKEND_DIR = path.join(ROOT_DIR, 'backend');
 const TUNNEL_DIR = path.join(ROOT_DIR, 'tunnel');
+
+// Invoke npm through the Windows command processor explicitly. This keeps
+// argument boundaries visible to Node and avoids shell:true's unsafe string
+// concatenation/deprecation warning.
+const spawnNpm = (args, options) => {
+  if (process.platform === 'win32') {
+    return spawn(
+      process.env.ComSpec || 'cmd.exe',
+      ['/d', '/s', '/c', 'npm.cmd', ...args],
+      options
+    );
+  }
+  return spawn('npm', args, options);
+};
 
 // 颜色输出
 const colors = {
@@ -63,17 +76,20 @@ const showHelp = () => {
   console.log('  preview  预览模式 - 构建后预览，速度快');
   console.log('  build    构建生产版本');
   console.log('  tunnel   启动隧道（配合 dev/preview 使用）');
-  console.log('  clean    清理残留进程');
+  console.log('  clean    检查启动状态（不会终止外部进程）');
   console.log('');
   console.log('选项:');
   console.log('  --tunnel 启动时同时开启隧道');
   console.log('  --help   显示帮助信息');
   console.log('');
+  console.log('隧道环境变量:');
+  console.log('  CLOUDFLARED_PROTOCOL=auto|quic|http2（默认 http2）');
+  console.log('');
   console.log('示例:');
   console.log('  node start.js dev              # 开发模式');
   console.log('  node start.js preview          # 预览模式');
   console.log('  node start.js dev --tunnel     # 开发模式 + 隧道');
-  console.log('  node start.js clean            # 清理残留进程');
+  console.log('  node start.js clean            # 检查启动状态');
   console.log('');
 };
 
@@ -134,13 +150,9 @@ const startBackend = async (port) => {
   // 更新端口配置
   await updateBackendPort(port);
   
-  const isWindows = process.platform === 'win32';
-  const cmd = isWindows ? 'npm.cmd' : 'npm';
-  
-  return spawn(cmd, ['run', 'dev'], {
+  return spawnNpm(['run', 'dev'], {
     cwd: BACKEND_DIR,
     stdio: 'inherit',
-    shell: isWindows,
     env: { ...process.env, FORCE_COLOR: '1', PORT: String(port) }
   });
 };
@@ -157,14 +169,10 @@ const buildFrontend = async () => {
 
   log.info('正在构建（可能需要 1-2 分钟）...');
 
-  const isWindows = process.platform === 'win32';
-  const cmd = isWindows ? 'npm.cmd' : 'npm';
-
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, ['run', 'build'], {
+    const proc = spawnNpm(['run', 'build'], {
       cwd: FRONTEND_DIR,
       stdio: 'inherit',
-      shell: isWindows,
       env: { ...process.env, FORCE_COLOR: '1' }
     });
 
@@ -181,17 +189,38 @@ const buildFrontend = async () => {
   });
 };
 
+// 构建后端
+const buildBackend = async () => {
+  log.title('📦 构建后端...');
+  log.info('正在编译 TypeScript...');
+
+  return new Promise((resolve, reject) => {
+    const proc = spawnNpm(['run', 'build'], {
+      cwd: BACKEND_DIR,
+      stdio: 'inherit',
+      env: { ...process.env, FORCE_COLOR: '1' }
+    });
+
+    proc.on('close', (code) => {
+      if (code === 0) {
+        log.success('后端构建完成！');
+        resolve(code);
+      } else {
+        reject(new Error(`Backend build failed with code ${code}`));
+      }
+    });
+
+    proc.on('error', (err) => reject(err));
+  });
+};
+
 // 启动前端（开发模式）
 const startFrontendDev = async (port) => {
   log.info('启动前端开发服务器...');
   
-  const isWindows = process.platform === 'win32';
-  const cmd = isWindows ? 'npm.cmd' : 'npm';
-  
-  return spawn(cmd, ['run', 'dev', '--', '--port', String(port), '--host'], {
+  return spawnNpm(['run', 'dev', '--', '--port', String(port), '--host'], {
     cwd: FRONTEND_DIR,
     stdio: 'inherit',
-    shell: isWindows,
     env: { ...process.env, FORCE_COLOR: '1', PORT: String(port) }
   });
 };
@@ -210,10 +239,9 @@ const startFrontendPreview = async (port) => {
   
   // Windows 上使用 npm run preview 更稳定
   if (isWindows) {
-    return spawn('npm.cmd', ['run', 'preview', '--', '--port', String(port), '--host'], {
+    return spawnNpm(['run', 'preview', '--', '--port', String(port), '--host'], {
       cwd: FRONTEND_DIR,
       stdio: 'inherit',
-      shell: true,
       env: { ...process.env, FORCE_COLOR: '1' }
     });
   }
@@ -227,14 +255,108 @@ const startFrontendPreview = async (port) => {
 };
 
 // 启动隧道
-const startTunnel = () => {
+const startTunnel = (port) => {
   log.info('启动 Cloudflare Tunnel...');
 
-  return spawn(process.execPath, ['index.js'], {
+  const args = port === undefined ? ['index.js'] : ['index.js', String(port)];
+  return spawn(process.execPath, args, {
     cwd: TUNNEL_DIR,
     stdio: 'inherit',
     env: { ...process.env, FORCE_COLOR: '1' }
   });
+};
+
+const terminatingProcesses = new WeakSet();
+
+const stopChildProcess = (
+  child,
+  {
+    platform = process.platform,
+    taskkillProcess = spawnSync,
+  } = {},
+) => {
+  if (!child || typeof child !== 'object' || terminatingProcesses.has(child)) {
+    return;
+  }
+  if (
+    (child.exitCode !== undefined && child.exitCode !== null)
+    || (child.signalCode !== undefined && child.signalCode !== null)
+  ) {
+    return;
+  }
+  terminatingProcesses.add(child);
+
+  if (platform === 'win32' && Number.isInteger(child.pid) && child.pid > 0) {
+    const result = taskkillProcess(
+      'taskkill.exe',
+      ['/PID', String(child.pid), '/T', '/F'],
+      { stdio: 'ignore', windowsHide: true },
+    );
+    if (!result.error && result.status === 0) {
+      return;
+    }
+  }
+
+  try {
+    child.kill('SIGTERM');
+  } catch {
+    // The child may have exited between the state check and termination request.
+  }
+};
+
+const stopChildProcesses = (processes, excludedProcess, options) => {
+  for (const child of processes) {
+    if (!child || child === excludedProcess) {
+      continue;
+    }
+    stopChildProcess(child, options);
+  }
+};
+
+const monitorTunnelProcess = (tunnelProc, processes) => {
+  let failureHandled = false;
+  const fail = (message, exitCode = 1) => {
+    if (failureHandled) {
+      return;
+    }
+    failureHandled = true;
+    log.error(message);
+    stopChildProcesses(processes, tunnelProc);
+    setTimeout(() => process.exit(exitCode), 100);
+  };
+
+  tunnelProc.once('error', (error) => {
+    fail('隧道进程启动失败: ' + error.message);
+  });
+  tunnelProc.once('close', (code, signal) => {
+    const detail = signal ? 'signal ' + signal : 'exit ' + code;
+    const exitCode = Number.isInteger(code) && code > 0 ? code : 1;
+    fail('隧道进程已退出 (' + detail + ')，正在停止本地服务。', exitCode);
+  });
+};
+
+const setupLauncherExitHandler = (
+  processes,
+  {
+    signalSource = process,
+    exitProcess = (code) => process.exit(code),
+    stopOptions,
+  } = {},
+) => {
+  let shuttingDown = false;
+  const stopChildren = () => stopChildProcesses(processes, undefined, stopOptions);
+  const shutdown = () => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+    stopChildren();
+    exitProcess(0);
+  };
+
+  signalSource.once('SIGINT', shutdown);
+  signalSource.once('SIGTERM', shutdown);
+  signalSource.once('exit', stopChildren);
 };
 
 // 显示运行状态
@@ -285,8 +407,9 @@ const main = async () => {
   
   // 清理模式
   if (mode === 'clean') {
-    log.title('🧹 清理残留进程');
+    log.title('🧹 检查启动状态');
     await portManager.cleanupZombieProcesses();
+    log.info('启动器不会终止非本次启动的进程；端口冲突会在启动时自动避让。');
     process.exit(0);
   }
   
@@ -306,17 +429,24 @@ const main = async () => {
   }
   
   const processes = [];
+  setupLauncherExitHandler(processes);
   
   // 处理不同模式
   switch (mode) {
     case 'build':
+      await buildBackend();
       await buildFrontend();
       process.exit(0);
       break;
       
     case 'tunnel':
       const tunnelProc = startTunnel();
-      tunnelProc.on('close', () => process.exit(0));
+      processes.push(tunnelProc);
+      tunnelProc.on('error', (error) => {
+        log.error('隧道进程启动失败: ' + error.message);
+        process.exit(1);
+      });
+      tunnelProc.on('close', (code) => process.exit(code ?? 1));
       break;
       
     case 'preview':
@@ -382,7 +512,9 @@ const main = async () => {
       if (withTunnel) {
         log.info('启动隧道服务...');
         await new Promise(r => setTimeout(r, 500));
-        processes.push(startTunnel());
+        const tunnelProc = startTunnel(ports.frontendPort);
+        processes.push(tunnelProc);
+        monitorTunnelProcess(tunnelProc, processes);
       }
 
       showStatus(mode, {
@@ -391,12 +523,18 @@ const main = async () => {
       }, withTunnel);
       break;
   }
-  
-  // 设置退出处理
-  portManager.setupExitHandler(processes);
 };
 
-main().catch(err => {
-  log.error(err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    log.error(err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  monitorTunnelProcess,
+  setupLauncherExitHandler,
+  stopChildProcess,
+  stopChildProcesses,
+};

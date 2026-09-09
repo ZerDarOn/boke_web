@@ -1,18 +1,20 @@
 import React from 'react';
 import type { Project } from '../lib/api';
 import { useProjectsList } from '../hooks/queries/projects';
-import { Terminal, Cpu, Layers, ExternalLink } from 'lucide-react';
+import { Terminal, Cpu, Layers, ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { PageLoader } from './DataState';
+import SectionHeading from './SectionHeading';
 
 const Arsenal: React.FC = () => {
-  const { data: projects = [], isLoading: loading } = useProjectsList({
+  const { data: projects = [], isLoading: loading, error, refetch } = useProjectsList({
     featured: true,
     limit: 6,
   });
 
   // 根据项目ID或类型返回对应的图标
-  const getProjectIcon = (project: Project, index: number) => {
-    const iconClass = "text-gray-400 dark:text-neutral-600 group-hover:text-neon transition-colors";
+  const getProjectIcon = (project: Project) => {
+    const iconClass = "text-stone-600 group-hover:text-neon transition-colors";
     if (project.type?.toLowerCase().includes('ui') || project.type?.toLowerCase().includes('design')) {
       return <Layers className={iconClass} size={24} />;
     } else if (project.type?.toLowerCase().includes('cli') || project.type?.toLowerCase().includes('tool')) {
@@ -23,68 +25,79 @@ const Arsenal: React.FC = () => {
   };
 
   return (
-    <section id="works" className="py-24 w-full bg-neutral-50 dark:bg-[#0a0a0a] text-ink dark:text-white relative rounded-lg overflow-hidden my-12 px-8 shadow-sm border border-gray-100 dark:border-white/10">
+    <section id="works" className="relative -mx-3 my-10 overflow-hidden bg-[#10120f] px-6 py-20 text-white md:-mx-4 md:px-10 md:py-28 lg:-mx-6 lg:px-14">
       {/* Background Grid Lines */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_16%,hsl(var(--color-neon-hsl)/0.12),transparent_28%),linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:auto,36px_36px,36px_36px]" />
 
-      <div className="relative z-10 mb-16 flex flex-col items-start gap-4">
-        <div>
-           <h2 className="text-4xl md:text-5xl font-sans font-black text-ink dark:text-white mb-2 tracking-tighter">
-            SELECTED WORKS
-          </h2>
-          <div className="h-1 w-16 bg-neon"></div>
-        </div>
-      </div>
+      <div className="relative z-10">
+        <SectionHeading
+          inverted
+          index="03"
+          eyebrow="Arsenal / 项目"
+          title="正在运转的造物"
+          description="这里不陈列漂亮的概念图，只留下真正写过、维护过、推倒再重建过的东西。"
+          action={(
+            <Link to="/projects" className="group inline-flex min-h-11 items-center gap-2 border-b border-white/50 pb-2 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:border-neon hover:text-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon">
+              全部项目
+              <ArrowUpRight size={15} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </Link>
+          )}
+        />
 
       {/* Loading State */}
       {loading && <PageLoader className="py-20" />}
 
-      {/* Empty State */}
-      {!loading && projects.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
-          <p className="text-lg font-serif">暂无内容</p>
+      {!loading && error && (
+        <div className="mt-12 border border-red-300/15 bg-red-300/[0.04] px-6 py-10 text-center" role="alert">
+          <p className="font-serif text-lg text-white">项目档案暂时离线。</p>
+          <button type="button" onClick={() => refetch()} className="mt-4 font-mono text-xs uppercase tracking-[0.22em] text-neon underline underline-offset-4">重新连接</button>
         </div>
       )}
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {!loading && projects.length > 0 && projects.map((project, index) => (
-          <div 
+      {/* Empty State */}
+      {!loading && !error && projects.length === 0 && (
+        <div className="mt-12 flex flex-col items-center justify-center border-y border-white/10 py-20 text-stone-500">
+          <p className="font-serif text-lg text-stone-300">项目档案正在整理。</p>
+        </div>
+      )}
+
+      <div className="relative z-10 mt-12 grid grid-cols-1 border-t border-white/10 lg:grid-cols-2">
+        {!loading && !error && projects.length > 0 && projects.map((project, index) => (
+          <article
             key={project.id} 
-            className="group bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-2xl p-6 flex flex-col h-full hover:border-neon transition-colors duration-300 relative overflow-hidden"
+            className={`group relative flex min-h-80 flex-col border-b border-white/10 py-9 transition-colors duration-300 hover:bg-white/[0.035] lg:px-9 ${index % 2 === 0 ? 'lg:border-r' : ''}`}
           >
-            {/* Tech Decoration */}
-            <div className="absolute top-0 right-0 p-3 opacity-50">
-              {getProjectIcon(project, index)}
+            <div className="absolute right-7 top-9 opacity-60">
+              {getProjectIcon(project)}
             </div>
 
-            {/* Header */}
-            <div className="flex justify-between items-start mb-4">
-              <span className="font-mono text-[10px] text-neon border border-neon/30 rounded px-1.5 py-0.5 bg-neon/5">
-                {project.id}
+            <div className="mb-8 flex items-center gap-4 pr-12">
+              <span className="font-mono text-[0.65rem] text-stone-500 tabular-nums">
+                {String(index + 1).padStart(2, '0')}
               </span>
-              <span className={`font-mono text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 ${project.status === 'ACTIVE' ? 'bg-green-500/20 text-green-400' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+              <span className="font-mono text-[0.62rem] uppercase tracking-[0.2em] text-neon">
                 {project.status}
               </span>
             </div>
 
-            {/* Content */}
             <div className="flex-1">
-              <h3 className="text-2xl font-bold font-sans text-ink dark:text-white mb-3 group-hover:text-neon transition-colors">
-                {project.name}
-              </h3>
-              <p className="font-mono text-[10px] text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wider">
+              <Link to={`/projects/${project.slug || project.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon">
+                <h3 className="mb-3 max-w-[16ch] font-serif text-3xl font-bold leading-tight tracking-[-0.03em] text-white transition-colors group-hover:text-neon md:text-4xl">
+                  {project.name}
+                </h3>
+              </Link>
+              <p className="mb-5 font-mono text-[0.62rem] uppercase tracking-[0.22em] text-stone-500">
                 [{project.type}]
               </p>
-              <p className="text-gray-600 dark:text-gray-300 font-serif text-sm leading-relaxed mb-6">
+              <p className="mb-7 max-w-[56ch] font-serif text-sm leading-7 text-stone-400 text-pretty">
                 {project.description}
               </p>
             </div>
 
-            {/* Footer / Tech Stack */}
-            <div className="mt-auto pt-4 border-t border-gray-100 dark:border-neutral-800 flex justify-between items-end">
-              <div className="flex flex-wrap gap-2">
+            <div className="mt-auto flex items-end justify-between gap-5 border-t border-white/10 pt-5">
+              <div className="flex flex-wrap gap-x-3 gap-y-2">
                 {project.tech.map(t => (
-                  <span key={t} className="text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-ink dark:hover:text-white transition-colors">#{t}</span>
+                  <span key={t} className="font-mono text-[0.68rem] text-stone-500">#{t}</span>
                 ))}
               </div>
               
@@ -93,14 +106,16 @@ const Arsenal: React.FC = () => {
                   href={project.link || project.demoUrl || project.githubUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-ink dark:bg-white text-white dark:text-ink rounded-lg p-2 hover:bg-neon hover:text-white dark:hover:bg-neon dark:hover:text-white transition-all duration-300"
+                  aria-label={`打开 ${project.name} 的外部链接`}
+                  className="grid size-10 shrink-0 place-items-center border border-white/15 text-stone-300 transition-colors hover:border-neon hover:text-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon"
                 >
-                  <ExternalLink size={16} />
+                  <ArrowUpRight size={17} strokeWidth={1.6} />
                 </a>
               )}
             </div>
-          </div>
+          </article>
         ))}
+      </div>
       </div>
     </section>
   );

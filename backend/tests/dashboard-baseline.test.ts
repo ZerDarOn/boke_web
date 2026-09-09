@@ -42,6 +42,14 @@ test('visit tracking hashes identifiers and only increments daily uniques once',
   assert.match(source, /uniqueVisitors: isNewVisitor \? 1 : 0/);
 });
 
+test('duplicate daily visits do not abort the stats transaction', () => {
+  const source = readSource('src', 'services', 'dashboard.service.ts');
+  assert.match(source, /const dailyVisitResult = await tx\.dailyVisit\.createMany\(\{[\s\S]*?skipDuplicates: true[\s\S]*?\}\);/);
+  assert.match(source, /isNewVisitor = dailyVisitResult\.count > 0/);
+  assert.doesNotMatch(source, /tx\.dailyVisit\.create\(/);
+  assert.doesNotMatch(source, /error\?\.code !== 'P2002'/);
+});
+
 test('public statistics do not fabricate traffic fallbacks', () => {
   const source = readSource('src', 'services', 'dashboard.service.ts');
   assert.match(source, /const totalRequests = siteStatsAgg\._sum\.pageViews \?\? 0/);

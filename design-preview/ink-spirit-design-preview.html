@@ -1,0 +1,545 @@
+<div id="ink-spirit-v2">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+
+    #ink-spirit-v2 {
+      --paper: #f2efe7;
+      --paper-deep: #e7e2d7;
+      --ink: #11110f;
+      --ink-soft: #4e4d48;
+      --ink-faint: #88847a;
+      --line: rgba(17, 17, 15, .16);
+      --red: #bc201d;
+      min-width: 320px;
+      min-height: 100dvh;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "Noto Sans SC", "Microsoft YaHei UI", system-ui, sans-serif;
+      font-weight: 400;
+      isolation: isolate;
+    }
+
+    #ink-spirit-v2, #ink-spirit-v2 * { box-sizing: border-box; }
+    #ink-spirit-v2 a, #ink-spirit-v2 button { color: inherit; font: inherit; }
+    #ink-spirit-v2 a { text-decoration: none; }
+    #ink-spirit-v2 button { border: 0; }
+    #ink-spirit-v2 :focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
+
+    #ink-spirit-v2 .site-head {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      min-height: 74px;
+      padding: 0 clamp(20px, 4vw, 66px);
+      border-bottom: 1px solid var(--line);
+      background: rgba(242, 239, 231, .92);
+      backdrop-filter: blur(12px);
+    }
+
+    #ink-spirit-v2 .brand {
+      display: inline-flex;
+      align-items: center;
+      justify-self: start;
+      gap: 12px;
+      font-family: "Arial Narrow", "Bahnschrift Condensed", sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .18em;
+    }
+
+    #ink-spirit-v2 .brand-mark {
+      position: relative;
+      width: 26px;
+      height: 26px;
+      border: 1px solid var(--ink);
+      transform: rotate(-4deg);
+    }
+
+    #ink-spirit-v2 .brand-mark::before,
+    #ink-spirit-v2 .brand-mark::after {
+      content: "";
+      position: absolute;
+      background: var(--ink);
+      transform-origin: left center;
+    }
+
+    #ink-spirit-v2 .brand-mark::before { width: 19px; height: 2px; left: 3px; top: 8px; transform: rotate(18deg); }
+    #ink-spirit-v2 .brand-mark::after { width: 15px; height: 5px; left: 7px; top: 15px; transform: rotate(-24deg); background: var(--red); }
+
+    #ink-spirit-v2 .nav-list { display: flex; align-items: center; gap: clamp(22px, 3vw, 48px); }
+    #ink-spirit-v2 .nav-link {
+      position: relative;
+      padding: 27px 0 25px;
+      color: var(--ink-soft);
+      font-size: 12px;
+      letter-spacing: .12em;
+      transition: color 200ms ease;
+    }
+    #ink-spirit-v2 .nav-link::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 100%;
+      bottom: -1px;
+      height: 2px;
+      background: var(--red);
+      transition: right 260ms cubic-bezier(.2,.8,.2,1);
+    }
+    #ink-spirit-v2 .nav-link:hover, #ink-spirit-v2 .nav-link[aria-current="page"] { color: var(--ink); }
+    #ink-spirit-v2 .nav-link:hover::after, #ink-spirit-v2 .nav-link[aria-current="page"]::after { right: 0; }
+
+    #ink-spirit-v2 .head-actions { justify-self: end; display: flex; align-items: center; gap: 13px; }
+    #ink-spirit-v2 .issue { color: var(--ink-faint); font-family: "Bahnschrift", sans-serif; font-size: 10px; letter-spacing: .16em; }
+    #ink-spirit-v2 .icon-action {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      background: transparent;
+      transition: color 200ms ease, background 200ms ease;
+    }
+    #ink-spirit-v2 .icon-action:hover { color: var(--red); background: rgba(17,17,15,.05); }
+    #ink-spirit-v2 .icon-action svg { width: 18px; height: 18px; }
+    #ink-spirit-v2 .motion-action[aria-pressed="true"] { color: var(--red); background: rgba(188,32,29,.08); }
+    #ink-spirit-v2 .motion-action[aria-pressed="true"] svg { animation: ink-spirit-breathe 2.8s ease-in-out infinite; }
+    #ink-spirit-v2 .menu-action { display: none; }
+
+    @keyframes ink-spirit-breathe {
+      0%, 100% { opacity: .62; transform: scale(.94); }
+      50% { opacity: 1; transform: scale(1.06); }
+    }
+
+    #ink-spirit-v2 .hero {
+      position: relative;
+      min-height: clamp(620px, 78vw, 880px);
+      border-bottom: 1px solid var(--line);
+      background: #f3f0e8 url("./ink-hero-v2.png") 55% center / cover no-repeat;
+      overflow: hidden;
+    }
+
+    #ink-spirit-v2 .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(242,239,231,.98) 0%, rgba(242,239,231,.8) 25%, rgba(242,239,231,.08) 53%, transparent 76%);
+    }
+
+    #ink-spirit-v2 .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: .055;
+      mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    #ink-spirit-v2 .ink-flow-canvas {
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      mix-blend-mode: multiply;
+      opacity: 1;
+      transition: opacity 500ms ease;
+    }
+    #ink-spirit-v2[data-motion="off"] .ink-flow-canvas { opacity: 0; }
+
+    #ink-spirit-v2 .hero-copy {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      min-height: inherit;
+      flex-direction: column;
+      justify-content: center;
+      width: min(100%, 1540px);
+      margin: 0 auto;
+      padding: 86px clamp(24px, 6.3vw, 110px) 108px;
+    }
+
+    #ink-spirit-v2 .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 25px;
+      color: var(--ink-soft);
+      font-family: "Bahnschrift", sans-serif;
+      font-size: 11px;
+      letter-spacing: .28em;
+    }
+    #ink-spirit-v2 .eyebrow::before { content: ""; width: 42px; height: 1px; background: var(--red); }
+
+    #ink-spirit-v2 .hero h1 {
+      width: min(8.2em, 72vw);
+      margin: 0;
+      font-size: clamp(57px, 7.7vw, 128px);
+      font-weight: 600;
+      line-height: .96;
+      letter-spacing: -.07em;
+      text-wrap: balance;
+    }
+    #ink-spirit-v2 .hero h1 span { display: block; }
+    #ink-spirit-v2 .hero h1 .cut { position: relative; padding-left: .52em; }
+    #ink-spirit-v2 .hero h1 .cut::before {
+      content: "";
+      position: absolute;
+      left: -.04em;
+      top: 50%;
+      width: .45em;
+      height: .09em;
+      background: var(--red);
+      transform: skewX(-18deg) rotate(-4deg);
+    }
+
+    #ink-spirit-v2 .hero-note {
+      display: grid;
+      grid-template-columns: 52px minmax(0, 320px);
+      gap: 18px;
+      margin-top: 40px;
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.9;
+    }
+    #ink-spirit-v2 .hero-note strong { color: var(--red); font-family: "Bahnschrift", sans-serif; font-size: 11px; font-weight: 500; letter-spacing: .14em; }
+    #ink-spirit-v2 .hero-note p { margin: 0; }
+
+    #ink-spirit-v2 .scroll-mark {
+      position: absolute;
+      z-index: 3;
+      left: clamp(24px, 4vw, 66px);
+      bottom: 26px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink-faint);
+      font-family: "Bahnschrift", sans-serif;
+      font-size: 9px;
+      letter-spacing: .18em;
+      writing-mode: vertical-rl;
+    }
+    #ink-spirit-v2 .scroll-mark::after { content: ""; width: 1px; height: 44px; background: var(--ink); opacity: .35; }
+
+    #ink-spirit-v2 .manifesto {
+      display: grid;
+      grid-template-columns: minmax(240px, .8fr) minmax(0, 2fr);
+      gap: clamp(50px, 9vw, 150px);
+      width: min(100% - 48px, 1320px);
+      margin: 0 auto;
+      padding: clamp(90px, 11vw, 170px) 0 clamp(80px, 10vw, 148px);
+    }
+    #ink-spirit-v2 .section-index { color: var(--red); font-family: "Bahnschrift", sans-serif; font-size: 11px; letter-spacing: .2em; }
+    #ink-spirit-v2 .manifesto h2 { margin: 19px 0 0; font-size: clamp(28px, 3.2vw, 52px); font-weight: 500; line-height: 1.25; letter-spacing: -.045em; }
+    #ink-spirit-v2 .manifesto-copy { align-self: end; max-width: 680px; }
+    #ink-spirit-v2 .manifesto-copy p { margin: 0; color: var(--ink-soft); font-size: clamp(16px, 1.5vw, 21px); font-weight: 300; line-height: 2; text-wrap: pretty; }
+    #ink-spirit-v2 .manifesto-copy p:first-letter { float: left; margin: -.16em .16em -.12em 0; color: var(--ink); font-size: 4.4em; font-weight: 600; line-height: 1; }
+
+    #ink-spirit-v2 .writing {
+      width: min(100% - 48px, 1320px);
+      margin: 0 auto;
+      padding-bottom: 120px;
+    }
+    #ink-spirit-v2 .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--ink); }
+    #ink-spirit-v2 .section-head h2 { margin: 9px 0 0; font-family: "Arial Narrow", "Bahnschrift Condensed", sans-serif; font-size: clamp(36px, 5vw, 72px); font-weight: 600; line-height: .95; letter-spacing: -.045em; }
+    #ink-spirit-v2 .all-link { padding-bottom: 6px; color: var(--ink-soft); font-size: 12px; letter-spacing: .08em; transition: color 180ms ease; }
+    #ink-spirit-v2 .all-link:hover { color: var(--red); }
+
+    #ink-spirit-v2 .post-list { display: grid; }
+    #ink-spirit-v2 .post {
+      position: relative;
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr) minmax(200px, 330px) 28px;
+      gap: clamp(18px, 3vw, 50px);
+      align-items: baseline;
+      padding: 30px 4px 34px;
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+    }
+    #ink-spirit-v2 .post::before {
+      content: "";
+      position: absolute;
+      inset: 0 100% 0 0;
+      z-index: -1;
+      background: var(--ink);
+      transition: right 420ms cubic-bezier(.2,.8,.2,1);
+    }
+    #ink-spirit-v2 .post:hover { color: var(--paper); }
+    #ink-spirit-v2 .post:hover::before { right: 0; }
+    #ink-spirit-v2 .post-date { color: var(--ink-faint); font-family: "Bahnschrift", sans-serif; font-size: 11px; letter-spacing: .12em; }
+    #ink-spirit-v2 .post:hover .post-date, #ink-spirit-v2 .post:hover .post-desc { color: rgba(242,239,231,.64); }
+    #ink-spirit-v2 .post-title { font-size: clamp(18px, 2vw, 28px); font-weight: 500; letter-spacing: -.03em; }
+    #ink-spirit-v2 .post-desc { color: var(--ink-soft); font-size: 13px; line-height: 1.8; transition: color 200ms ease; }
+    #ink-spirit-v2 .post-arrow { color: var(--red); font-size: 20px; transition: transform 220ms ease; }
+    #ink-spirit-v2 .post:hover .post-arrow { transform: translate(4px, -4px); }
+
+    #ink-spirit-v2 .site-foot {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 20px;
+      min-height: 90px;
+      padding: 0 clamp(20px, 4vw, 66px);
+      color: rgba(242,239,231,.65);
+      background: var(--ink);
+      font-family: "Bahnschrift", sans-serif;
+      font-size: 10px;
+      letter-spacing: .14em;
+    }
+    #ink-spirit-v2 .site-foot strong { justify-self: center; color: var(--paper); font-size: 14px; font-weight: 500; letter-spacing: .2em; }
+    #ink-spirit-v2 .site-foot span:last-child { justify-self: end; }
+
+    @media (max-width: 820px) {
+      #ink-spirit-v2 .site-head { grid-template-columns: 1fr auto; }
+      #ink-spirit-v2 .nav-list, #ink-spirit-v2 .issue { display: none; }
+      #ink-spirit-v2 .menu-action { display: grid; }
+      #ink-spirit-v2 .hero { min-height: 720px; background-position: 62% center; }
+      #ink-spirit-v2 .hero::before { background: linear-gradient(180deg, rgba(242,239,231,.92) 0%, rgba(242,239,231,.5) 48%, rgba(242,239,231,.08) 76%); }
+      #ink-spirit-v2 .hero-copy { justify-content: flex-start; padding-top: 76px; }
+      #ink-spirit-v2 .hero h1 { width: min(8em, 92vw); }
+      #ink-spirit-v2 .manifesto { grid-template-columns: 1fr; gap: 42px; }
+      #ink-spirit-v2 .post { grid-template-columns: 82px minmax(0,1fr) 24px; }
+      #ink-spirit-v2 .post-desc { display: none; }
+    }
+
+    @media (max-width: 520px) {
+      #ink-spirit-v2 .brand { font-size: 13px; }
+      #ink-spirit-v2 .hero { min-height: 660px; background-position: 67% center; }
+      #ink-spirit-v2 .hero-copy { padding: 62px 20px 90px; }
+      #ink-spirit-v2 .hero h1 { font-size: clamp(52px, 15vw, 68px); }
+      #ink-spirit-v2 .hero-note { grid-template-columns: 1fr; gap: 7px; width: 78%; }
+      #ink-spirit-v2 .scroll-mark { display: none; }
+      #ink-spirit-v2 .manifesto, #ink-spirit-v2 .writing { width: calc(100% - 40px); }
+      #ink-spirit-v2 .post { grid-template-columns: 1fr 22px; gap: 10px; padding-block: 24px; }
+      #ink-spirit-v2 .post-date { grid-column: 1 / -1; }
+      #ink-spirit-v2 .section-head { align-items: flex-start; }
+      #ink-spirit-v2 .all-link { max-width: 64px; text-align: right; line-height: 1.5; }
+      #ink-spirit-v2 .site-foot { grid-template-columns: 1fr auto; }
+      #ink-spirit-v2 .site-foot strong { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #ink-spirit-v2 *, #ink-spirit-v2 *::before, #ink-spirit-v2 *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      #ink-spirit-v2 .ink-flow-canvas { display: none; }
+    }
+  </style>
+
+  <header class="site-head">
+    <a class="brand" href="#top" aria-label="INK.SPIRIT 首页">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>INK.SPIRIT</span>
+    </a>
+    <nav class="nav-list" aria-label="主要导航">
+      <a class="nav-link" href="#top" aria-current="page">首页</a>
+      <a class="nav-link" href="#writing">文章</a>
+      <a class="nav-link" href="#">作品</a>
+      <a class="nav-link" href="#">片刻</a>
+      <a class="nav-link" href="#about">关于</a>
+    </nav>
+    <div class="head-actions">
+      <span class="issue">VOL. 016 / 2026</span>
+      <button class="icon-action motion-action" type="button" aria-label="关闭水墨动势" aria-pressed="true" title="切换水墨动势">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 14c3.5-5.4 6.4-5.4 9 0s5.5 5.4 9 0"/><path d="M5 9c2.4-3.4 4.5-3.4 6.5 0s4.1 3.4 6.5 0" opacity=".55"/></svg>
+      </button>
+      <button class="icon-action" type="button" aria-label="搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+      </button>
+      <button class="icon-action menu-action" type="button" aria-label="打开菜单">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 8h16M4 16h16"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <canvas class="ink-flow-canvas" aria-hidden="true"></canvas>
+      <div class="hero-copy">
+        <div class="eyebrow">A PERSONAL DIGITAL JOURNAL</div>
+        <h1 id="hero-title"><span>墨有锋芒，</span><span class="cut">字有余温。</span></h1>
+        <div class="hero-note">
+          <strong>序 / 016</strong>
+          <p>写代码，也写途中见闻。让技术、创作与生活，在一处留下有呼吸的痕迹。</p>
+        </div>
+      </div>
+      <span class="scroll-mark" aria-hidden="true">SCROLL TO READ</span>
+    </section>
+
+    <section class="manifesto" id="about" aria-labelledby="about-title">
+      <div>
+        <span class="section-index">01 / 气韵</span>
+        <h2 id="about-title">不是给页面<br>贴一层“国风”。</h2>
+      </div>
+      <div class="manifesto-copy">
+        <p>水墨真正迷人的地方，是枯与润、聚与散、动与静之间那口尚未说尽的气。这里不追求古意的陈列，而借笔触组织速度，借留白控制呼吸，借一线朱红切开秩序。</p>
+      </div>
+    </section>
+
+    <section class="writing" id="writing" aria-labelledby="writing-title">
+      <div class="section-head">
+        <div><span class="section-index">02 / 近作</span><h2 id="writing-title">LATEST WRITING</h2></div>
+        <a class="all-link" href="#">全部归档 →</a>
+      </div>
+      <div class="post-list">
+        <a class="post" href="#">
+          <span class="post-date">2026.08.10</span>
+          <span class="post-title">界面不必处处说话，留白也是内容</span>
+          <span class="post-desc">从信息密度、阅读节奏与视觉重心，重新理解一个个人博客的安静。</span>
+          <span class="post-arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="post" href="#">
+          <span class="post-date">2026.07.29</span>
+          <span class="post-title">把复杂系统写成可以呼吸的代码</span>
+          <span class="post-desc">边界、节奏与克制，同样存在于程序结构和视觉设计之中。</span>
+          <span class="post-arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="post" href="#">
+          <span class="post-date">2026.07.16</span>
+          <span class="post-title">游戏、动画与另一种时间线</span>
+          <span class="post-desc">有些经历没有产出，却仍然参与塑造今天的自己。</span>
+          <span class="post-arrow" aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <span>© 2026 INK.SPIRIT</span>
+    <strong>墨 / 魂</strong>
+    <span>CODE · WORDS · LIFE</span>
+  </footer>
+
+  <script>
+    (() => {
+      const root = document.getElementById('ink-spirit-v2');
+      const hero = root?.querySelector('.hero');
+      const canvas = root?.querySelector('.ink-flow-canvas');
+      const toggle = root?.querySelector('.motion-action');
+      if (!root || !hero || !(canvas instanceof HTMLCanvasElement) || !toggle) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      let motionOn = !reducedMotion.matches;
+      let inView = true;
+      let frame = 0;
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+
+      const setMotion = (next) => {
+        motionOn = next && !reducedMotion.matches;
+        root.dataset.motion = motionOn ? 'on' : 'off';
+        toggle.setAttribute('aria-pressed', String(motionOn));
+        toggle.setAttribute('aria-label', motionOn ? '关闭水墨动势' : '开启水墨动势');
+        if (!motionOn) ctx.clearRect(0, 0, width, height);
+      };
+
+      const resize = () => {
+        const rect = hero.getBoundingClientRect();
+        width = Math.max(1, rect.width);
+        height = Math.max(1, rect.height);
+        dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      };
+
+      const path = (points) => {
+        ctx.beginPath();
+        ctx.moveTo(points[0] * width, points[1] * height);
+        ctx.bezierCurveTo(
+          points[2] * width, points[3] * height,
+          points[4] * width, points[5] * height,
+          points[6] * width, points[7] * height,
+        );
+      };
+
+      const strokeFlow = (points, options, time, phase = 0) => {
+        const breath = .72 + Math.sin(time * options.breathe + phase) * .28;
+        ctx.save();
+        ctx.globalAlpha = options.alpha * breath;
+        ctx.strokeStyle = options.color;
+        ctx.lineWidth = options.width * (0.88 + breath * .12);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.setLineDash(options.dash);
+        ctx.lineDashOffset = -(time * options.speed + phase * 90);
+        ctx.shadowColor = options.glow;
+        ctx.shadowBlur = options.blur;
+        path(points);
+        ctx.stroke();
+        ctx.restore();
+      };
+
+      const render = (stamp) => {
+        ctx.clearRect(0, 0, width, height);
+        if (motionOn && inView && !document.hidden) {
+          const time = stamp / 1000;
+          const compact = width < 620;
+
+          const gray = {
+            color: 'rgba(22, 21, 19, .62)', glow: 'rgba(20, 19, 17, .16)',
+            alpha: compact ? .10 : .13, width: compact ? 9 : 15,
+            dash: compact ? [42, 180] : [72, 270], speed: compact ? 18 : 24, breathe: .58, blur: 9,
+          };
+          const grayFine = {
+            ...gray, alpha: compact ? .13 : .16, width: compact ? 2.2 : 3.4,
+            dash: [18, 74], speed: 31, breathe: .74, blur: 2,
+          };
+          const red = {
+            color: 'rgba(190, 21, 18, .92)', glow: 'rgba(214, 24, 20, .32)',
+            alpha: compact ? .34 : .42, width: compact ? 3.2 : 4.6,
+            dash: compact ? [26, 116] : [46, 168], speed: compact ? 25 : 34, breathe: .82, blur: 5,
+          };
+          const redFine = {
+            ...red, alpha: compact ? .42 : .54, width: compact ? 1.2 : 1.7,
+            dash: [9, 42], speed: 48, breathe: 1.08, blur: 2,
+          };
+
+          const upperArc = compact
+            ? [-.08, .45, .16, .17, .64, .04, 1.08, .28]
+            : [.40, .22, .58, -.01, .88, .02, 1.06, .25];
+          const outerArc = compact
+            ? [.24, .30, .44, .04, .91, .11, 1.08, .42]
+            : [.51, .16, .72, -.04, 1.02, .13, 1.03, .43];
+          const lowerSweep = compact
+            ? [-.10, .92, .28, .79, .66, .96, 1.10, .72]
+            : [.40, .93, .58, .80, .79, .96, 1.06, .73];
+          const redSlash = compact
+            ? [-.08, 1.05, .20, .91, .67, .82, 1.08, .62]
+            : [.43, 1.04, .61, .89, .83, .84, 1.06, .61];
+          const redVein = compact
+            ? [.01, 1.02, .30, .89, .67, .78, 1.03, .66]
+            : [.49, 1.00, .66, .86, .84, .78, 1.02, .64];
+
+          strokeFlow(upperArc, gray, time, 0);
+          strokeFlow(outerArc, grayFine, time, 1.7);
+          strokeFlow(lowerSweep, gray, time, 3.1);
+          strokeFlow(lowerSweep, grayFine, time, 4.6);
+          strokeFlow(redSlash, red, time, .8);
+          strokeFlow(redSlash, redFine, time, 2.4);
+          strokeFlow(redVein, redFine, time, 4.2);
+        }
+        frame = requestAnimationFrame(render);
+      };
+
+      toggle.addEventListener('click', () => setMotion(!motionOn));
+      reducedMotion.addEventListener?.('change', (event) => setMotion(!event.matches));
+      new ResizeObserver(resize).observe(hero);
+      new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; }, { threshold: .02 }).observe(hero);
+      resize();
+      setMotion(motionOn);
+      frame = requestAnimationFrame(render);
+
+      window.addEventListener('pagehide', () => cancelAnimationFrame(frame), { once: true });
+    })();
+  </script>
+</div>

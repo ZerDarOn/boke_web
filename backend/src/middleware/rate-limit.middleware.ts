@@ -1,5 +1,4 @@
 import rateLimit from 'express-rate-limit';
-import { Request, Response } from 'express';
 
 // 速率限制配置
 export interface RateLimitConfig {
@@ -84,6 +83,20 @@ export const formRateLimit = rateLimit({
   message: {
     success: false,
     error: '表单提交过于频繁，请稍后再试',
+    code: 7001,
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Public AI generation is intentionally anonymous, but each request can incur
+// upstream model cost. One shared limiter caps aggregate generation per IP.
+export const publicAiGenerationRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'development' ? 120 : 12,
+  message: {
+    success: false,
+    error: 'AI 请求过于频繁，请稍后再试',
     code: 7001,
   },
   standardHeaders: true,

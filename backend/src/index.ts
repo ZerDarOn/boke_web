@@ -45,10 +45,16 @@ async function main() {
   }
 
   // ── 3. 动态导入（依赖 Prisma Client） ──
-  const [{ default: app }, { initializeDatabase }, { shutdownCache }] = await Promise.all([
+  const [
+    { default: app },
+    { initializeDatabase },
+    { initializeCache, shutdownCache },
+    { default: fileService },
+  ] = await Promise.all([
     import('./app'),
     import('./lib/database-init'),
     import('./lib/cache'),
+    import('./services/file.service'),
   ]);
 
   const PORT = config.PORT || 3001;
@@ -67,6 +73,14 @@ async function main() {
       console.error('💡 Check DATABASE_URL and ensure PostgreSQL is running.');
       process.exit(1);
     }
+
+    // File storage must settle on MinIO or local mode before the first request.
+    // Otherwise an upload during a slow MinIO probe can be written locally and
+    // disappear as soon as the mode flips to MinIO.
+    await fileService.initialize();
+    await initializeCache().catch(err => {
+      console.error('Failed to initialize cache:', err);
+    });
 
     const server = app.listen(PORT, () => {
       console.log(`

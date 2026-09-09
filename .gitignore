@@ -29,7 +29,13 @@ build/
 # 日志文件
 *.log
 
+# 运行时文件存储与密码保护索引（必须由部署卷持久化）
+backend/content-files/
+backend/storage-metadata/
+backend/file-metadata.legacy-migrated*.json
+
 # 临时文件
+_tmp_sqlite/
 *.tmp
 *.temp
 

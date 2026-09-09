@@ -2,7 +2,8 @@ import { Prisma, GamePlatform, GameStatus } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { PaginationParams } from '../types';
 import { fetchSteamLibrary, steamGameToPrisma } from '../lib/steam-sync';
-import { log, logError } from '../lib/logger';
+import { log } from '../lib/logger';
+import { buildGameLookupWhere } from '../lib/game-access-policy';
 
 export class GameService {
   static async findMany(params: {
@@ -38,8 +39,10 @@ export class GameService {
     return { games, total };
   }
 
-  static async findById(id: string) {
-    return prisma.game.findUnique({ where: { id } });
+  static async findById(id: string, includeHidden = false) {
+    return prisma.game.findFirst({
+      where: buildGameLookupWhere(id, includeHidden),
+    });
   }
 
   static async create(data: Prisma.GameCreateInput) {

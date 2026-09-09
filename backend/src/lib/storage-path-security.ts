@@ -1,4 +1,6 @@
+import fs from 'fs';
 import path from 'path';
+import { FILE_STORAGE_IDENTITY_KEY } from './file-storage-identity';
 
 export class StoragePathError extends Error {
   constructor() {
@@ -9,6 +11,20 @@ export class StoragePathError extends Error {
 
 interface ResolveStoragePathOptions {
   allowRoot?: boolean;
+}
+
+function assertNoSymbolicLinkComponents(rootPath: string, resolvedPath: string): void {
+  const relativePath = path.relative(rootPath, resolvedPath);
+  const components = relativePath ? relativePath.split(path.sep).filter(Boolean) : [];
+  let currentPath = rootPath;
+
+  for (let index = -1; index < components.length; index += 1) {
+    if (index >= 0) currentPath = path.join(currentPath, components[index]);
+    if (!fs.existsSync(currentPath)) break;
+    if (fs.lstatSync(currentPath).isSymbolicLink()) {
+      throw new StoragePathError();
+    }
+  }
 }
 
 function normalizeStorageKey(storageKey: string, allowRoot: boolean): string {
@@ -31,6 +47,10 @@ function normalizeStorageKey(storageKey: string, allowRoot: boolean): string {
     throw new StoragePathError();
   }
 
+  if (normalizedKey.toLocaleLowerCase('en-US') === FILE_STORAGE_IDENTITY_KEY) {
+    throw new StoragePathError();
+  }
+
   return normalizedKey;
 }
 
@@ -46,6 +66,11 @@ export function resolveStoragePath(
   if (resolvedPath !== rootPath && !resolvedPath.startsWith(`${rootPath}${path.sep}`)) {
     throw new StoragePathError();
   }
+
+  // ZIP imports and local filesystem changes can introduce symlinks after the
+  // lexical check. Refuse every existing symlink component so reads/writes
+  // cannot escape through an otherwise in-root path.
+  assertNoSymbolicLinkComponents(rootPath, resolvedPath);
 
   return resolvedPath;
 }

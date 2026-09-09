@@ -1,15 +1,11 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { TRANSLATIONS } from '../constants';
-import { ArrowUpRight, Github, ExternalLink, Box, Activity, Layers, Tag } from 'lucide-react';
+import { ArrowUpRight, ExternalLink, Box, Activity, Layers } from 'lucide-react';
 import { PageLoader, ErrorBanner } from './DataState';
 import { useProjectsList } from '../hooks/queries/projects';
 
-interface PageProjectsProps {
-}
-
-const PageProjects: React.FC<PageProjectsProps> = () => {
-  const lang = 'ZH';
+const PageProjects: React.FC = () => {
   const t = TRANSLATIONS['ZH'];
   
   const { data: projects = [], isLoading: loading, error: queryError } = useProjectsList({ limit: 500 });
@@ -35,21 +31,13 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 4);
     
-    const colors = ['bg-blue-500', 'bg-orange-500', 'bg-pink-500', 'bg-gray-500'];
+    const colors = ['bg-neon', 'bg-secondary', 'bg-stone-500', 'bg-stone-300'];
     
     return sortedTech.map(([name, count], index) => ({
       name,
       w: `${((count / totalTech) * 100).toFixed(0)}%`,
       c: colors[index]
     }));
-  }, [projects]);
-
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    projects.forEach(project => {
-      project.tech.forEach(tech => tagSet.add(tech));
-    });
-    return Array.from(tagSet);
   }, [projects]);
 
   const popularTags = useMemo(() => {
@@ -66,7 +54,7 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
   }, [projects]);
 
   return (
-    <div className="w-full bg-white dark:bg-ink p-6 md:p-8 min-h-[800px] flex flex-col gap-12">
+    <div className="flex min-h-[800px] w-full flex-col gap-20 py-12 md:py-16">
       {loading && <PageLoader className="py-20" />}
       
       {error && <ErrorBanner error={error} />}
@@ -74,48 +62,48 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
       {!loading && !error && (
         <>
       {/* 1. Dashboard Cards (Refactored to distinct cards) */}
-      <section className="flex flex-col gap-8">
+      <section className="flex flex-col gap-6">
           
           {/* Card 1: Project Counters (Distinct Blocks) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-px bg-ink/10 dark:bg-white/10 md:grid-cols-3">
               {/* Total */}
-              <div className="bg-[#1a1a1a] p-6 rounded-2xl flex items-center justify-between shadow-lg group hover:ring-2 hover:ring-gray-500 transition-all">
+              <div className="group flex items-center justify-between bg-[#10120f] p-7 text-white transition-colors hover:bg-[#171a16]">
                   <div>
-                      <div className="text-6xl font-black font-sans text-white mb-2">{total}</div>
-                      <div className="text-sm font-mono text-gray-400 uppercase tracking-widest">{t.TOTAL_PROJECTS}</div>
+                      <div className="mb-2 font-mono text-5xl font-semibold tabular-nums text-white">{total}</div>
+                      <div className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-stone-500">{t.TOTAL_PROJECTS}</div>
                   </div>
-                  <Box className="text-gray-600 w-12 h-12 group-hover:text-white transition-colors" />
+                  <Box className="size-10 text-stone-700 transition-colors group-hover:text-neon" strokeWidth={1.3} />
               </div>
 
               {/* Completed */}
-              <div className="bg-[#064e3b] p-6 rounded-2xl flex items-center justify-between shadow-lg group hover:ring-2 hover:ring-neon transition-all">
+              <div className="group flex items-center justify-between bg-[#10120f] p-7 text-white transition-colors hover:bg-[#171a16]">
                   <div>
-                      <div className="text-6xl font-black font-sans text-white mb-2">{completed}</div>
-                      <div className="text-sm font-mono text-green-200 uppercase tracking-widest">{t.COMPLETED}</div>
+                      <div className="mb-2 font-mono text-5xl font-semibold tabular-nums text-white">{completed}</div>
+                      <div className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-stone-500">{t.COMPLETED}</div>
                   </div>
-                  <Activity className="text-green-800 w-12 h-12 group-hover:text-neon transition-colors" />
+                  <Activity className="size-10 text-stone-700 transition-colors group-hover:text-neon" strokeWidth={1.3} />
               </div>
 
               {/* Active */}
-              <div className="bg-[#1e3a8a] p-6 rounded-2xl flex items-center justify-between shadow-lg group hover:ring-2 hover:ring-blue-400 transition-all">
+              <div className="group flex items-center justify-between bg-[#10120f] p-7 text-white transition-colors hover:bg-[#171a16]">
                   <div>
-                      <div className="text-6xl font-black font-sans text-white mb-2">{active}</div>
-                      <div className="text-sm font-mono text-blue-200 uppercase tracking-widest">{t.IN_PROGRESS}</div>
+                      <div className="mb-2 font-mono text-5xl font-semibold tabular-nums text-white">{active}</div>
+                      <div className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-stone-500">{t.IN_PROGRESS}</div>
                   </div>
-                  <Layers className="text-blue-800 w-12 h-12 group-hover:text-blue-300 transition-colors" />
+                  <Layers className="size-10 text-stone-700 transition-colors group-hover:text-secondary" strokeWidth={1.3} />
               </div>
           </div>
 
           {/* Cards 2 & 3: Stack & Tags (Separate Containers) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-px bg-ink/10 dark:bg-white/10 lg:grid-cols-2">
               
               {/* Stack Distribution Card */}
-              <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-8 rounded-2xl">
-                  <div className="flex items-center gap-2 border-l-4 border-neon pl-4 mb-6">
-                       <h3 className="font-bold text-xl text-ink dark:text-white tracking-tight">技术栈统计</h3>
+              <div className="bg-white/55 p-8 dark:bg-white/[0.025]">
+                  <div className="mb-6 flex items-center gap-2 border-l-2 border-neon pl-4">
+                       <h3 className="font-serif text-xl font-bold tracking-tight text-ink dark:text-white">技术栈分布</h3>
                   </div>
                   
-                  <div className="flex h-4 w-full rounded-full overflow-hidden mb-6">
+                  <div className="mb-6 flex h-2 w-full overflow-hidden">
                       {techDistribution.map((item) => (
                           <div key={item.name} style={{ width: item.w }} className={`${item.c} h-full`} title={item.name}></div>
                       ))}
@@ -123,25 +111,25 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
                   
                   <div className="flex flex-wrap gap-4">
                       {techDistribution.map((item) => (
-                          <div key={item.name} className="bg-white dark:bg-black/40 px-3 py-2 rounded-lg flex items-center gap-3 border border-gray-100 dark:border-white/5">
-                              <div className={`w-3 h-3 rounded-full ${item.c}`}></div>
-                              <span className="text-sm font-mono text-gray-600 dark:text-gray-300 font-bold">{item.name}</span>
+                          <div key={item.name} className="flex items-center gap-2 border-b border-ink/10 pb-1 dark:border-white/10">
+                              <div className={`size-1.5 ${item.c}`}></div>
+                              <span className="font-mono text-xs font-semibold text-stone-600 dark:text-stone-300">{item.name}</span>
                           </div>
                       ))}
                   </div>
               </div>
 
       {/* Popular Tags Card */}
-               <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-8 rounded-2xl">
-                   <div className="flex items-center gap-2 border-l-4 border-white dark:border-gray-500 pl-4 mb-6">
-                        <h3 className="font-bold text-xl text-ink dark:text-white tracking-tight">热门标签</h3>
+               <div className="bg-white/55 p-8 dark:bg-white/[0.025]">
+                   <div className="mb-6 flex items-center gap-2 border-l-2 border-secondary pl-4">
+                        <h3 className="font-serif text-xl font-bold tracking-tight text-ink dark:text-white">常用技术</h3>
                    </div>
                    
                    <div className="flex flex-wrap gap-3">
                        {popularTags.map(([tag, count]) => (
-                           <span key={tag} className="bg-black text-white px-4 py-2 text-sm font-mono rounded-lg flex items-center gap-2 group cursor-default hover:bg-neon transition-colors">
+                           <span key={tag} className="group flex cursor-default items-center gap-2 border border-ink/10 px-3 py-2 font-mono text-xs text-ink transition-colors hover:border-neon dark:border-white/10 dark:text-white">
                                {tag} 
-                               <span className="bg-white/20 px-1.5 rounded text-xs font-bold group-hover:bg-black/20 group-hover:text-white transition-colors">
+                               <span className="text-[0.62rem] font-bold tabular-nums text-stone-500 transition-colors group-hover:text-neon-dark dark:group-hover:text-neon">
                                    {count}
                                </span>
                            </span>
@@ -154,48 +142,49 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
 
       {/* 2. Primary Projects Section */}
       <section>
-          <div className="flex items-end justify-between mb-8 border-b-2 border-ink dark:border-paper pb-2">
-             <h2 className="text-2xl font-black font-sans text-ink dark:text-paper tracking-tight flex items-center gap-3">
-                <Box className="text-neon" /> PRIMARY_BLUEPRINTS
+          <div className="mb-8 flex items-end justify-between border-b border-ink/15 pb-4 dark:border-paper/15">
+             <h2 className="flex items-center gap-3 font-mono text-xs font-semibold uppercase tracking-[0.24em] text-ink dark:text-paper">
+                <Box className="text-neon" size={18} /> SELECTED BLUEPRINTS
              </h2>
           </div>
 
           {primaryProjects.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {primaryProjects.map((project) => (
+              <div className="grid grid-cols-1 gap-px bg-ink/10 dark:bg-white/10 lg:grid-cols-2">
+                  {primaryProjects.map((project, index) => (
                       <Link
                           key={project.id}
                           to={`/projects/${project.id}`}
-                          className="group border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-neon transition-all duration-300 relative flex flex-col shadow-sm hover:shadow-xl"
+                          className="group relative flex min-h-72 flex-col bg-white/70 transition-colors duration-300 hover:bg-white dark:bg-white/[0.025] dark:hover:bg-white/[0.05]"
                       >
                        
                           {/* Status Indicator */}
-                          <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-black/80 px-2 py-1 rounded">
-                              <div className={`w-2 h-2 rounded-full ${project.status === 'ACTIVE' ? 'bg-neon animate-pulse' : 'bg-gray-400'}`}></div>
-                              <span className="text-[10px] font-mono text-white">{project.status}</span>
+                          <div className="absolute right-6 top-6 z-20 flex items-center gap-2">
+                              <div className={`size-1.5 ${project.status === 'ACTIVE' ? 'bg-neon' : 'bg-stone-400'}`}></div>
+                              <span className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-stone-500">{project.status}</span>
                           </div>
 
                           {/* Content */}
-                          <div className="p-6 flex-1 flex flex-col">
-                              <div className="flex justify-between items-start mb-4 mt-2">
+                          <div className="flex flex-1 flex-col p-7 md:p-9">
+                              <span className="mb-8 font-mono text-[0.62rem] text-stone-400 tabular-nums">{String(index + 1).padStart(2, '0')}</span>
+                              <div className="mb-4 flex items-start justify-between">
                                   <div>
-                                      <h3 className="text-2xl font-bold font-sans text-ink dark:text-white group-hover:text-neon transition-colors">
+                                      <h3 className="font-serif text-3xl font-bold leading-tight tracking-[-0.03em] text-ink transition-colors group-hover:text-neon-dark dark:text-white dark:group-hover:text-neon">
                                           {project.name}
                                       </h3>
-                                      <span className="font-mono text-xs text-gray-400 uppercase tracking-wider">
+                                      <span className="font-mono text-[0.62rem] uppercase tracking-[0.2em] text-stone-500">
                                           {project.type}
                                       </span>
                                   </div>
-                                  <ArrowUpRight className="text-gray-300 group-hover:text-neon transition-colors" />
+                                  <ArrowUpRight className="text-stone-400 transition-all group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-neon" strokeWidth={1.5} />
                               </div>
 
-                              <p className="font-serif text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 flex-1">
+                              <p className="mb-6 flex-1 font-serif text-sm leading-7 text-stone-600 dark:text-stone-400">
                                   {project.description}
                               </p>
 
-                              <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100 dark:border-white/10">
+                              <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-ink/10 pt-4 dark:border-white/10">
                                   {project.tech.map(t => (
-                                      <span key={t} className="px-2 py-1 bg-gray-50 dark:bg-white/10 text-[10px] font-mono text-gray-500 dark:text-gray-400 uppercase rounded hover:bg-neon hover:text-white transition-colors">
+                                      <span key={t} className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-stone-500">
                                           {t}
                                       </span>
                                   ))}
@@ -205,9 +194,9 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
                   ))}
               </div>
           ) : (
-              <div className="flex items-center justify-center p-12 bg-gray-50 dark:bg-white/5 border-2 border-dashed border-gray-300 dark:border-white/10 rounded-xl">
-                  <span className="text-gray-500 dark:text-gray-400 font-mono text-sm">
-                      📁 暂无重点项目
+              <div className="flex items-center justify-center border-y border-ink/10 p-12 dark:border-white/10">
+                  <span className="font-serif text-stone-500">
+                      重点项目正在整理
                   </span>
               </div>
           )}
@@ -256,9 +245,9 @@ const PageProjects: React.FC<PageProjectsProps> = () => {
                   ))}
               </div>
           ) : (
-              <div className="flex items-center justify-center p-12 border-t border-gray-200 dark:border-white/10">
-                  <span className="text-gray-500 dark:text-gray-400 font-mono text-sm">
-                      📁 暂无归档项目
+              <div className="flex items-center justify-center border-t border-ink/10 p-12 dark:border-white/10">
+                  <span className="font-serif text-stone-500">
+                      暂无归档项目
                   </span>
               </div>
           )}

@@ -78,3 +78,18 @@ test('companion sends only previous messages as history and falls back from stre
   assert.doesNotMatch(source, /next\.slice\(-8\)/);
   assert.match(source, /aiApi\.chat\(text, history, pageContext\)/);
 });
+
+test('all public AI generation routes share a dedicated production-strict rate limit', () => {
+  const routeSource = fs.readFileSync(path.join('src', 'routes', 'ai.ts'), 'utf8');
+  const rateLimitSource = fs.readFileSync(
+    path.join('src', 'middleware', 'rate-limit.middleware.ts'),
+    'utf8'
+  );
+
+  assert.match(routeSource, /router\.post\('\/chat', publicAiGenerationRateLimit, optionalAuth/);
+  assert.match(routeSource, /router\.post\('\/divination', publicAiGenerationRateLimit, optionalAuth/);
+  assert.match(routeSource, /router\.post\('\/chat\/stream', publicAiGenerationRateLimit, optionalAuth/);
+  assert.match(rateLimitSource, /export const publicAiGenerationRateLimit = rateLimit\(/);
+  assert.match(rateLimitSource, /windowMs:\s*15 \* 60 \* 1000/);
+  assert.match(rateLimitSource, /max:\s*process\.env\.NODE_ENV === 'development' \? 120 : 12/);
+});

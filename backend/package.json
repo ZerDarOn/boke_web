@@ -24,7 +24,8 @@
     "db:seed-only": "tsx init-db.ts seed",
     "db:sync-schema": "npm run db:generate && npm run db:push",
     "init": "npm run db:generate && npm run db:migrate && npm run db:seed",
-    "test": "tsx --test tests/storage-path-security.test.ts tests/settings-security.test.ts tests/cache-performance.test.ts tests/ai-baseline.test.ts tests/dashboard-baseline.test.ts tests/markdown-import.test.ts tests/media-highlights-schema.test.ts tests/music-track-curations.test.ts",
+    "test": "node --import tsx --test --test-concurrency=1 tests/storage-path-security.test.ts tests/settings-security.test.ts tests/cache-performance.test.ts tests/ai-baseline.test.ts tests/dashboard-baseline.test.ts tests/markdown-import.test.ts tests/media-highlights-schema.test.ts tests/music-track-curations.test.ts tests/deployment-reliability.test.ts tests/trust-proxy-security.test.ts tests/error-log-redaction.test.ts",
+    "test:migrations": "node --import tsx --test --test-concurrency=1 tests/migration-compatibility.test.ts",
     "test:legacy": "jest"
   },
   "prisma": {

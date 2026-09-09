@@ -3,6 +3,7 @@ import { GameService } from '../services/game.service';
 import { getPagination, createMeta } from '../utils/pagination';
 import * as response from '../utils/response';
 import { log, logError } from '../lib/logger';
+import { canIncludeHiddenGames } from '../lib/game-access-policy';
 
 export class GameController {
   // GET /api/games
@@ -13,13 +14,22 @@ export class GameController {
         req.query.limit as string
       );
 
+      const includeHiddenRequested = req.query.includeHidden === 'true';
+      const includeHidden = canIncludeHiddenGames(includeHiddenRequested, req.user);
+
+      if (includeHiddenRequested && !includeHidden) {
+        log('warn', 'GameAccess', 'Ignored unauthorized hidden-game list request', {
+          authenticated: Boolean(req.user),
+        });
+      }
+
       const { games, total } = await GameService.findMany({
         pagination,
         status: req.query.status as string,
         platform: req.query.platform as string,
         // 仅在显式传入 favorite 参数时才按收藏过滤；缺省时不过滤（否则会误当成 favorite:false）
         favorite: req.query.favorite !== undefined ? req.query.favorite === 'true' : undefined,
-        includeHidden: req.query.includeHidden === 'true',
+        includeHidden,
       });
 
       response.success(res, games, undefined, createMeta(total, pagination));
@@ -31,7 +41,10 @@ export class GameController {
   // GET /api/games/:id
   static async getById(req: Request, res: Response) {
     try {
-      const game = await GameService.findById(req.params.id);
+      const game = await GameService.findById(
+        req.params.id,
+        canIncludeHiddenGames(true, req.user)
+      );
       if (!game) {
         return response.notFound(res, 'Game not found');
       }

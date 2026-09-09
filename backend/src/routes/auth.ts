@@ -14,6 +14,13 @@ import {
 } from '../schemas';
 import { loginTracker } from '../lib/login-tracker';
 import { validatePassword, getPasswordStrengthDescription } from '../lib/password-validator';
+import {
+  createAccessToken,
+  createAuthTokens,
+  parseAuthTokenPayload,
+  validateLiveAuthIdentity,
+} from '../lib/auth-token';
+import { apiLog } from '../lib/logger';
 
 const router = Router();
 
@@ -65,26 +72,22 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
         email: true,
         displayName: true,
         role: true,
+        tokenVersion: true,
         createdAt: true,
       },
     });
 
-    // 生成 JWT Token
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      config.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    // 生成刷新 Token
-    const refreshToken = jwt.sign(
-      { userId: user.id, type: 'refresh' },
-      config.JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const { token, refreshToken } = createAuthTokens(user);
 
     return success(res, {
-      user,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
       token,
       refreshToken,
       passwordStrength: {
@@ -165,18 +168,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
       data: { lastLoginAt: new Date() },
     });
 
-    // 生成 Token
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      config.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    const refreshToken = jwt.sign(
-      { userId: user.id, type: 'refresh' },
-      config.JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const { token, refreshToken } = createAuthTokens(user);
 
     return success(res, {
       user: {
@@ -206,44 +198,59 @@ router.post('/refresh', async (req, res) => {
     }
 
     // 验证刷新令牌
-    const decoded = jwt.verify(refreshToken, config.JWT_SECRET) as {
-      userId: string;
-      type: string;
-    };
-
-    if (decoded.type !== 'refresh') {
+    const decoded = jwt.verify(refreshToken, config.JWT_SECRET);
+    const parsed = parseAuthTokenPayload(decoded, 'refresh');
+    if (parsed.valid === false) {
+      const claimedUserId = typeof decoded === 'object' && decoded !== null &&
+        typeof (decoded as { userId?: unknown }).userId === 'string'
+        ? (decoded as { userId: string }).userId
+        : undefined;
+      apiLog.warn('Refresh token rejected', {
+        ...(claimedUserId ? { userId: claimedUserId } : {}),
+        reason: parsed.reason,
+      });
       return error(res, '无效的刷新令牌', 401);
     }
 
     // 检查用户是否存在且未被禁用
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        isActive: true,
-      },
-    });
-
-    if (!user) {
-      return error(res, '用户不存在', 401);
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { id: parsed.payload.userId },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          role: true,
+          isActive: true,
+          tokenVersion: true,
+        },
+      });
+    } catch {
+      apiLog.warn('Refresh token rejected', {
+        userId: parsed.payload.userId,
+        reason: 'identity_lookup_failed',
+      });
+      return error(res, '认证服务暂时不可用', 503);
     }
 
-    if (!user.isActive) {
-      return error(res, '账户已被禁用', 403);
+    const identity = validateLiveAuthIdentity(parsed.payload, user);
+    if (identity.valid === false) {
+      apiLog.warn('Refresh token rejected', {
+        userId: parsed.payload.userId,
+        reason: identity.reason,
+      });
+      return error(res, '无效的刷新令牌', 401);
     }
 
     // 生成新的访问令牌
-    const newToken = jwt.sign(
-      { userId: user.id, role: user.role },
-      config.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const newToken = createAccessToken(user);
 
     return success(res, { token: newToken }, '令牌刷新成功');
   } catch (err: any) {
+    apiLog.warn('Refresh token rejected', {
+      reason: err.name === 'TokenExpiredError' ? 'expired_token' : 'invalid_token',
+    });
     if (err.name === 'TokenExpiredError') {
       return error(res, '刷新令牌已过期，请重新登录', 401);
     }
@@ -254,7 +261,7 @@ router.post('/refresh', async (req, res) => {
 // 获取当前用户信息
 router.get('/me', authenticate, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -287,7 +294,7 @@ router.get('/me', authenticate, async (req, res) => {
 // 更新用户信息
 router.put('/me', authenticate, validateBody(updateUserSchema), async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { displayName, bio, location, website, github, avatar } = req.body;
 
     const user = await prisma.user.update({
@@ -323,7 +330,7 @@ router.put('/me', authenticate, validateBody(updateUserSchema), async (req, res)
 // 修改密码
 router.put('/password', authenticate, validateBody(updatePasswordSchema), async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user!.userId;
     const { oldPassword, newPassword } = req.body;
 
     // 获取用户信息
@@ -347,20 +354,32 @@ router.put('/password', authenticate, validateBody(updatePasswordSchema), async 
     // 更新密码
     await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        tokenVersion: { increment: 1 },
+      },
     });
 
-    return success(res, undefined, '密码修改成功');
+    apiLog.info('User sessions revoked', { userId, reason: 'password_changed' });
+
+    return success(res, undefined, '密码修改成功，请重新登录');
   } catch (err: any) {
     return error(res, err.message, 500);
   }
 });
 
-// 退出登录（可选：将令牌加入黑名单）
 router.post('/logout', authenticate, async (req, res) => {
-  // 在实际应用中，可以将令牌加入 Redis 黑名单
-  // 这里简单地返回成功
-  return success(res, undefined, '退出登录成功');
+  try {
+    const userId = req.user!.userId;
+    await prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    apiLog.info('User sessions revoked', { userId, reason: 'logout' });
+    return success(res, undefined, '退出登录成功');
+  } catch {
+    return error(res, '退出登录失败', 500);
+  }
 });
 
 export default router;

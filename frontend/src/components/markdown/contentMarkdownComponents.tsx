@@ -7,13 +7,14 @@ function headingId(children: ReactNode) {
 
 export function createContentMarkdownComponents(paragraphClass: string): Components {
   return {
+    // 页面本身已经有唯一 H1；Markdown 中的一级标题从 H2 开始，避免重复主标题。
     h1: ({ children }) => (
-      <h1
+      <h2
         id={headingId(children)}
         className="text-3xl md:text-4xl font-serif font-bold text-ink dark:text-white mt-12 mb-5 pb-3 border-b-2 border-neon/30 scroll-mt-24 tracking-tight"
       >
         {children}
-      </h1>
+      </h2>
     ),
     h2: ({ children }) => (
       <h2

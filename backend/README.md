@@ -105,9 +105,21 @@ backend/
 | JWT_SECRET | JWT 签名密钥 | - |
 | FRONTEND_URL | 前端地址 | http://localhost:5173 |
 | API_URL | API 地址 | http://localhost:3001 |
+| TRUST_PROXY | 可信代理边界：`loopback`、精确 IP/窄 CIDR，或 `0` 禁用 | loopback |
 | MAX_FILE_SIZE | 最大文件大小 | 10485760 (10MB) |
 | UPLOAD_DIR | 上传目录 | uploads |
 | CONTENT_DIR | 内容文件目录 | content |
+| FILE_STORAGE_DIR | 文件浏览器的本地存储目录 | content-files |
+| FILE_METADATA_PATH | 文件浏览器的密码保护索引（必须位于存储目录外） | storage-metadata/file-metadata.json |
+| FILE_METADATA_ALLOW_EMPTY_INITIALIZATION | 灾难恢复开关；仅确认所有已有文件都应公开时临时启用一次 | false |
+| FILE_METADATA_ALLOW_UNBOUND_MIGRATION | 旧索引绑定开关；仅核对旧索引确属当前非空存储时临时启用一次 | false |
+| USE_MINIO | MinIO 总开关，只接受 `true` / `false` | false |
+| MINIO_ENDPOINT | MinIO 地址；`USE_MINIO=true` 时必填 | - |
+| MINIO_REQUEST_TIMEOUT_MS | MinIO 建连及已连接 socket 空闲超时，范围 1000–120000 ms | 15000 |
+
+`TRUST_PROXY` 会影响按访客 IP 执行的限流。默认值只信任本机代理，可直接覆盖同机 cloudflared；Docker/远程代理请填写精确 IP（多个用逗号分隔）或受控的窄 CIDR（IPv4 `/24` 以上、IPv6 `/64` 以上），`0` 表示禁用。不要使用代理跳数、`private`、`true` 或 `*`，并确保客户端不能绕过代理直连后端端口。
+
+文件浏览器的存储身份标记、内容目录/MinIO bucket 与密码保护索引必须一起持久化和备份。当前 JSON 索引只支持单个后端进程或副本；多进程并发写入可能覆盖保护记录，因此不要使用 cluster 模式。MinIO 服务账号还需要读取 bucket policy，启动时会拒绝任何匿名 `Allow` 策略。
 
 ## 开发命令
 

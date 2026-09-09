@@ -2,34 +2,14 @@ import React, { useEffect, useRef, useContext, useState, useMemo } from 'react';
 import { ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HeroContext } from './Layout';
 import HeroCanvas from './HeroCanvas';
+import type { HeroBackground } from '../lib/api';
 
 interface HeroProps {
   lang: 'EN' | 'ZH';
+  backgrounds?: HeroBackground[];
 }
 
-interface HeroContentItem {
-  id: string;
-  name: string;
-  enabled: boolean;
-  /** 自定义背景图链接；留空则使用内置特效 */
-  backgroundImage?: string;
-  contentZH: {
-    tag: string;
-    titleStart: string;
-    titleHighlight: string;
-    titleEnd: string;
-    quote: string;
-  };
-  contentEN: {
-    tag: string;
-    titleStart: string;
-    titleHighlight: string;
-    titleEnd: string;
-    quote: string;
-  };
-}
-
-const defaultHeroContent: HeroContentItem[] = [
+const defaultHeroContent: HeroBackground[] = [
   {
     id: 'ink',
     name: 'Ink Slash',
@@ -89,30 +69,24 @@ const defaultHeroContent: HeroContentItem[] = [
   }
 ];
 
-const Hero: React.FC<HeroProps> = ({ lang }) => {
+const Hero: React.FC<HeroProps> = ({ lang, backgrounds }) => {
   // 使用 Context 获取/设置背景索引，实现跨页面同步
   const { bgIndex, setBgIndex } = useContext(HeroContext);
-  const [heroConfig, setHeroConfig] = useState<HeroContentItem[]>(defaultHeroContent);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
 
-  // 从 localStorage 读取 Hero 配置
   useEffect(() => {
-    const saved = localStorage.getItem('site_config');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.heroBackgrounds && Array.isArray(parsed.heroBackgrounds)) {
-          setHeroConfig(parsed.heroBackgrounds);
-        }
-      } catch (e) {
-        console.error('Failed to parse hero config:', e);
-      }
-    }
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleChange = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   // 过滤出启用的背景
   const enabledContent = useMemo(() => {
-    return heroConfig.filter(item => item.enabled !== false);
-  }, [heroConfig]);
+    return (backgrounds ?? defaultHeroContent).filter(item => item.enabled !== false);
+  }, [backgrounds]);
 
   // 如果没有启用的背景，使用默认值
   const heroContent = enabledContent.length > 0 ? enabledContent : defaultHeroContent;
@@ -127,18 +101,28 @@ const Hero: React.FC<HeroProps> = ({ lang }) => {
 
   // Auto-play Background Switch - 使用 ref 避免依赖问题
   useEffect(() => {
+    if (prefersReducedMotion || heroContent.length <= 1) return;
     const timer = setInterval(() => {
         setBgIndex((prev) => (prev + 1) % heroContent.length);
     }, 6000); // Switch every 6 seconds
 
     return () => clearInterval(timer);
-  }, [setBgIndex, heroContent.length]);
+  }, [setBgIndex, heroContent.length, prefersReducedMotion]);
 
   const textRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
 
   // 视差与淡出直接操作 DOM（rAF 节流），避免把滚动位置提升到 React state 触发整页 re-render
   useEffect(() => {
+    if (prefersReducedMotion) {
+      if (textRef.current) {
+        textRef.current.style.transform = '';
+        textRef.current.style.opacity = '';
+      }
+      if (indicatorRef.current) indicatorRef.current.style.opacity = '';
+      return;
+    }
+
     let rafId: number | null = null;
     const update = () => {
       rafId = null;
@@ -164,20 +148,17 @@ const Hero: React.FC<HeroProps> = ({ lang }) => {
       window.removeEventListener('scroll', onScroll);
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [prefersReducedMotion]);
 
   return (
-    <section className="fixed top-0 left-0 w-full h-screen overflow-hidden flex items-center justify-center z-0 bg-[#05060a] transition-colors duration-500">
+    <section className="fixed top-0 left-0 w-full h-[100svh] overflow-hidden flex items-center justify-center z-0 bg-[#05060a] transition-colors duration-500" aria-label="首页视觉导览">
 
-      {/* 内置动态背景（始终在底层；某幻灯片设了自定义图时会被图盖住） */}
-      <HeroCanvas />
-
-      {/* 自定义图背景层：仅当前幻灯片有图时淡入覆盖 */}
+      {/* 自定义图只负责底图；星空层始终叠在其上，保留 Hero 的动态辨识度。 */}
       {heroContent.map((item, idx) =>
         item.backgroundImage ? (
           <div
             key={item.id}
-            className={`absolute inset-0 transition-opacity duration-700 ${idx === safeIndex ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 z-0 transition-opacity duration-700 motion-reduce:transition-none ${idx === safeIndex ? 'opacity-100' : 'opacity-0'}`}
           >
             <div
               className="absolute inset-0 bg-cover bg-center opacity-90"
@@ -190,23 +171,29 @@ const Hero: React.FC<HeroProps> = ({ lang }) => {
         ) : null
       )}
 
+      {/* 减少动态时保留静态星图，不再把整片星空替换成纯渐变。 */}
+      <HeroCanvas reducedMotion={prefersReducedMotion} />
 
       {/* --- CONTROLS (Clickable Layer) --- */}
       <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none z-40 flex flex-col justify-between pb-8 px-4 md:px-12">
           {/* Side Arrows */}
           <div className="flex-1 flex items-center justify-between w-full pointer-events-auto">
               <button 
+                type="button"
                 onClick={prevBg}
-                className="p-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white/50 hover:bg-white/10 hover:text-white hover:border-neon transition-all duration-300 group"
+                className="p-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white/50 hover:bg-white/10 hover:text-white hover:border-neon transition-all duration-300 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon motion-reduce:transition-none"
+                aria-label="上一张首页背景"
               >
-                  <ChevronLeft className="group-hover:-translate-x-1 transition-transform" />
+                  <ChevronLeft className="group-hover:-translate-x-1 transition-transform motion-reduce:transform-none motion-reduce:transition-none" aria-hidden="true" />
               </button>
               
               <button 
+                type="button"
                 onClick={nextBg}
-                className="p-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white/50 hover:bg-white/10 hover:text-white hover:border-neon transition-all duration-300 group"
+                className="p-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white/50 hover:bg-white/10 hover:text-white hover:border-neon transition-all duration-300 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon motion-reduce:transition-none"
+                aria-label="下一张首页背景"
               >
-                  <ChevronRight className="group-hover:translate-x-1 transition-transform" />
+                  <ChevronRight className="group-hover:translate-x-1 transition-transform motion-reduce:transform-none motion-reduce:transition-none" aria-hidden="true" />
               </button>
           </div>
 
@@ -214,6 +201,7 @@ const Hero: React.FC<HeroProps> = ({ lang }) => {
           <div className="flex justify-center gap-4 pointer-events-auto mt-auto">
               {heroContent.map((bg, idx) => (
                   <button
+                    type="button"
                     key={bg.id}
                     onClick={() => setBgIndex(idx)}
                     className={`
@@ -221,6 +209,8 @@ const Hero: React.FC<HeroProps> = ({ lang }) => {
                         ${bgIndex === idx ? 'bg-neon scale-125 border-neon' : 'bg-transparent hover:bg-white/20'}
                     `}
                     title={bg.name}
+                    aria-label={`切换到首页背景：${bg.name}`}
+                    aria-current={safeIndex === idx ? 'true' : undefined}
                   />
               ))}
           </div>
@@ -230,13 +220,13 @@ const Hero: React.FC<HeroProps> = ({ lang }) => {
       {/* --- HERO TEXT CONTENT --- */}
       <div
         ref={textRef}
-        className="relative z-10 text-center select-none px-4 transition-all duration-75 ease-out w-full"
+        className="relative z-10 mx-auto w-full max-w-6xl select-none px-16 text-center transition-all duration-75 ease-out sm:px-20 md:px-24"
       >
         <h2 className="font-serif text-neon text-xs sm:text-sm md:text-lg tracking-[0.2em] md:tracking-[0.35em] mb-5 opacity-90 drop-shadow-lg">
           {currentContent.tag}
         </h2>
 
-        <h1 className="font-serif font-bold text-4xl sm:text-5xl md:text-8xl lg:text-9xl text-white relative drop-shadow-2xl leading-tight">
+        <h1 className="relative break-words font-serif text-4xl font-bold leading-tight text-white drop-shadow-2xl sm:text-5xl md:text-8xl lg:text-9xl">
           {currentContent.titleStart}
           <br />
           {/* Apply Secondary Color Gradient Here */}
@@ -246,7 +236,7 @@ const Hero: React.FC<HeroProps> = ({ lang }) => {
           {currentContent.titleEnd && <span className="text-paper ml-4">{currentContent.titleEnd}</span>}
         </h1>
 
-        <p className="mt-6 md:mt-8 font-serif text-gray-400 text-base md:text-xl max-w-lg mx-auto italic drop-shadow-md">
+        <p className="mx-auto mt-6 max-w-lg break-words font-serif text-base italic text-gray-400 drop-shadow-md md:mt-8 md:text-xl">
           {currentContent.quote}
         </p>
       </div>
@@ -254,7 +244,8 @@ const Hero: React.FC<HeroProps> = ({ lang }) => {
       {/* Scroll Indicator */}
       <div
         ref={indicatorRef}
-        className="absolute bottom-10 w-full flex justify-center items-center gap-2 text-ink/50 dark:text-white/50 animate-bounce z-30"
+        className="absolute bottom-10 w-full flex justify-center items-center gap-2 text-ink/50 dark:text-white/50 animate-bounce z-30 motion-reduce:animate-none"
+        aria-hidden="true"
       >
         <div className="flex flex-col items-center gap-2">
             <span className="font-mono text-xs tracking-widest">READ MORE</span>

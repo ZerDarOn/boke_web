@@ -1,5 +1,8 @@
 import React from 'react';
-import { useSkillNodes } from '../hooks/queries/skills';
+import { ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useSkillGroups, useSkillNodes } from '../hooks/queries/skills';
+import SectionHeading from './SectionHeading';
 
 interface SkillNode {
   id: string;
@@ -11,8 +14,12 @@ interface SkillNode {
 }
 
 const Profile: React.FC = () => {
-  const { data: skills = [], isLoading: loading, error: queryError } = useSkillNodes();
-  const error = queryError?.message ?? null;
+  const { data: skills = [], isLoading: nodesLoading, error: nodesError, refetch: refetchNodes } = useSkillNodes();
+  const { data: skillGroups = [], isLoading: groupsLoading, error: groupsError, refetch: refetchGroups } = useSkillGroups();
+  const loading = nodesLoading || groupsLoading;
+  const error = skills.length === 0 && skillGroups.length === 0
+    ? nodesError?.message || groupsError?.message || null
+    : null;
 
   // Transform API skills to skill nodes
   const skillNodes: SkillNode[] = skills.map(skill => ({
@@ -28,32 +35,55 @@ const Profile: React.FC = () => {
   const getNode = (id: string) => skillNodes.find(n => n.id === id);
 
   return (
-    <section id="about" className="py-24 w-full bg-neutral-50 dark:bg-black relative overflow-hidden flex flex-col transition-colors duration-300">
+    <section id="about" className="relative flex w-full flex-col overflow-hidden py-16 transition-colors duration-300 md:py-28">
 
-      <div className="w-full z-10 flex-1 flex flex-col px-8">
-        <div className="text-left mb-12 border-l-4 border-ink dark:border-white pl-6">
-          <h2 className="text-3xl md:text-5xl font-serif font-black text-ink dark:text-white mb-2">
-            ABOUT THE AUTHOR
-          </h2>
-          <p className="font-mono text-gray-500 text-xs tracking-widest">
-            // IDENTITY & SKILLS MAP
-          </p>
-        </div>
+      <div className="z-10 flex w-full flex-1 flex-col">
+        <SectionHeading
+          index="04"
+          eyebrow="Identity / 关于"
+          title="能力不是清单，是星图"
+          description="工具会更替，真正留下来的是理解问题、拆解系统和把想法做成作品的方式。"
+          action={(
+            <Link to="/about" className="group inline-flex min-h-11 items-center gap-2 border-b border-ink pb-2 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-ink transition-colors hover:border-neon hover:text-neon-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon dark:border-white/60 dark:text-white dark:hover:border-neon dark:hover:text-neon">
+              认识作者
+              <ArrowUpRight size={15} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </Link>
+          )}
+        />
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-gray-400 dark:text-gray-600">Loading skills...</div>
+          <div className="flex items-center justify-center py-20">
+            <div className="font-mono text-xs uppercase tracking-[0.22em] text-stone-400">Mapping skills...</div>
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center py-12 text-red-500">
-            {error}
+          <div className="mt-12 flex flex-col items-center justify-center border border-red-900/20 bg-red-950/[0.04] py-14 text-red-700 dark:border-red-300/15 dark:text-red-300" role="alert">
+            <p className="font-serif">技能星图暂时离线。</p>
+            <button type="button" onClick={() => { refetchNodes(); refetchGroups(); }} className="mt-4 font-mono text-xs uppercase tracking-[0.22em] underline underline-offset-4">重新连接</button>
+          </div>
+        ) : skillNodes.length === 0 && skillGroups.length === 0 ? (
+          <div className="mt-12 flex items-center justify-center border-y border-ink/10 py-20 text-stone-400 dark:border-white/10 dark:text-stone-500">
+            <p className="font-serif text-lg">能力档案正在整理。</p>
           </div>
         ) : skillNodes.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-gray-400">
-            No skills found. Please add skills in the admin panel.
+          <div className="mt-12 grid gap-px bg-ink/10 dark:bg-white/10 md:grid-cols-2">
+            {skillGroups.map((group, groupIndex) => (
+              <article key={group.category} className="min-h-52 bg-paper p-7 dark:bg-[#0b0d0c] md:p-9">
+                <div className="mb-8 flex items-center justify-between">
+                  <span className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-neon-dark dark:text-neon">{group.category}</span>
+                  <span className="font-mono text-[0.62rem] text-stone-400 tabular-nums">{String(groupIndex + 1).padStart(2, '0')}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-5 gap-y-4">
+                  {group.skills.map((skill) => (
+                    <span key={skill.id} className="border-b border-ink/15 pb-1 font-serif text-lg font-semibold text-ink dark:border-white/15 dark:text-white">
+                      {skill.name}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))}
           </div>
         ) : (
-          <div className="relative w-full aspect-square md:aspect-[16/10] bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 shadow-inner rounded-xl overflow-hidden p-4">
+          <div className="relative mt-12 aspect-square w-full overflow-hidden border border-ink/10 bg-white/55 p-4 shadow-[inset_0_0_80px_rgba(29,35,30,0.04)] dark:border-white/10 dark:bg-white/[0.025] md:aspect-[16/9]">
 
             {/* SVG Layer for Connections */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
@@ -78,9 +108,7 @@ const Profile: React.FC = () => {
                        strokeWidth="1.5"
                        strokeOpacity="0.4"
                        strokeDasharray="4 4"
-                     >
-                       <animate attributeName="stroke-dashoffset" from="0" to="8" dur="1s" repeatCount="indefinite" />
-                     </line>
+                     />
                    );
                  })
                )}
@@ -111,7 +139,7 @@ const Profile: React.FC = () => {
                    <div
                       className={`
                           rounded-full transition-all duration-500
-                          ${node.type === 'core' ? 'w-16 h-16 border border-white/20 animate-spin-slow' : ''}
+                          ${node.type === 'core' ? 'w-16 h-16 border border-white/20' : ''}
                           ${node.type === 'major' ? 'w-2 h-2 bg-ink dark:bg-white' : ''}
                           ${node.type === 'minor' ? 'w-1 h-1 bg-gray-400' : ''}
                       `}
