@@ -14,6 +14,29 @@ interface ContentExport {
   filePath: string;
 }
 
+export function createMarkdownDocument(frontMatter: Record<string, unknown>, content: string): string {
+  const yaml = Object.entries(frontMatter)
+    .flatMap(([key, value]) => {
+      if (value === undefined || value === null) return [];
+      if (typeof value === 'number' || typeof value === 'boolean') return [`${key}: ${value}`];
+      return [`${key}: ${JSON.stringify(value)}`];
+    })
+    .join('\n');
+
+  return `---\n${yaml}\n---\n\n${content}`;
+}
+
+export function formatTimelineExportDate(year: string, date: string): string {
+  const trimmedYear = year.trim();
+  const trimmedDate = date.trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) return trimmedDate;
+  if (/^\d{4}-\d{2}$/.test(trimmedDate)) return `${trimmedDate}-01`;
+  if (/^\d{2}\.\d{2}$/.test(trimmedDate)) return `${trimmedYear}-${trimmedDate.replace('.', '-')}`;
+
+  throw new Error(`Unsupported timeline date: ${year} / ${date}`);
+}
+
 /**
  * 导出服务
  */
@@ -355,13 +378,17 @@ export class ExportService {
    * 转换时间线为 Markdown
    */
   private async exportTimelineEvent(event: any): Promise<ContentExport> {
+    const exportDate = formatTimelineExportDate(event.year, event.date);
     const frontMatter = {
       id: event.id,
       title: event.title,
-      slug: event.year + '-' + event.date,
-      date: event.year + '-' + event.date,
+      slug: `${event.year}-${event.date}`,
+      date: exportDate,
       type: 'timeline',
-      category: String(event.type || '')
+      year: event.year,
+      timelineDate: exportDate.slice(5).replace('-', '.'),
+      eventType: String(event.type || ''),
+      projectId: event.projectId,
     };
 
     const content = event.description;
@@ -537,21 +564,7 @@ export class ExportService {
    * 创建 Markdown 文件内容
    */
   private createMarkdown(frontMatter: any, content: string): string {
-    const yaml = Object.entries(frontMatter)
-      .map(([key, value]) => {
-        if (value === undefined || value === null) return '';
-        if (Array.isArray(value)) {
-          return `${key}: [${value.map(v => `"${v}"`).join(', ')}]`;
-        }
-        if (typeof value === 'boolean') {
-          return `${key}: ${value}`;
-        }
-        return `${key}: "${value}"`;
-      })
-      .filter(line => line !== '')
-      .join('\n');
-
-    return `---\n${yaml}\n---\n\n${content}`;
+    return createMarkdownDocument(frontMatter, content);
   }
 
   /**

@@ -49,6 +49,19 @@ function asOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
+function asOptionalFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function asNonNegativeInteger(value: unknown, fallback: number): number {
+  const parsed = asOptionalFiniteNumber(value);
+  return parsed !== undefined && Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 function resolveContentType(metadata: Record<string, unknown>): string {
   const explicitType = asOptionalString(metadata.contentType) || asOptionalString(metadata.kind);
   if (explicitType && CONTENT_TYPES.has(explicitType.toLowerCase())) {
@@ -123,7 +136,12 @@ function normalizeDate(date: any): string {
     return new Date().toISOString();
   }
 
-  const d = new Date(date);
+  const rawDate = String(date).trim();
+  const duplicatedYear = rawDate.match(/^(\d{4})-\1-(\d{2})(?:-(\d{2}))?$/);
+  const normalizedInput = duplicatedYear
+    ? `${duplicatedYear[1]}-${duplicatedYear[2]}-${duplicatedYear[3] || '01'}`
+    : date;
+  const d = new Date(normalizedInput);
   if (isNaN(d.getTime())) {
     throw new Error(`无效的日期格式: ${date}`);
   }
@@ -225,14 +243,14 @@ function buildAnimeData(parsed: ParsedContent) {
     title: parsed.title,
     cover: requireString(metadata.cover, 'anime.cover'),
     bannerImage: asOptionalString(metadata.bannerImage),
-    type: ANIME_TYPES.has(String(metadata.animeType || metadata.type))
-      ? (metadata.animeType || metadata.type)
+    type: ANIME_TYPES.has(String(metadata.animeType || metadata.type_anime || metadata.type))
+      ? (metadata.animeType || metadata.type_anime || metadata.type)
       : 'TV',
-    episodes: Number.isInteger(metadata.episodes) ? metadata.episodes : 1,
+    episodes: asNonNegativeInteger(metadata.episodes, 1),
     aired: asOptionalString(metadata.aired),
-    currentEp: Number.isInteger(metadata.currentEp) ? metadata.currentEp : 0,
+    currentEp: asNonNegativeInteger(metadata.currentEp, 0),
     status: ANIME_STATUSES.has(String(metadata.status)) ? metadata.status : 'WATCHING',
-    score: metadata.score,
+    score: asOptionalFiniteNumber(metadata.score),
     favorite: metadata.favorite || false,
     studios: asStringArray(metadata.studios),
     genres: asStringArray(metadata.genres),
@@ -294,7 +312,7 @@ function buildSkillData(parsed: ParsedContent) {
     category: asOptionalString(metadata.category) || 'GENERAL',
     level: normalizeSkillLevel(metadata.level),
     rank: normalizeSkillRank(metadata.rank || metadata.level),
-    projectCount: Number.isInteger(metadata.projectCount) ? metadata.projectCount : 0,
+    projectCount: asNonNegativeInteger(metadata.projectCount, 0),
     connections: asStringArray(metadata.connections),
     image: asOptionalString(metadata.image) || asOptionalString(metadata.icon),
   };
@@ -355,7 +373,8 @@ function normalizeTimelineType(value: unknown): 'MILESTONE' | 'JOB' | 'LIFE' {
 }
 
 function normalizeSkillLevel(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.min(100, Math.round(value)));
+  const numericLevel = asOptionalFiniteNumber(value);
+  if (numericLevel !== undefined) return Math.max(0, Math.min(100, Math.round(numericLevel)));
   const levels: Record<string, number> = { MASTER: 100, EXPERT: 80, ADEPT: 60, NOVICE: 30 };
   return levels[String(value).toUpperCase()] || 0;
 }

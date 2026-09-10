@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildPrismaData, parseMarkdown } from '../src/services/markdown.service';
+import { createMarkdownDocument, formatTimelineExportDate } from '../src/services/export.service';
 
 test('maps post Markdown to the fields accepted by the Post model', async () => {
   const parsed = await parseMarkdown(`---
@@ -69,4 +70,67 @@ tags: [生活]
   assert.equal(data.type, 'LONG');
   assert.equal(data.longContent.trim(), '今天去旅行。');
   assert.equal('slug' in data, false);
+});
+
+test('restores numeric anime fields from legacy backups that quoted every scalar', async () => {
+  const parsed = await parseMarkdown(`---
+id: legacy-anime
+title: Legacy Anime
+date: "2026-03-01T00:00:00.000Z"
+type: "anime"
+episodes: "24"
+currentEp: "12"
+score: "8.5"
+cover: "https://example.com/cover.jpg"
+---
+
+简介`);
+
+  const data = buildPrismaData(parsed);
+
+  assert.equal(data.episodes, 24);
+  assert.equal(data.currentEp, 12);
+  assert.equal(data.score, 8.5);
+});
+
+test('restores timeline dates duplicated by legacy exports', async () => {
+  const parsed = await parseMarkdown(`---
+id: legacy-timeline
+title: API 完成
+date: "2024-2024-03"
+type: "timeline"
+category: "MILESTONE"
+---
+
+完成后端 API。`);
+
+  const data = buildPrismaData(parsed);
+
+  assert.equal(parsed.date, '2024-03-01T00:00:00.000Z');
+  assert.equal(data.year, '2024');
+  assert.equal(data.date, '03.01');
+});
+
+test('writes numeric front matter as YAML numbers for new backups', async () => {
+  const markdown = createMarkdownDocument({
+    id: 'roundtrip-anime',
+    title: 'Roundtrip Anime',
+    date: '2026-03-01T00:00:00.000Z',
+    type: 'anime',
+    episodes: 24,
+    currentEp: 12,
+    score: 8.5,
+    cover: 'https://example.com/cover.jpg',
+  }, '简介');
+
+  const data = buildPrismaData(await parseMarkdown(markdown));
+
+  assert.equal(data.episodes, 24);
+  assert.equal(data.currentEp, 12);
+  assert.equal(data.score, 8.5);
+});
+
+test('formats both supported timeline date shapes as importable ISO dates', () => {
+  assert.equal(formatTimelineExportDate('2024', '03.20'), '2024-03-20');
+  assert.equal(formatTimelineExportDate('2024', '2024-03'), '2024-03-01');
 });
